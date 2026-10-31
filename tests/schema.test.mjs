@@ -85,6 +85,7 @@ test('migration + seed load, and access follows memberships', async () => {
 
   // BCS gets its organization logo; teams without their own logo show it on the public page
   assert.equal((await db.query(`select logo_url from organizations where slug='bcs'`)).rows[0].logo_url, '/logos/bcs.png');
+  assert.equal((await db.query(`select logo_url from organizations where slug='universel'`)).rows[0].logo_url, '/logos/universel.png');
 
   // public schedule: off by default, then exposes only that org
   assert.equal((await as(db, null, `select public_schedule('bcs') s`))[0].s, null);

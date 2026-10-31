@@ -23,7 +23,7 @@ async function build() {
     const t = await get(`teams/${id}.json`);
     const orgName = t.org || ORG_FOR_UNSET[id] || t.school || t.name;
     let org = db.orgs.find((o) => o.name === orgName);
-    if (!org) { org = { id: 'o_' + slugify(orgName), slug: slugify(orgName), name: orgName, public_schedule: true, role: 'admin', logo_url: slugify(orgName) === 'bcs' ? '/logos/bcs.png' : null }; db.orgs.push(org); db.members[org.id] = [{ user_id: USER.id, email: USER.email, role: 'admin' }]; }
+    if (!org) { org = { id: 'o_' + slugify(orgName), slug: slugify(orgName), name: orgName, public_schedule: true, role: 'admin', logo_url: ({ bcs: '/logos/bcs.png', universel: '/logos/universel.png' })[slugify(orgName)] || null }; db.orgs.push(org); db.members[org.id] = [{ user_id: USER.id, email: USER.email, role: 'admin' }]; }
     db.teams.push({ id, org_id: org.id, name: t.name, school: t.school || '', sport: t.sport, level: t.level, color: t.color, logo: t.logo && /^https?:/.test(t.logo) ? t.logo : null, leagueName: t.leagueName || '', leagueUrl: t.leagueUrl || '', syncUrl: '', syncEnabled: true, sort_order: i, created_at: t.created });
     const league = (await get(`teams/${id}/data/league.json`)) || { groups: [], games: [] };
     const sc = (await get(`teams/${id}/data/sc.json`)) || { weeks: {}, days: {} };

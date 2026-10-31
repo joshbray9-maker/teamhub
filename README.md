@@ -23,7 +23,7 @@ organization can read them; coaches edit. Injuries live in their own staff-only 
 | `src/lib/rosterImport.js` | Reads roster CSV / PDF files (in the browser) |
 | `supabase/migrations/…_injuries.sql` | Injury report (staff only) and private player photos |
 | `supabase/migrations/…_datasets.sql` | Data Center tables |
-| `public/logos/` | Organization logos (BCS) used for teams without their own logo |
+| `public/logos/` | Organization logos (BCS, Universel) used for teams without their own logo |
 | `supabase/migrations/…_org_logo.sql` | Organization logos, lineup opponent |
 | `src/lib/imports.js` | S&C, Lines and Data Center imports, blank templates |
 | `src/lib/injury.js` | Injury statuses, return countdowns, body regions, injury CSV/PDF import |
