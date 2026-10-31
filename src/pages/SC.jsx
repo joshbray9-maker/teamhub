@@ -8,8 +8,8 @@ import Modal from '../components/Modal.jsx';
 import Icon from '../components/Icon.jsx';
 import Table from '../components/Table.jsx';
 import InjuredCard from '../components/InjuredCard.jsx';
-import { rowsToSc, scField, SC_TEMPLATE, downloadCsv } from '../lib/imports.js';
-import { readRows } from '../lib/readRows.js';
+import { rowsToSc, scField, SC_TEMPLATE } from '../lib/imports.js';
+import ImportSource from '../components/ImportSource.jsx';
 
 const cap = (k) => k[0].toUpperCase() + k.slice(1);
 export function IBadge({ k }) { const i = INT.find((x) => x.k === (k || '')) || INT[0]; return <span className={`ibadge i-${i.k || 'none'}`} aria-hidden="true">{i.short}</span>; }
@@ -19,7 +19,7 @@ export default function SC() {
   const H = useHub();
   const [tab, setTab] = useState('cal');
   return <>
-    <PageHead title="S&C" actions={H.isCoach && <button className="btn" onClick={() => H.openDialog((c) => <ScImport close={c} />)}><Icon n="refresh" /> Import CSV / PDF</button>} />
+    <PageHead title="S&C" actions={H.isCoach && <button className="btn" onClick={() => H.openDialog((c) => <ScImport close={c} />)}><Icon n="refresh" /> Import: file or paste</button>} />
     <InjuredCard />
     <div className="seg" role="tablist">{[['cal', 'Calendar'], ['load', 'Workload'], ['gym', 'Gym groups'], ['tests', 'Tests']].map(([k, l]) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
     {tab === 'cal' ? <ScCalendar /> : tab === 'load' ? <Workload /> : <section className="card"><div className="card-head"><h2>{tab === 'gym' ? 'Gym groups' : 'Tests'}</h2><span className="pill">Not built yet</span></div><p className="muted small" style={{ margin: 0 }}>Coming in a later step.</p></section>}
@@ -187,18 +187,13 @@ function LineChart({ weeks, get, max: m, band, fmt, label }) {
    Week. Days in the file replace those days; everything else in the plan is kept. */
 function ScImport({ close }) {
   const H = useHub();
-  const [res, setRes] = useState(null), [busy, setBusy] = useState(false);
-  const pick = async (e) => {
-    const file = e.target.files[0]; e.target.value = ''; if (!file) return;
-    setBusy(true); setRes(null);
-    try {
-      const r = rowsToSc(await readRows(file, scField));
-      const dates = Object.keys(r.days).sort();
-      if (!dates.length && !Object.keys(r.weeks).length) throw new Error('No dated sessions found in the file.');
-      const cur = H.tdata.sc.days || {};
-      setRes({ ...r, file: file.name, dates, replaced: dates.filter((d) => cur[d]).length });
-    } catch (err) { H.toast(err.message); }
-    finally { setBusy(false); }
+  const [res, setRes] = useState(null);
+  const take = (rows, label) => {
+    const r = rowsToSc(rows);
+    const dates = Object.keys(r.days).sort();
+    if (!dates.length && !Object.keys(r.weeks).length) throw new Error('No dated sessions found.');
+    const cur = H.tdata.sc.days || {};
+    setRes({ ...r, file: label, dates, replaced: dates.filter((d) => cur[d]).length });
   };
   const go = () => {
     close();
@@ -206,11 +201,8 @@ function ScImport({ close }) {
   };
   return <Modal title="Import S&C plan" wide onClose={close}
     actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" disabled={!res} onClick={go}>Import</button></>}>
-    <p className="muted small" style={{ margin: 0 }}>A CSV, or a PDF with selectable text, laid out as a table: one row per day with <b>Date</b> and any of <b>Theme</b>, <b>Intensity</b> (off, light, moderate, heavy, game), <b>Note</b>, <b>Phase</b>, <b>Week</b>. Days in the file replace those days in the plan; other days stay as they are. A colour-coded calendar PDF can't be read this way: export it as a table or use the template.</p>
-    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-      <label className="btn"><Icon n="plus" /> {busy ? 'Reading…' : res ? 'Choose another file' : 'Choose CSV or PDF'}<input type="file" accept=".csv,.txt,.pdf,text/csv,application/pdf" hidden onChange={pick} /></label>
-      <button className="btn ghost" onClick={() => downloadCsv('s&c-plan-template.csv', SC_TEMPLATE)}>Download blank template</button>
-    </div>
+    <p className="muted small" style={{ margin: 0 }}>A CSV, a PDF with selectable text, or cells pasted from a spreadsheet, laid out as a table: one row per day with <b>Date</b> and any of <b>Theme</b>, <b>Intensity</b> (off, light, moderate, heavy, game), <b>Note</b>, <b>Phase</b>, <b>Week</b>. Days in the file replace those days in the plan; other days stay as they are. A colour-coded calendar PDF can't be read this way: export it as a table or use the template.</p>
+    <ImportSource onRows={take} isHeading={scField} template={SC_TEMPLATE} templateName="s&c-plan-template.csv" />
     {res && <>
       <div className="small"><b>{res.file}</b>: {res.dates.length} days{res.dates.length ? ` from ${fmtDate(res.dates[0])} to ${fmtDate(res.dates[res.dates.length - 1])}` : ''}{res.replaced ? `, ${res.replaced} already in the plan (will be replaced)` : ''}, {Object.keys(res.weeks).length} week labels{res.skipped ? `, ${res.skipped} rows without a readable date skipped` : ''}.</div>
       {res.unknown.length > 0 && <div className="hint">Intensity not recognised, left unrated: {res.unknown.join(', ')}</div>}

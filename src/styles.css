@@ -291,13 +291,13 @@ textarea.input{resize:vertical;min-height:84px;line-height:1.45}
 .soon ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
 
 /* ---------- dialogs ---------- */
-.modal{position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:20px}
+.modal{position:fixed;inset:0;z-index:100;display:grid;grid-template-columns:minmax(0,1fr);place-items:center;padding:20px}
 .modal-back{position:absolute;inset:0;background:rgb(8 10 14 / .5)}
 .sheet{position:relative;background:var(--surface);border-radius:18px;box-shadow:var(--shadow);width:min(560px,100%);max-height:calc(100dvh - 40px);display:flex;flex-direction:column;border:1px solid var(--line)}
 .sheet.wide{width:min(860px,100%)}
 .sheet-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 18px 6px}
 .sheet-head h2{font:700 24px var(--f-display);margin:0;letter-spacing:.01em}
-.sheet-body{padding:8px 18px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;min-height:0}
+.sheet-body{padding:8px 18px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;min-height:0;min-width:0}
 .sheet-foot{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px 16px;border-top:1px solid var(--line);flex-wrap:wrap}
 .sheet-foot .spacer{flex:1}
 .field{display:flex;flex-direction:column;gap:5px;min-width:0}
@@ -482,7 +482,7 @@ span.gd-row{cursor:default}
 .ro-sep td{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding-top:14px}
 .ro-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .ro-wide{grid-column:1/-1}
-.ro-src{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:16px}
+.ro-src{display:flex;flex-direction:column;gap:16px}
 .ro-src .field{gap:7px}
 @media (max-width:700px){.ro-src{grid-template-columns:minmax(0,1fr)}}
 .empty-state{display:flex;flex-direction:column;gap:6px;align-items:flex-start;padding:8px 0}
@@ -577,6 +577,21 @@ span.gd-row{cursor:default}
 .dc-tbl{max-height:calc(100dvh - 260px);overflow:auto}
 .dc-tbl th.click{cursor:pointer;user-select:none;position:sticky;top:0;background:var(--surface)}
 @media (max-width:900px){.dc-grid{grid-template-columns:minmax(0,1fr)}}
+/* ---------- import: file or paste ---------- */
+.isrc{display:flex;flex-direction:column;gap:10px;min-width:0}
+.isrc>.seg{align-self:flex-start}
+.pg{display:flex;flex-direction:column;gap:8px;min-width:0}
+.pg-scroll{max-height:320px;overflow:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.pg-tbl{border-collapse:collapse;font-size:13px;min-width:100%}
+.pg-tbl th{position:sticky;top:0;z-index:1;background:var(--surface-2);color:var(--muted);font-weight:600;font-size:11.5px;padding:3px 6px;border:1px solid var(--line);text-align:center}
+.pg-tbl tbody th{position:sticky;left:0;z-index:1;min-width:34px;font-variant-numeric:tabular-nums}
+.pg-tbl .pg-corner{left:0;z-index:2}
+.pg-tbl td{border:1px solid var(--line);padding:0;min-width:110px}
+.pg-tbl input{width:100%;border:0;background:none;padding:5px 7px;font:inherit;color:inherit;outline:none}
+.pg-tbl input:focus{box-shadow:inset 0 0 0 2px var(--accent);background:var(--surface)}
+.pg-head td{background:var(--accent-soft)} .pg-head input{font-weight:700}
+.pg-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pg-bar .btn.primary{margin-left:auto}
 @media print{
   @page{margin:12mm}
   /* beats the dark-mode :root rules so a sheet printed from dark mode is still black on white */

@@ -39,3 +39,11 @@ test('lines, grid layout and the blank template', () => {
 test('Data Center tables are trimmed to their used rows and columns', () => {
   assert.deepEqual(tidyTable([['Name', '', 'CMJ'], ['', '', ''], ['A', '', '40'], ['B', '', '']]), [['Name', 'CMJ'], ['A', '40'], ['B', '']]);
 });
+
+test('pasted spreadsheet cells: tabs, quoted line breaks, and trimming empty rows/columns', async () => {
+  const { parseTsv } = await import('../src/lib/imports.js');
+  const { rowsToPlayers } = await import('../src/lib/rosterImport.js');
+  const rows = parseTsv('Number\tName\tPosition\r\n9\tPaste One\tC\r\n\t"Paste\nTwo"\tD\r\n');
+  assert.deepEqual(rows, [['Number', 'Name', 'Position'], ['9', 'Paste One', 'C'], ['', 'Paste\nTwo', 'D']]);
+  assert.deepEqual(rowsToPlayers(rows).players.map((p) => p.name), ['Paste One', 'Paste Two']);
+});

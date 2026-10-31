@@ -80,9 +80,12 @@ limited / available, live from the Injury report), every active limitation, and 
 PDF button. **Team readiness** is a placeholder: it will come from weekly testing metrics
 once those are set up, and its scoring rules haven't been decided, so nothing is estimated.
 
-**Imports at a glance:** every tab that holds team data has an **Import CSV / PDF** button
-(PDFs need selectable text and a row of column headings). Each one shows what it read before
-anything is saved, and most offer a **Download blank template**:
+**Imports at a glance:** every tab that holds team data has an **Import** button with two
+ways in: **Upload a file** (CSV, or a PDF with selectable text and a row of column headings)
+or **Paste from a spreadsheet**, an Excel-style grid you paste copied cells into (⌘V) from
+Excel, Numbers or Google Sheets. Row 1 of the grid comes pre-filled with the expected headings.
+Either way, everything is read in the browser and shown for review before anything is saved,
+and most imports offer a **Download blank template**:
 
 | Tab | What it reads |
 |---|---|

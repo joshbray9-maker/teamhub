@@ -5,7 +5,8 @@ import { useHub } from '../lib/hub.jsx';
 import { parseCsv, rowsToPlayers, pdfItemsToPlayers, tablesToPlayers, planImport } from '../lib/rosterImport.js';
 import { pdfTextItems } from '../lib/pdfText.js';
 import { resizePhoto } from '../lib/photo.js';
-import { downloadCsv } from '../lib/imports.js';
+import { ROSTER_TEMPLATE } from '../lib/imports.js';
+import ImportSource from '../components/ImportSource.jsx';
 import PageHead from '../components/PageHead.jsx';
 import Modal from '../components/Modal.jsx';
 import Icon from '../components/Icon.jsx';
@@ -35,7 +36,7 @@ export default function Roster() {
   const edit = (p) => H.isCoach && H.openDialog((c) => <PlayerDialog p={p} photoUrl={p && photos[p.photo]} sport={t.sport} close={c} onSave={(x) => save([x])}
     onDelete={async () => { try { await H.api.deletePlayer(p.id); } catch (e) { H.toast(e.message); } load(); }} />);
   const acts = H.isCoach && <>
-    <button className="btn" onClick={() => H.openDialog((c) => <ImportDialog current={players || []} close={c} onSave={(list, msg) => save(list, msg)} />)}><Icon n="refresh" /> Import CSV / PDF / web</button>
+    <button className="btn" onClick={() => H.openDialog((c) => <ImportDialog current={players || []} close={c} onSave={(list, msg) => save(list, msg)} />)}><Icon n="refresh" /> Import: file, paste or web</button>
     <button className="btn primary" onClick={() => edit(null)}><Icon n="plus" /> Player</button></>;
 
   const list = (players || []).filter((p) => p.active !== false).sort(byNumber);
@@ -122,15 +123,15 @@ function ImportDialog({ current, close, onSave }) {
     } catch (err) { H.toast(err.message); }
     finally { setBusy(false); }
   };
-  const pick = async (e) => {
-    const file = e.target.files[0]; if (!file) return;
-    setBusy(true); setRes(null);
-    try {
-      const r = /\.pdf$/i.test(file.name) || file.type === 'application/pdf' ? await readPdf(file) : rowsToPlayers(parseCsv(await file.text()));
-      if (!r.players.length) throw new Error(/\.pdf$/i.test(file.name) ? 'No players found. The PDF needs selectable text (not a scanned image) with a number and a name on each line, or column headings like No., Name, Pos.' : 'No players found in the file.');
-      setRes({ ...r, file: file.name, plan: planImport(current, r.players) });
-    } catch (err) { H.toast(err.message); }
-    finally { setBusy(false); e.target.value = ''; }
+  const take = (r, label) => {
+    if (!r.players.length) throw new Error('No players found. Check that there is a Name column (or First / Last name).');
+    setRes({ ...r, file: label, plan: planImport(current, r.players) });
+  };
+  const onFile = async (file) => {
+    const pdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
+    const r = pdf ? await readPdf(file) : rowsToPlayers(parseCsv(await file.text()));
+    if (pdf && !r.players.length) throw new Error('No players found. The PDF needs selectable text (not a scanned image) with a number and a name on each line, or column headings like No., Name, Pos.');
+    take(r, file.name);
   };
   const go = () => {
     const { adds, updates, missing } = res.plan;
@@ -148,10 +149,9 @@ function ImportDialog({ current, close, onSave }) {
           <button className="btn" type="submit" disabled={busy}>{busy ? 'Reading…' : 'Read page'}</button>
         </form>
         <span className="muted small">A team or league page that lists the roster in a table (school athletics sites like gaiters.ca). EliteProspects and CSSHL pages can't be read this way: save them as a PDF and use the file option.</span></div>
-      <div className="field"><span>From a file</span>
-        <label className="btn" style={{ alignSelf: 'flex-start' }}><Icon n="plus" /> {busy ? 'Reading…' : 'Choose CSV or PDF'}<input type="file" accept=".csv,.txt,.pdf,text/csv,application/pdf" hidden onChange={pick} /></label>
-        <span className="muted small">CSV with headings like Number, Name, Position, Shoots, Year, Height, Weight, Hometown, or a PDF with selectable text (not a scan). Read in your browser.</span>
-        <button type="button" className="btn sm ghost" style={{ alignSelf: 'flex-start' }} onClick={() => downloadCsv('roster-template.csv', [['Number', 'Name', 'Position', 'Shoots', 'Year', 'Height', 'Weight', 'Hometown']])}>Download blank template</button></div>
+      <div className="field"><span>From a file or spreadsheet</span>
+        <ImportSource onFile={onFile} onRows={(rows, label) => take(rowsToPlayers(rows, 'csv'), label)} template={ROSTER_TEMPLATE} templateName="roster-template.csv"
+          fileHint="CSV with headings like Number, Name, Position, Shoots, Year, Height, Weight, Hometown, or a PDF with selectable text (not a scan). Read in your browser." /></div>
     </div>
     {p && <>
       <div className="small"><b>{res.file}</b>: {p.adds.length} new, {p.updates.length} updated{res.skipped ? `, ${res.skipped} line${res.skipped === 1 ? '' : 's'} skipped (no name)` : ''}. Check the list before importing.</div>

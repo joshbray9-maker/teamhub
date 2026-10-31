@@ -16,6 +16,26 @@ export function downloadCsv(filename, rows) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
+/** Text copied from Excel, Numbers or Google Sheets: tab-separated rows; a cell that holds a
+ *  line break or tab comes wrapped in quotes. */
+export function parseTsv(text) {
+  text = String(text || '').replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n').replace(/\n$/, '');
+  const rows = []; let row = [], cell = '', q = false, start = true;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += c; continue; }
+    if (c === '"' && start) { q = true; start = false; continue; }
+    start = false;
+    if (c === '\t') { row.push(cell); cell = ''; start = true; }
+    else if (c === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; start = true; }
+    else cell += c;
+  }
+  row.push(cell); rows.push(row);
+  return rows;
+}
+export const ROSTER_TEMPLATE = [['Number', 'Name', 'Position', 'Shoots', 'Year', 'Height', 'Weight', 'Hometown']];
+export const INJURY_TEMPLATE = [['Player', 'Number', 'Injury', 'Area', 'Side', 'Status', 'Injury date', 'Return to practice', 'Return to play', 'Limitations', 'Notes']];
+
 /* ---------- S&C plan ---------- */
 const SC_SYN = {
   date: ['date', 'day', 'jour', 'sessiondate'], theme: ['theme', 'session', 'workout', 'focus', 'activity', 'seance', 'training', 'plan'],

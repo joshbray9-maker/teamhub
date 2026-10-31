@@ -8,9 +8,8 @@ import { useEffect, useState } from 'react';
 import { useHub } from '../lib/hub.jsx';
 import { fmtDate, todayISO } from '../lib/util.js';
 import { STATUS, GO, REGIONS, isActive, currentInjury, nextStep, inDays, daysFrom, rowsToInjuries, injuryField } from '../lib/injury.js';
-import { parseCsv, pdfItemsToTable } from '../lib/rosterImport.js';
-import { downloadCsv } from '../lib/imports.js';
-import { pdfTextItems } from '../lib/pdfText.js';
+import { INJURY_TEMPLATE } from '../lib/imports.js';
+import ImportSource from '../components/ImportSource.jsx';
 import PageHead from '../components/PageHead.jsx';
 import Modal from '../components/Modal.jsx';
 import Icon from '../components/Icon.jsx';
@@ -59,7 +58,7 @@ export default function Injury() {
 
   const rows = (roster || []).map((p) => ({ p, i: currentInjury(p.id, injuries) })).sort((a, b) => statusOf(b.i).rank - statusOf(a.i).rank || byNumber(a.p, b.p));
   const n = { out: rows.filter((r) => r.i && r.i.status === 'out').length, limited: rows.filter((r) => r.i && r.i.status === 'limited').length };
-  const acts = <><button className="btn" disabled={!roster || !roster.length} onClick={() => H.openDialog((c) => <ImportInjuries roster={roster} close={c} onSave={save} />)}><Icon n="refresh" /> Import CSV / PDF</button><div className="seg" role="tablist">{[['team', 'Team'], ['med', 'Sports med']].map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div></>;
+  const acts = <><button className="btn" disabled={!roster || !roster.length} onClick={() => H.openDialog((c) => <ImportInjuries roster={roster} close={c} onSave={save} />)}><Icon n="refresh" /> Import: file or paste</button><div className="seg" role="tablist">{[['team', 'Team'], ['med', 'Sports med']].map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div></>;
 
   return <>
     <PageHead title="Injury report" actions={acts} />
@@ -102,7 +101,7 @@ function MedView({ roster, injuries, today, edit, save }) {
     </tr>; })}</tbody></table></div>;
   return <section className="card">
     <div className="card-head"><h2>Injuries</h2><div className="acts">
-      <button className="btn" onClick={() => H.openDialog((c) => <ImportInjuries roster={roster} close={c} onSave={save} />)}><Icon n="refresh" /> Import CSV / PDF</button>
+      <button className="btn" onClick={() => H.openDialog((c) => <ImportInjuries roster={roster} close={c} onSave={save} />)}><Icon n="refresh" /> Import: file or paste</button>
       <button className="btn primary" onClick={() => edit(null, null)}><Icon n="plus" /> Injury</button></div></div>
     {active.length ? list(active) : <p className="muted small" style={{ margin: 0 }}>No active injuries. Everyone is green.</p>}
     {done.length > 0 && <><button className="btn sm ghost" style={{ alignSelf: 'flex-start' }} onClick={() => setHist(!hist)}>{hist ? 'Hide' : 'Show'} cleared injuries ({done.length})</button>{hist && list(done)}</>}
@@ -187,29 +186,18 @@ function Profile({ p, photo, close, onEdit, onAdd }) {
 }
 
 function ImportInjuries({ roster, close, onSave }) {
-  const H = useHub();
-  const [res, setRes] = useState(null), [busy, setBusy] = useState(false);
+  const [res, setRes] = useState(null);
   const byId = Object.fromEntries(roster.map((p) => [p.id, p]));
-  const pick = async (e) => {
-    const file = e.target.files[0]; if (!file) return;
-    setBusy(true); setRes(null);
-    try {
-      const pdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
-      const rows = pdf ? pdfItemsToTable(await pdfTextItems(file), injuryField) : parseCsv(await file.text());
-      if (!rows || rows.length < 2) throw new Error(pdf ? 'No injury table found. The PDF needs selectable text with headings like Player, Injury, Status, Return to play.' : 'The file has no rows.');
-      const r = rowsToInjuries(rows, roster);
-      if (!r.injuries.length) throw new Error(r.unmatched.length ? `None of the ${r.unmatched.length} players in the file matched the roster by name or number.` : 'No injuries found in the file.');
-      setRes({ ...r, file: file.name });
-    } catch (err) { H.toast(err.message); }
-    finally { setBusy(false); e.target.value = ''; }
+  const take = (rows, label) => {
+    if (rows.length < 2) throw new Error('No rows found under the headings.');
+    const r = rowsToInjuries(rows, roster);
+    if (!r.injuries.length) throw new Error(r.unmatched.length ? `None of the ${r.unmatched.length} players matched the roster by name or number.` : 'No injuries found.');
+    setRes({ ...r, file: label });
   };
   return <Modal title="Import injuries" wide onClose={close}
     actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" disabled={!res} onClick={() => { close(); onSave(res.injuries, `${res.injuries.length} injur${res.injuries.length === 1 ? 'y' : 'ies'} imported`); }}>Import</button></>}>
-    <p className="muted small" style={{ margin: 0 }}>A CSV or PDF (selectable text) with headings like <b>Player</b> (or #), <b>Injury</b>, <b>Area</b>, <b>Side</b>, <b>Status</b> (out / limited / cleared), <b>Date</b>, <b>Return to practice</b>, <b>Return to play</b>, <b>Limitations</b>, <b>Notes</b>. Read in your browser; players are matched to the roster by name or number, and each row is added as a new injury. Dates: YYYY-MM-DD, or month/day/year.</p>
-    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-      <label className="btn"><Icon n="plus" /> {busy ? 'Reading…' : res ? 'Choose another file' : 'Choose CSV or PDF'}<input type="file" accept=".csv,.txt,.pdf,text/csv,application/pdf" hidden onChange={pick} /></label>
-      <button className="btn ghost" onClick={() => downloadCsv('injuries-template.csv', [['Player', 'Number', 'Injury', 'Area', 'Side', 'Status', 'Injury date', 'Return to practice', 'Return to play', 'Limitations', 'Notes']])}>Download blank template</button>
-    </div>
+    <p className="muted small" style={{ margin: 0 }}>A CSV, a PDF (selectable text) or cells pasted from a spreadsheet, with headings like <b>Player</b> (or #), <b>Injury</b>, <b>Area</b>, <b>Side</b>, <b>Status</b> (out / limited / cleared), <b>Date</b>, <b>Return to practice</b>, <b>Return to play</b>, <b>Limitations</b>, <b>Notes</b>. Read in your browser; players are matched to the roster by name or number, and each row is added as a new injury. Dates: YYYY-MM-DD, or month/day/year.</p>
+    <ImportSource onRows={take} isHeading={injuryField} template={INJURY_TEMPLATE} templateName="injuries-template.csv" />
     {res && <>
       <div className="small"><b>{res.file}</b>: {res.injuries.length} to add{res.unmatched.length ? `; not on the roster (skipped): ${res.unmatched.join(', ')}` : ''}.</div>
       <div className="tbl-wrap" style={{ maxHeight: 320, overflow: 'auto' }}><table className="tbl inj-tbl">

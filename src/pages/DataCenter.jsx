@@ -7,7 +7,7 @@ import { useHub } from '../lib/hub.jsx';
 import { fmtDate, todayISO } from '../lib/util.js';
 import { anyHeading, tidyTable } from '../lib/imports.js';
 import { fieldFor, nameKey } from '../lib/rosterImport.js';
-import { readRows } from '../lib/readRows.js';
+import ImportSource from '../components/ImportSource.jsx';
 import PageHead from '../components/PageHead.jsx';
 import Modal from '../components/Modal.jsx';
 import Icon from '../components/Icon.jsx';
@@ -21,11 +21,15 @@ export default function DataCenter() {
   const load = () => H.api.listDatasets(t.id).then((l) => { setList(l); setOpen((o) => (o && l.some((d) => d.id === o) ? o : l[0] ? l[0].id : null)); })
     .catch((e) => { setList([]); H.toast('Could not load the Data Center: ' + e.message); });
   useEffect(() => { load(); H.api.listPlayers(t.id).then(setRoster).catch(() => {}); }, [t.id]); // eslint-disable-line react-hooks/exhaustive-deps
-  const save = async (d, msg) => { try { await H.api.saveDataset(t.id, d); if (msg) H.toast(msg); } catch (e) { H.toast('Could not save. ' + e.message); } load(); };
+  const save = async (d, msg) => {
+    let saved = null;
+    try { saved = await H.api.saveDataset(t.id, d); if (msg) H.toast(msg); } catch (e) { H.toast('Could not save. ' + e.message); }
+    await load(); if (saved && saved.id) setOpen(saved.id); // show the table just saved
+  };
   const del = async (d) => { if (!(await H.confirm('Delete table?', `"${d.title}" is removed from the Data Center.`))) return; try { await H.api.deleteDataset(d.id); } catch (e) { H.toast(e.message); } load(); };
   const cur = list && list.find((d) => d.id === open);
   return <>
-    <PageHead title="Data Center" actions={H.isCoach && <button className="btn primary" onClick={() => H.openDialog((c) => <Upload close={c} onSave={save} />)}><Icon n="plus" /> Upload CSV / PDF</button>} />
+    <PageHead title="Data Center" actions={H.isCoach && <button className="btn primary" onClick={() => H.openDialog((c) => <Upload close={c} onSave={save} />)}><Icon n="plus" /> Upload: file or paste</button>} />
     {!list ? <div className="loading">Loading…</div> : !list.length ? <section className="card"><div className="empty-state"><b>No tables yet</b>
       <span className="muted small">{H.isCoach ? 'Upload a CSV or PDF table: testing results, team or league stats. Each upload is kept as its own table, and player names are linked to the roster.' : 'Nothing has been shared with you here yet.'}</span></div></section>
       : <div className="dc-grid">
@@ -85,26 +89,22 @@ function Details({ d, close, onSave }) {
 
 function Upload({ close, onSave }) {
   const H = useHub();
-  const [tbl, setTbl] = useState(null), [busy, setBusy] = useState(false);
+  const [tbl, setTbl] = useState(null);
   const [f, setF] = useState({ title: '', kind: 'testing', recorded_on: todayISO(), shared: false });
-  const pick = async (e) => {
-    const file = e.target.files[0]; e.target.value = ''; if (!file) return;
-    setBusy(true); setTbl(null);
-    try {
-      const rows = tidyTable(await readRows(file, anyHeading));
-      if (rows.length < 2) throw new Error('The file needs a heading row and at least one row of data.');
-      setTbl({ columns: rows[0].map((c, i) => c || `Column ${i + 1}`), rows: rows.slice(1), source: file.name });
-      setF((x) => ({ ...x, title: x.title || file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').slice(0, 120) }));
-    } catch (err) { H.toast(err.message); }
-    finally { setBusy(false); }
+  const take = (raw, label) => {
+    const rows = tidyTable(raw);
+    if (rows.length < 2) throw new Error('It needs a heading row and at least one row of data.');
+    const file = label !== 'Pasted data';
+    setTbl({ columns: rows[0].map((c, i) => c || `Column ${i + 1}`), rows: rows.slice(1), source: file ? label : '' });
+    setF((x) => ({ ...x, title: x.title || (file ? label.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').slice(0, 120) : '') }));
   };
   return <Modal title="Upload to the Data Center" wide onClose={close}
     actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" disabled={!tbl} onClick={() => { if (!f.title.trim()) { H.toast('Give it a title.'); return; } close(); onSave({ ...f, title: f.title.trim(), ...tbl }, 'Uploaded'); }}>Save table</button></>}>
-    <p className="muted small" style={{ margin: 0 }}>Any table: a CSV export, or a PDF with selectable text whose first row is column headings. It's read in your browser and kept as uploaded (up to 2,000 rows × 60 columns); TeamHub doesn't calculate anything from it.</p>
-    <label className="btn" style={{ alignSelf: 'flex-start' }}><Icon n="plus" /> {busy ? 'Reading…' : tbl ? 'Choose another file' : 'Choose CSV or PDF'}<input type="file" accept=".csv,.txt,.pdf,text/csv,application/pdf" hidden onChange={pick} /></label>
+    <p className="muted small" style={{ margin: 0 }}>Any table: a CSV export, a PDF with selectable text whose first row is column headings, or cells pasted from a spreadsheet (include the heading row). It's read in your browser and kept as uploaded (up to 2,000 rows × 60 columns); TeamHub doesn't calculate anything from it.</p>
+    <ImportSource onRows={take} isHeading={anyHeading} />
     {tbl && <>
       <Fields f={f} set={setF} />
-      <div className="small"><b>{tbl.source}</b>: {tbl.rows.length} rows, {tbl.columns.length} columns. First rows:</div>
+      <div className="small"><b>{tbl.source || 'Pasted data'}</b>: {tbl.rows.length} rows, {tbl.columns.length} columns. First rows:</div>
       <div className="tbl-wrap" style={{ maxHeight: 260, overflow: 'auto' }}><table className="tbl">
         <thead><tr>{tbl.columns.map((c, i) => <th key={i}>{c}</th>)}</tr></thead>
         <tbody>{tbl.rows.slice(0, 25).map((r, k) => <tr key={k}>{tbl.columns.map((_, i) => <td key={i}>{r[i] || ''}</td>)}</tr>)}</tbody>

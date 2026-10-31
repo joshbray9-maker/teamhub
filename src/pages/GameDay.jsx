@@ -12,8 +12,8 @@ import Modal from '../components/Modal.jsx';
 import Icon from '../components/Icon.jsx';
 import Rink from '../components/Rink.jsx';
 import { InjuryMark, byNumber } from './Roster.jsx';
-import { rowsToSlots, lineField, LINES_TEMPLATE, downloadCsv } from '../lib/imports.js';
-import { readRows } from '../lib/readRows.js';
+import { rowsToSlots, lineField, LINES_TEMPLATE } from '../lib/imports.js';
+import ImportSource from '../components/ImportSource.jsx';
 
 const FWD = [1, 2, 3, 4], DEF = [1, 2, 3], UNITS = [1, 2];
 const POS_NAME = { LW: 'Left wing', C: 'Centre', RW: 'Right wing', L: 'Left D', R: 'Right D', LD: 'Left D', RD: 'Right D', F1: 'Forward', F2: 'Forward' };
@@ -97,7 +97,7 @@ export default function GameDay() {
     <select className="select gd-pick" value={key} onChange={(e) => setKey(e.target.value)} aria-label="Lines for">
       <option value="default">Default lines</option>{games.map((g) => <option key={g.id} value={g.id}>{label(g)}</option>)}
     </select>
-    {edit && <button className="btn" disabled={!all} onClick={() => H.openDialog((c) => <LinesImport roster={roster} target={game ? label(game) : 'your default lines'} close={c} onSave={write} />)}><Icon n="refresh" /> Import CSV / PDF</button>}
+    {edit && <button className="btn" disabled={!all} onClick={() => H.openDialog((c) => <LinesImport roster={roster} target={game ? label(game) : 'your default lines'} close={c} onSave={write} />)}><Icon n="refresh" /> Import: file or paste</button>}
     <button className="btn" onClick={() => window.print()} disabled={!all}><Icon n="clipboard" /> Print / PDF</button>
   </>;
 
@@ -190,25 +190,17 @@ export default function GameDay() {
    on the roster is kept as typed. Replaces the lines being viewed. */
 function LinesImport({ roster, target, close, onSave }) {
   const H = useHub();
-  const [res, setRes] = useState(null), [busy, setBusy] = useState(false);
-  const pick = async (e) => {
-    const file = e.target.files[0]; e.target.value = ''; if (!file) return;
-    setBusy(true); setRes(null);
-    try {
-      const r = rowsToSlots(await readRows(file, lineField), roster);
-      if (!r.filled) throw new Error('No players found for any line in the file.');
-      setRes({ ...r, file: file.name });
-    } catch (err) { H.toast(err.message); }
-    finally { setBusy(false); }
+  const [res, setRes] = useState(null);
+  const take = (rows, label) => {
+    const r = rowsToSlots(rows, roster);
+    if (!r.filled) throw new Error('No players found for any line.');
+    setRes({ ...r, file: label });
   };
   const order = (id) => ['PP', 'PK', 'F', 'D', 'G', 'X'].map((p, k) => (id.startsWith(p) ? [2, 3, 0, 1, 4, 5][k] : 9)).reduce((a, b) => Math.min(a, b));
   return <Modal title="Import lines" wide onClose={close}
     actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" disabled={!res} onClick={() => { close(); onSave(res.slots); H.toast(`Lines imported: ${res.filled} spots`); }}>Replace lines</button></>}>
-    <p className="muted small" style={{ margin: 0 }}>A CSV, or a PDF with selectable text, as a table: one row per spot with <b>Line</b> (F1–F4, D1–D3, G, Extra, PP1–PP2, PK1–PK2), <b>Position</b> (LW, C, RW, LD, RD, G1, G2, F), <b>Number</b> and <b>Player</b>; or a grid with a <b>Line</b> column and position columns (<b>LW, C, RW</b> or <b>LD, RD</b>). Players are matched to the roster by name or number. This replaces <b>{target}</b>.</p>
-    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-      <label className="btn"><Icon n="plus" /> {busy ? 'Reading…' : res ? 'Choose another file' : 'Choose CSV or PDF'}<input type="file" accept=".csv,.txt,.pdf,text/csv,application/pdf" hidden onChange={pick} /></label>
-      <button className="btn ghost" onClick={() => downloadCsv('lines-template.csv', LINES_TEMPLATE)}>Download blank template</button>
-    </div>
+    <p className="muted small" style={{ margin: 0 }}>A CSV, a PDF with selectable text, or cells pasted from a spreadsheet, as a table: one row per spot with <b>Line</b> (F1–F4, D1–D3, G, Extra, PP1–PP2, PK1–PK2), <b>Position</b> (LW, C, RW, LD, RD, G1, G2, F), <b>Number</b> and <b>Player</b>; or a grid with a <b>Line</b> column and position columns (<b>LW, C, RW</b> or <b>LD, RD</b>). Players are matched to the roster by name or number. This replaces <b>{target}</b>.</p>
+    <ImportSource onRows={take} isHeading={lineField} template={LINES_TEMPLATE} templateName="lines-template.csv" />
     {res && <>
       <div className="small"><b>{res.file}</b>: {res.filled} spots filled{res.skipped ? `, ${res.skipped} rows skipped (line or position not recognised)` : ''}.</div>
       {res.unmatched.length > 0 && <div className="hint">Not on the roster (kept as typed): {res.unmatched.join(', ')}</div>}
