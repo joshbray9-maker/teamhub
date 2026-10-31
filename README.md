@@ -29,7 +29,7 @@ organization can read them; coaches edit. Injuries live in their own staff-only 
 | `src/lib/testing.js` | Test metrics, batteries, gym-group formula, team trends, leaderboard |
 | `supabase/migrations/…_leaderboard.sql` | Leaderboard function and its on/off switch |
 | `supabase/migrations/…_practice.sql` | Practice plans and drill library (staff only) |
-| `supabase/migrations/…_playbook.sql` | Plays (padlock = coaches only) |
+| `supabase/migrations/…_playbook*.sql` | Plays (padlock = coaches only), court / rink surface |
 | `src/components/PlayDiagram.jsx`, `src/lib/playbook.js` | Court, play diagrams, steps |
 | `src/lib/practice.js` | Block types per sport, clock times, practice CSV |
 | `src/lib/imports.js` | S&C, Lines and Data Center imports, blank templates |
@@ -133,6 +133,11 @@ The formula is in `src/lib/testing.js`.
 **Data Center:** upload any CSV / PDF table as its own named table (Testing, Stats, Other) with
 a date. TeamHub doesn't calculate anything from it. Admins and coaches see every table;
 viewers only see tables marked **Shared**. Player names in a table link to the roster.
+
+**Playbook (hockey):** the same playbook on the offensive-zone half rink or the full rink, with C,
+LW, RW, LD and RD to start, a puck, and skate / pass / carry / shot arrows; categories are
+breakouts, neutral zone, offensive zone, power play, penalty kill, faceoffs, forecheck and
+defensive zone.
 
 **Playbook (basketball):** plays drawn on a half court (FIBA lines) in steps: offense 1–5,
 defense X1–X5 and the ball, with cut (solid), pass (dashed), dribble (zigzag) and screen (bar)

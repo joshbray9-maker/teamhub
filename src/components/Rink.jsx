@@ -14,11 +14,12 @@ function Faceoff({ x, y }) {
   </g>;
 }
 
-export default function Rink({ children, label = 'Hockey rink' }) {
-  return <svg className="rink" viewBox={`-1 -1 ${W + 2} ${Hh + 2}`} role="img" aria-label={label}>
-    <defs><clipPath id="rink-clip"><rect width={W} height={Hh} rx={R} /></clipPath></defs>
+/** The rink's lines without an <svg>, for drawing inside another rink-sized SVG (Playbook). */
+export function RinkMarkings({ clip = 'rink-clip' }) {
+  return <>
+    <defs><clipPath id={clip}><rect width={W} height={Hh} rx={R} /></clipPath></defs>
     <rect width={W} height={Hh} rx={R} fill="#fdfeff" />
-    <g clipPath="url(#rink-clip)">
+    <g clipPath={`url(#${clip})`}>
       <path d={`M11 0V${Hh}M${W - 11} 0V${Hh}`} stroke={RED} strokeWidth="0.45" />
       <path d={`M75 0V${Hh}M125 0V${Hh}`} stroke={BLUE} strokeWidth="1" />
       <path d={`M100 0V${Hh}`} stroke={RED} strokeWidth="0.6" />
@@ -27,8 +28,15 @@ export default function Rink({ children, label = 'Hockey rink' }) {
       {CIRCLES.map(([x, y]) => <Faceoff key={x + ':' + y} x={x} y={y} />)}
       {NEUTRAL.map(([x, y]) => <circle key={x + ':' + y} cx={x} cy={y} r="1" fill={RED} />)}
       <path d={`M11 ${MID - 6}A6 6 0 0 1 11 ${MID + 6}M${W - 11} ${MID - 6}A6 6 0 0 0 ${W - 11} ${MID + 6}M90 ${Hh}A10 10 0 0 1 110 ${Hh}`} stroke={RED} strokeWidth="0.45" fill="none" />
+      <path d={`M${W - 11} ${MID - 3}h3.3v6h-3.3`} stroke="#1b1f27" strokeWidth="0.5" fill="none" />
     </g>
     <rect width={W} height={Hh} rx={R} fill="none" stroke="#1b1f27" strokeWidth="0.7" />
+  </>;
+}
+
+export default function Rink({ children, label = 'Hockey rink' }) {
+  return <svg className="rink" viewBox={`-1 -1 ${W + 2} ${Hh + 2}`} role="img" aria-label={label}>
+    <RinkMarkings />
     {children}
   </svg>;
 }

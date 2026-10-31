@@ -220,7 +220,7 @@ export const api = {
   /* ---------- playbook ---------- */
   async listPlays(teamId) { return ok(await supabase.from('plays').select('*').eq('team_id', teamId).order('category').order('sort_order').order('name')); },
   async savePlay(teamId, p) {
-    const row = { team_id: teamId, name: p.name, category: p.category || 'sets', call: p.call || '', notes: p.notes || '', locked: !!p.locked, frames: p.frames || [], sort_order: p.sort_order || 0 };
+    const row = { team_id: teamId, name: p.name, category: p.category || 'sets', surface: p.surface || 'court', call: p.call || '', notes: p.notes || '', locked: !!p.locked, frames: p.frames || [], sort_order: p.sort_order || 0 };
     return ok(p.id ? await supabase.from('plays').update(row).eq('id', p.id).select().single() : await supabase.from('plays').insert(row).select().single());
   },
   async deletePlay(id) { ok(await supabase.from('plays').delete().eq('id', id)); },

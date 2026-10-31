@@ -72,3 +72,16 @@ test('playbook: the next step follows the arrows', async () => {
   assert.equal(n.lines.length, 0);
   assert.equal(nextLabel(f, 'o'), '6'); assert.equal(nextLabel(f, 'x'), '1');
 });
+
+test('hockey playbook: rink formation, shots move the puck, sizes scale with the surface', async () => {
+  const { startFrame, nextFrame, categoriesFor, lineKindsFor } = await import('../src/lib/playbook.js');
+  const f = startFrame('rink-half');
+  assert.deepEqual(f.players.filter((p) => p.kind === 'o').map((p) => p.label), ['C', 'LW', 'RW', 'LD', 'RD']);
+  const puck = f.players.find((p) => p.kind === 'ball'), ld = f.players.find((p) => p.label === 'LD');
+  f.lines = [{ id: 'a', kind: 'shot', x1: puck.x, y1: puck.y, x2: 189, y2: 42.5 }, { id: 'b', kind: 'cut', x1: ld.x + 3, y1: ld.y, x2: 150, y2: 30 }];
+  const n = nextFrame(f, 2);
+  assert.equal(n.players.find((p) => p.kind === 'ball').x, 189 + 3.2);
+  assert.equal(n.players.find((p) => p.label === 'LD').x, 150); // within the rink's larger pick-up radius
+  assert.equal(nextFrame(f, 1).players.find((p) => p.label === 'LD').x, ld.x); // not on a court-sized radius
+  assert.equal(categoriesFor('hockey')[0][1], 'Breakouts'); assert.equal(lineKindsFor('hockey')[3][1], 'Shot');
+});

@@ -13,7 +13,7 @@ export const MENUS = [
   { id: 'opponents', label: 'Opponents', icon: 'target', coach: true },
   { id: 'practice', label: 'Practice plan', icon: 'clipboard', coach: true },
   { id: 'gameday', label: 'Game day', icon: 'pitch', sports: ['soccer', 'rugby', 'hockey'] },
-  { id: 'playbook', label: 'Playbook', icon: 'book', sports: ['football', 'basketball'] },
+  { id: 'playbook', label: 'Playbook', icon: 'book', sports: ['football', 'basketball', 'hockey'] },
   { id: 'roster', label: 'Roster', icon: 'users' },
   { id: 'data', label: 'Data Center', icon: 'chart' },
   { id: 'injury', label: 'Injury report', icon: 'cross', coach: true },
