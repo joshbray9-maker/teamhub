@@ -1,0 +1,135 @@
+// Roster import: turns a CSV file or the text of a PDF roster into player rows the coach
+// reviews before saving. Pure functions; nothing here talks to the backend.
+// Only the roster fields TeamHub keeps are read. A date of birth is reduced to its year, and
+// unrecognised columns (phone, email, medical notes...) are dropped, never stored.
+
+const SYN = {
+  num: ['no', 'num', 'number', 'jersey', 'jerseyno', 'jerseynumber', 'numero', 'nº', 'n'],
+  name: ['name', 'player', 'playername', 'fullname', 'nom', 'joueur', 'athlete'],
+  first: ['first', 'firstname', 'givenname', 'prenom'],
+  last: ['last', 'lastname', 'surname', 'familyname', 'nomdefamille'],
+  position: ['pos', 'position', 'positions', 'poste'],
+  shoots: ['shoots', 'shot', 'catches', 'sc', 'shootscatches', 'handedness', 'hand', 'lance', 'tir'],
+  year: ['year', 'yr', 'birthyear', 'yob', 'born', 'dob', 'birthdate', 'dateofbirth', 'class', 'grade', 'eligibility', 'annee', 'naissance'],
+  height: ['height', 'ht', 'taille'],
+  weight: ['weight', 'wt', 'poids'],
+  hometown: ['hometown', 'hometownpreviousschool', 'city', 'from', 'birthplace', 'ville', 'home'],
+};
+export const FIELDS = ['num', 'name', 'position', 'shoots', 'year', 'height', 'weight', 'hometown'];
+const key = (h) => String(h || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/#/g, 'no').replace(/[^a-z0-9º]/g, '');
+export function fieldFor(header) {
+  const k = key(header); if (!k) return null;
+  for (const [f, list] of Object.entries(SYN)) if (list.includes(k)) return f;
+  if (/^(jersey|number)/.test(k)) return 'num';
+  if (/^hometown/.test(k)) return 'hometown';
+  return null;
+}
+
+/* ---------- CSV ---------- */
+export function parseCsv(text) {
+  text = String(text || '').replace(/^﻿/, '');
+  const first = text.split(/\r?\n/, 1)[0] || '';
+  const delim = [',', ';', '\t'].map((d) => [d, first.split(d).length]).sort((a, b) => b[1] - a[1])[0][0];
+  const rows = []; let row = [], cell = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; } else cell += c; continue; }
+    if (c === '"') q = true;
+    else if (c === delim) { row.push(cell); cell = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && text[i + 1] === '\n') i++; row.push(cell); rows.push(row); row = []; cell = ''; }
+    else cell += c;
+  }
+  if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter((r) => r.some((x) => x.trim() !== ''));
+}
+
+/** rows[0] is the header. Returns { players, columns: {header: field|null}, skipped } */
+export function rowsToPlayers(rows, source = 'csv') {
+  if (!rows.length) return { players: [], columns: {}, skipped: 0 };
+  const head = rows[0]; const map = head.map(fieldFor);
+  const columns = Object.fromEntries(head.map((h, i) => [h, map[i]]));
+  if (!map.some((f) => f === 'name' || f === 'last' || f === 'first')) throw new Error('No name column found. The first row should be headings like Number, Name, Position.');
+  const players = []; let skipped = 0;
+  for (const r of rows.slice(1)) {
+    const raw = {}; map.forEach((f, i) => { if (f && raw[f] === undefined) raw[f] = (r[i] || '').trim(); });
+    const p = clean(raw, source); if (p) players.push(p); else skipped++;
+  }
+  return { players, columns, skipped };
+}
+
+/** Normalise one player's raw fields; null when there's no usable name. */
+export function clean(raw, source) {
+  let name = raw.name || [raw.first, raw.last].filter(Boolean).join(' ');
+  name = String(name || '').replace(/\s+/g, ' ').trim();
+  const m = name.match(/^([^,]+),\s*([^,]+)$/); if (m) name = `${m[2]} ${m[1]}`; // "Last, First"
+  if (!name || name.length > 80 || !/[a-zA-Zà-ÿÀ-ß]/.test(name)) return null;
+  const num = String(raw.num || '').replace(/^#/, '').trim();
+  const sh = String(raw.shoots || '').trim().toUpperCase();
+  const year = String(raw.year || '').trim();
+  const yy = year.match(/\b(19|20)\d{2}\b/);
+  return {
+    num: /^\d{1,3}$/.test(num) ? num : '',
+    name,
+    position: String(raw.position || '').trim().slice(0, 30),
+    shoots: sh.startsWith('L') || sh.startsWith('G') ? 'L' : sh.startsWith('R') || sh.startsWith('D') ? 'R' : '',
+    // a full date only keeps its year; "Senior", "Gr. 11", "2008" are kept as typed
+    year: (/\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4}/.test(year) && yy ? yy[0] : year).slice(0, 20),
+    height: String(raw.height || '').trim().slice(0, 12),
+    weight: String(raw.weight || '').trim().slice(0, 12),
+    hometown: String(raw.hometown || '').trim().slice(0, 80),
+    source,
+  };
+}
+
+/* ---------- PDF ---------- */
+/** items: [{str, x, y}] from one or more pages (y grows downward; pages offset).
+ *  Groups text into rows, finds a heading row and splits the rest into its columns.
+ *  Without headings, reads "number name position" lines. */
+export function pdfItemsToPlayers(items) {
+  const rows = [];
+  for (const it of [...items].filter((i) => i.str.trim()).sort((a, b) => a.y - b.y || a.x - b.x)) {
+    const r = rows.find((x) => Math.abs(x.y - it.y) < 3);
+    if (r) r.items.push(it); else rows.push({ y: it.y, items: [it] });
+  }
+  rows.forEach((r) => r.items.sort((a, b) => a.x - b.x));
+  const hi = rows.findIndex((r) => { const f = r.items.map((i) => fieldFor(i.str)); return f.some((x) => x === 'name' || x === 'last' || x === 'first') && f.filter(Boolean).length >= 2; });
+  const players = []; let skipped = 0;
+  if (hi >= 0) {
+    const cols = rows[hi].items.map((i) => ({ x: i.x, f: fieldFor(i.str) }));
+    for (const r of rows.slice(hi + 1)) {
+      const raw = {};
+      for (const it of r.items) {
+        // the column whose heading starts closest to the left of this text (small slack for centred numbers)
+        let c = null; for (const col of cols) if (col.x <= it.x + 12 && (!c || col.x > c.x)) c = col;
+        if (!c) c = cols[0];
+        if (c.f) raw[c.f] = raw[c.f] ? raw[c.f] + ' ' + it.str.trim() : it.str.trim();
+      }
+      if (fieldFor(r.items[0].str) && r.items.filter((i) => fieldFor(i.str)).length >= 2) continue; // repeated heading on a new page
+      const p = clean(raw, 'pdf'); if (p) players.push(p); else skipped++;
+    }
+    return { players, skipped, headings: true };
+  }
+  for (const r of rows) {
+    const line = r.items.map((i) => i.str.trim()).join(' ').replace(/\s+/g, ' ');
+    const m = line.match(/^#?(\d{1,3})\s+(.+?)(?:\s+(LW|RW|C|F|D|G|LD|RD|W|PG|SG|SF|PF))?$/);
+    if (!m) { skipped++; continue; }
+    const p = clean({ num: m[1], name: m[2], position: m[3] || '' }, 'pdf'); if (p) players.push(p); else skipped++;
+  }
+  return { players, skipped, headings: false };
+}
+
+/** Matches imported players to the current roster by name (case/accents ignored). */
+export const nameKey = (n) => key(n);
+export function planImport(current, incoming) {
+  const byName = new Map(current.map((p) => [nameKey(p.name), p]));
+  const seen = new Set(); const updates = [], adds = [];
+  for (const p of incoming) {
+    const k = nameKey(p.name); if (seen.has(k)) continue; seen.add(k);
+    const cur = byName.get(k);
+    if (cur) {
+      const patch = {}; FIELDS.forEach((f) => { if (f !== 'name' && p[f] && p[f] !== cur[f]) patch[f] = p[f]; });
+      if (Object.keys(patch).length || !cur.active) updates.push({ ...cur, ...patch, active: true });
+    } else adds.push(p);
+  }
+  return { updates, adds, missing: current.filter((p) => p.active && !seen.has(nameKey(p.name))) };
+}

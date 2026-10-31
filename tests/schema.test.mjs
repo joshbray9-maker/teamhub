@@ -124,6 +124,15 @@ test('migration + seed load, and access follows memberships', async () => {
   await assert.rejects(as(db, U.viewer, `insert into chat_messages (team_id, channel, body) values ($1, 'staff', 'x')`, [bcsTeam]));
   await assert.rejects(as(db, U.coach, `insert into chat_messages (team_id, channel, body) values ($1, 'staff', 'x')`, [uniTeam]));
   await assert.rejects(as(db, U.coach, `insert into chat_messages (team_id, channel, body) values ($1, 'other', 'x')`, [bcsTeam]));
+  // roster: org members read, coaches write, other orgs see nothing
+  await as(db, U.coach, `insert into players (team_id, num, name, position) values ($1, '9', 'Player A', 'C')`, [bcsTeam]);
+  assert.equal((await as(db, U.viewer, 'select count(*)::int c from players where team_id=$1', [bcsTeam]))[0].c, 1);
+  await assert.rejects(as(db, U.viewer, `insert into players (team_id, name) values ($1, 'X')`, [bcsTeam]));
+  await assert.rejects(as(db, U.coach, `insert into players (team_id, name) values ($1, 'X')`, [uniTeam]));
+  await assert.rejects(as(db, U.coach, `insert into players (team_id, name, shoots) values ($1, 'X', 'Z')`, [bcsTeam]));
+  assert.equal((await as(db, U.other, 'select count(*)::int c from players'))[0].c, 0);
+  assert.equal((await as(db, null, 'select count(*)::int c from players'))[0].c, 0);
+
   // game day lines: coaches write (default + their own team's games), viewers read only
   const bcsGame = (await db.query('select id from games where team_id=$1 limit 1', [bcsTeam])).rows[0].id;
   const uniGame = (await db.query('select id from games where team_id=$1 limit 1', [uniTeam])).rows[0].id;

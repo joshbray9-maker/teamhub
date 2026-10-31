@@ -5,8 +5,10 @@ team's coaches by URL. A standalone version of the TeamHub claude.ai artifact:
 Vite + React on Vercel, Supabase for the database, sign-in and the daily league sync.
 
 **What it holds:** schedules (games, events), league standings, S&C day themes, intensity and
-periodization, team notes/to-dos. **No athlete data.** Rosters aren't part of TeamHub yet. Keep
-it that way until the access rules have been reviewed for it.
+periodization, team notes/to-dos, team chat, game-day lines and rosters. Rosters hold only what
+league and school sites publish (number, name, position, shoots, year, height, weight,
+hometown): **no medical, contact or date-of-birth fields**. Members of the organization can read
+them; coaches edit. Injury status will come from the coach-only Injury report tab, not the roster.
 
 ## What's in here
 
@@ -17,6 +19,9 @@ it that way until the access rules have been reviewed for it.
 | `supabase/migrations/…_init.sql` | Tables, row-level security, sign-up trigger, public schedule function, logo storage |
 | `supabase/migrations/…_chat*.sql` | Team chat + coaching-staff board: table, access rules, live updates |
 | `supabase/migrations/…_lineups.sql` | Game day lines (hockey) |
+| `supabase/migrations/…_roster.sql` | Team rosters |
+| `src/lib/rosterImport.js` | Reads roster CSV / PDF files (in the browser) |
+| `src/lib/injury.js` | Injury markers: placeholder until the Injury report tab exists |
 | `supabase/functions/league-sync/` | Edge Function for the daily league sync |
 | `supabase/functions/_shared/leagueParse.js` | League/.ics parsing, used by both the app and the sync |
 | `supabase/cron.sql` | Schedules the daily sync |
@@ -46,8 +51,16 @@ chat is free text: keep injury or medical details about athletes out of it.
 four extras, with the selected line shown on a rink. There's one set of **default lines** per
 team; each game uses them until a coach changes that game's lines (**Use default lines** goes
 back). Coaches click a spot to type a player's number and name and drag to swap; everyone
-else in the organization sees the lines read-only. Players are typed in by hand until the
-Roster tab exists. Other sports still show the placeholder.
+else in the organization sees the lines read-only. Also **power play** (PP1, PP2) and **penalty
+kill** (PK1, PK2) units, the team's **roster** down the right side (drag a player in, or pick
+them when clicking a spot), and **Print / PDF**, which opens the browser's print dialog with a
+one-page lines sheet (choose "Save as PDF" there). Other sports still show the placeholder.
+
+**Roster:** add players by hand or **Import CSV / PDF**. The file is read in the browser and
+shown for review before anything is saved; players are matched by name, so re-importing
+updates numbers and positions instead of duplicating. PDFs need selectable text (not a scan).
+Pulling rosters from league sites isn't built yet (see the sync coverage table: CSSHL and
+EliteProspects block automated reads).
 
 These rules live in the database (row-level security), so they hold no matter what the app
 shows. A coach at BCS can't see Universel's teams, and the reverse.
@@ -171,6 +184,6 @@ check the access rules (coach vs viewer vs outsider vs public link).
 ## Not built yet
 
 Same placeholders as the artifact: League, Opponents, Practice plan, Game day (non-hockey),
-Playbook, Roster, Data Center, Injury report, Recruitment, My Profile, S&C Gym groups and
+Playbook, Data Center, Injury report, Recruitment, My Profile, S&C Gym groups and
 Tests. Workload load units and the acute:chronic band are **placeholder values**, editable
 per team. They're not a validated scale.

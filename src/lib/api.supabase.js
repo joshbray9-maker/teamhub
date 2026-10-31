@@ -125,6 +125,14 @@ export const api = {
     return () => { supabase.removeChannel(ch); };
   },
 
+  /* ---------- roster ---------- */
+  async listPlayers(teamId) { return ok(await supabase.from('players').select('*').eq('team_id', teamId).order('created_at')); },
+  /** Insert or update players (rows with an id are updated). */
+  async savePlayers(teamId, players) {
+    return saveRows('players', players.map((p) => ({ id: p.id, team_id: teamId, num: p.num || '', name: p.name, position: p.position || '', shoots: p.shoots || '', year: p.year || '', height: p.height || '', weight: p.weight || '', hometown: p.hometown || '', active: p.active !== false, source: p.source || 'manual' })));
+  },
+  async deletePlayer(id) { ok(await supabase.from('players').delete().eq('id', id)); },
+
   /* ---------- game day lines ---------- */
   /** All of a team's lines: { default: {slots, updatedAt}, <gameId>: {...} } */
   async listLineups(teamId) {

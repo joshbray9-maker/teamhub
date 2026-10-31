@@ -90,6 +90,9 @@ export const api = {
   async deleteChat(id) { Object.values(db.data).forEach((d) => { d.chat = (d.chat || []).filter((m) => m.id !== id); }); save(); chatSubs.forEach((s) => s.onRemove(id)); },
   subscribeChat(teamId, channel, { onAdd, onRemove }) { const s = { teamId, channel, onAdd, onRemove }; chatSubs.add(s); return () => chatSubs.delete(s); },
 
+  async listPlayers(teamId) { await load(); return clone(D(teamId).players || []); },
+  async savePlayers(teamId, players) { const list = (D(teamId).players = D(teamId).players || []); const r = upsert(list, players.map((p) => ({ active: true, source: 'manual', ...p })), 'p'); save(); return clone(r); },
+  async deletePlayer(id) { Object.values(db.data).forEach((d) => { d.players = (d.players || []).filter((p) => p.id !== id); }); save(); },
   async listLineups(teamId) { await load(); return clone(D(teamId).lineups || {}); },
   async saveLineup(teamId, key, slots) { (D(teamId).lineups = D(teamId).lineups || {})[key] = { slots: clone(slots), updatedAt: Date.now() }; save(); },
   async deleteLineup(teamId, key) { delete (D(teamId).lineups || {})[key]; save(); },
