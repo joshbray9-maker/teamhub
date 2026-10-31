@@ -694,7 +694,41 @@ span.gd-row{cursor:default}
 .ws-k{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-top:6px}
 .ws-up{color:var(--st-green);font-weight:600} .ws-down{color:var(--st-red);font-weight:600}
 @media (max-width:1000px){.ws-grid{grid-template-columns:minmax(0,1fr)}}
+/* ---------- printable player profile ---------- */
+.pr{display:flex;flex-direction:column;gap:16px}
+.pr-head{display:none}
+.pr-top{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}
+.pr-top .avatar{border-radius:16px}
+.pr-id{flex:1;min-width:220px;display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.pr-name{font:700 30px/1 var(--f-display);margin:0}
+.pr-dl{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:6px 16px;margin:4px 0 0;width:100%}
+.pr-dl dt{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.pr-dl dd{margin:0;font-weight:600}
+.pr-group{border-left:4px solid var(--c);padding:8px 12px;border-radius:10px;background:var(--surface-2);max-width:260px;display:flex;flex-direction:column;gap:2px}
+.pr-group.green{--c:var(--st-green)} .pr-group.yellow{--c:var(--st-yellow)} .pr-group.red{--c:var(--st-red)}
+.pr-group b{color:var(--c);font:700 17px var(--f-display)} .pr-group span{font-size:13px}
+.pr-k{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.pr-sec{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:12px}
+.pr-sec h3{font:700 18px var(--f-display);margin:0;text-transform:uppercase;letter-spacing:.04em}
+.pr-inj{display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr);gap:14px;align-items:start}
+.pr-body{background:var(--surface-2);border-radius:12px;padding:8px}
+.pr-boxes{display:flex;flex-direction:column;gap:8px}
+.pr-tests td{vertical-align:middle}
+.pr-spark{display:block}
+.pr-hist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.pr-hist li{display:flex;gap:8px;flex-wrap:wrap}
+.ro-prof{text-align:right;white-space:nowrap}
+@media (max-width:640px){.pr-inj{grid-template-columns:minmax(0,1fr)}}
 @media print{
+  body:has(.printable) .shell,body:has(.printable) .toast{display:none !important}
+  body:has(.printable) .modal{position:static;display:block;padding:0}
+  body:has(.printable) .modal-back,body:has(.printable) .sheet-head,body:has(.printable) .sheet-foot{display:none !important}
+  body:has(.printable) .sheet{width:100% !important;max-height:none !important;box-shadow:none;border:0;border-radius:0;overflow:visible}
+  body:has(.printable) .sheet-body{overflow:visible;padding:0}
+  .pr-head{display:flex}
+  .pr-sec,.pr-top{break-inside:avoid}
+  .pr .prof-box,.pr-group,.pr-body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+
   @page{margin:12mm}
   /* beats the dark-mode :root rules so a sheet printed from dark mode is still black on white */
   html:root:not(#print){--bg:#fff;--surface:#fff;--surface-2:#f2f3f5;--line:#c9ced6;--fg:#000;--muted:#444;color-scheme:light}

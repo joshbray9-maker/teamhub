@@ -130,6 +130,11 @@ The formula is in `src/lib/testing.js`.
 a date. TeamHub doesn't calculate anything from it. Admins and coaches see every table;
 viewers only see tables marked **Shared**. Player names in a table link to the roster.
 
+**Player profile (admins and coaches only):** Roster → **Profile** on a player (or **Full
+profile / print** in the Injury report): photo and roster details, current status, the body
+diagram with limitations and return timeline, testing (latest and best per test, team median,
+rank on the team, trend), gym group and injury history, with **Print / PDF** for one page.
+
 **Working on several players at once:** tick players on the Roster (or the box in the heading
 row for all), then **Move to team…**, **Mark as former / active** or **Delete**. **Add several**
 opens a spreadsheet grid to type or paste a batch of new players.

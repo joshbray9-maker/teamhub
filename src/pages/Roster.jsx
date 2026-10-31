@@ -12,6 +12,7 @@ import Modal from '../components/Modal.jsx';
 import Icon from '../components/Icon.jsx';
 import InjuryFlag from '../components/InjuryFlag.jsx';
 import Avatar from '../components/Avatar.jsx';
+import { openPlayerReport } from './PlayerReport.jsx';
 export { default as InjuryMark } from '../components/InjuryFlag.jsx';
 
 export const POSITIONS = {
@@ -70,6 +71,7 @@ export default function Roster() {
     <td className="num tnum">{p.num}</td>
     <td><span className="inj-who"><Avatar p={p} url={photos[p.photo]} size={26} /><span className="ro-name">{p.name}</span><InjuryFlag p={p} /></span></td>
     <td>{p.position}</td>{hockey && <td>{p.shoots}</td>}<td>{p.year}</td><td>{p.height}</td><td>{p.weight}</td><td>{p.hometown}</td>
+    {H.isCoach && <td className="ro-prof"><button className="btn sm ghost" onClick={(e) => { e.stopPropagation(); openPlayerReport(H, p, photos[p.photo]); }}>Profile</button></td>}
   </tr>);
   return <>
     <PageHead title="Roster" actions={acts} />
@@ -90,8 +92,8 @@ export default function Roster() {
           <button className="btn sm ghost" onClick={() => setSel(new Set())}>Clear selection</button>
         </div>}
         <div className="tbl-wrap"><table className="tbl ro-tbl">
-          <thead><tr>{H.isCoach && <th className="ro-cb"><input type="checkbox" className="cb" checked={allOn} onChange={() => setSel(allOn ? new Set() : new Set(shown.map((p) => p.id)))} aria-label="Select all players" /></th>}<th className="num">#</th><th>Name</th><th>Pos</th>{hockey && <th>Shoots</th>}<th>Year</th><th>Ht</th><th>Wt</th><th>Hometown</th></tr></thead>
-          <tbody><Rows ps={list} />{former && gone.length > 0 && <><tr className="ro-sep"><td colSpan={(hockey ? 8 : 7) + (H.isCoach ? 1 : 0)}>Former players</td></tr><Rows ps={gone} /></>}</tbody>
+          <thead><tr>{H.isCoach && <th className="ro-cb"><input type="checkbox" className="cb" checked={allOn} onChange={() => setSel(allOn ? new Set() : new Set(shown.map((p) => p.id)))} aria-label="Select all players" /></th>}<th className="num">#</th><th>Name</th><th>Pos</th>{hockey && <th>Shoots</th>}<th>Year</th><th>Ht</th><th>Wt</th><th>Hometown</th>{H.isCoach && <th />}</tr></thead>
+          <tbody><Rows ps={list} />{former && gone.length > 0 && <><tr className="ro-sep"><td colSpan={(hockey ? 8 : 7) + (H.isCoach ? 2 : 0)}>Former players</td></tr><Rows ps={gone} /></>}</tbody>
         </table></div>
       </>}
     </section>

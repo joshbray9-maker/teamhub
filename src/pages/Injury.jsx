@@ -17,6 +17,7 @@ import Anatomy from '../components/Anatomy.jsx';
 import Avatar from '../components/Avatar.jsx';
 import InjuryFlag from '../components/InjuryFlag.jsx';
 import { byNumber } from './Roster.jsx';
+import { openPlayerReport } from './PlayerReport.jsx';
 
 const SIDE = { L: 'left', R: 'right', both: 'both sides' };
 export const where = (i) => (i.body_area && REGIONS[i.body_area] ? REGIONS[i.body_area].label + (i.side && REGIONS[i.body_area].pair ? ` (${SIDE[i.side]})` : '') : '');
@@ -154,7 +155,7 @@ function Profile({ p, photo, close, onEdit, onAdd }) {
   const mine = (H.tdata.injuries || []).filter((i) => i.player_id === p.id);
   const active = mine.filter(isActive), past = mine.filter((i) => !isActive(i));
   const cur = currentInjury(p.id, mine);
-  return <Modal title="Player profile" wide onClose={close} actions={<><button className="btn" onClick={onAdd}><Icon n="plus" /> Injury</button><span className="spacer" /><button className="btn primary" onClick={close}>Done</button></>}>
+  return <Modal title="Player profile" wide onClose={close} actions={<><button className="btn" onClick={onAdd}><Icon n="plus" /> Injury</button><span className="spacer" /><button className="btn" onClick={() => { close(); openPlayerReport(H, p, photo); }}><Icon n="clipboard" /> Full profile / print</button><button className="btn primary" onClick={close}>Done</button></>}>
     <div className="prof-head">
       <Avatar p={p} url={photo} size={76} />
       <div><h3 className="prof-name">{p.num && <span className="tnum">#{p.num} </span>}{p.name}</h3>
