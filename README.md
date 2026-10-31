@@ -25,6 +25,8 @@ organization can read them; coaches edit. Injuries live in their own staff-only 
 | `supabase/migrations/…_datasets.sql` | Data Center tables |
 | `public/logos/` | Organization logos (BCS, Universel) used for teams without their own logo |
 | `supabase/migrations/…_org_logo.sql` | Organization logos, lineup opponent |
+| `supabase/migrations/…_testing.sql` | S&C testing sessions, results, gym-group targets (staff only) |
+| `src/lib/testing.js` | Test metrics, batteries, gym-group formula, team trends |
 | `src/lib/imports.js` | S&C, Lines and Data Center imports, blank templates |
 | `src/lib/injury.js` | Injury statuses, return countdowns, body regions, injury CSV/PDF import |
 | `supabase/functions/league-sync/` | Edge Function for the daily league sync |
@@ -101,6 +103,24 @@ and most imports offer a **Download blank template**:
 | Game day / Lines | Line, Position, Number, Player (or a grid: Line, LW, C, RW...) |
 | S&C | Date, Theme, Intensity, Note, Phase, Week |
 | Data Center | Any table, kept as uploaded (testing results, stats) |
+
+**S&C → Tests (admins and coaches only):** each testing session is a date plus a battery:
+**Weekly readiness** (CMJ JH, RSImod, 10 m fly) or **Full team testing** (CMJ JH, RSImod, SJ JH,
+IMTP peak force, relative peak force N/kg, 10 m fly, Cooper). **New session** fills the Name
+column from the roster with empty test columns; type straight into the grid, paste a block of
+cells, or **Import** a file / pasted sheet (matched by name or number). **Coaches view**: a
+trend chart of the team's median % change per test since its first session (a faster 10 m fly
+counts as an improvement), then one box per test with the team median over time and the middle
+half of the team.
+
+**S&C → Gym groups (admins and coaches only):** each athlete's latest full testing is compared
+with **targets you set** (Targets button; no built-in numbers). Force = IMTP peak force and
+relative peak force; expression = CMJ JH, SJ JH and RSImod. Below the force target →
+**Force deficient** (GPP, stronger and bigger); force on target with expression and RSImod on
+target → **Expression efficient** (preserve, keep getting stronger and more explosive);
+otherwise **Expression deficient** (expression and rate of force development). Each card shows
+why, with every result green/red against its target, and a coach can move a player by hand.
+The formula is in `src/lib/testing.js`.
 
 **Data Center:** upload any CSV / PDF table as its own named table (Testing, Stats, Other) with
 a date. TeamHub doesn't calculate anything from it. Admins and coaches see every table;
@@ -246,6 +266,5 @@ check the access rules (coach vs viewer vs outsider vs public link).
 ## Not built yet
 
 Same placeholders as the artifact: League, Opponents, Practice plan, Game day (non-hockey),
-Playbook, Recruitment, My Profile, S&C Gym groups and
-Tests. Workload load units and the acute:chronic band are **placeholder values**, editable
+Playbook, Recruitment, My Profile. Workload load units and the acute:chronic band are **placeholder values**, editable
 per team. They're not a validated scale.

@@ -170,6 +170,20 @@ test('migration + seed load, and access follows memberships', async () => {
   await as(db, U.viewer, `update datasets set shared = true where title = 'Private test'`);
   assert.equal((await db.query(`select shared from datasets where title = 'Private test'`)).rows[0].shared, false);
 
+  // S&C testing + gym groups: staff only
+  const [ts] = await as(db, U.coach, `insert into test_sessions (team_id, tested_on, battery) values ($1, '2026-11-02', 'full') returning id`, [bcsTeam]);
+  await as(db, U.coach, `insert into test_results (session_id, player_id, team_id, values) values ($1, $2, $3, '{"cmj_jh": 40}')`, [ts.id, pa.id, bcsTeam]);
+  await as(db, U.coach, `insert into gym_config (team_id, targets) values ($1, '{"cmj_jh": 40}')`, [bcsTeam]);
+  assert.equal((await as(db, U.coach, 'select count(*)::int c from test_results'))[0].c, 1);
+  for (const who of [U.viewer, U.other, null]) {
+    assert.equal((await as(db, who, 'select count(*)::int c from test_sessions'))[0].c, 0);
+    assert.equal((await as(db, who, 'select count(*)::int c from test_results'))[0].c, 0);
+    assert.equal((await as(db, who, 'select count(*)::int c from gym_config'))[0].c, 0);
+  }
+  await assert.rejects(as(db, U.viewer, `insert into test_sessions (team_id, tested_on, battery) values ($1, '2026-11-02', 'full')`, [bcsTeam]));
+  await assert.rejects(as(db, U.coach, `insert into test_results (session_id, player_id, team_id) values ($1, $2, $3)`, [ts.id, uniPlayer, bcsTeam]));
+  await assert.rejects(as(db, U.coach, `insert into test_sessions (team_id, tested_on, battery) values ($1, '2026-11-02', 'other')`, [bcsTeam]));
+
   // game day lines: coaches write (default + their own team's games), viewers read only
   const bcsGame = (await db.query('select id from games where team_id=$1 limit 1', [bcsTeam])).rows[0].id;
   const uniGame = (await db.query('select id from games where team_id=$1 limit 1', [uniTeam])).rows[0].id;

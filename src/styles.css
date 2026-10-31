@@ -620,6 +620,49 @@ span.gd-row{cursor:default}
 .pg-head td{background:var(--accent-soft)} .pg-head input{font-weight:700}
 .pg-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .pg-bar .btn.primary{margin-left:auto}
+/* ---------- S&C tests + gym groups ---------- */
+.ts-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ts-pick{width:auto;max-width:min(320px,100%)}
+.ts-bat{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line);border-radius:10px;cursor:pointer}
+.ts-bat>span{display:flex;flex-direction:column}
+.ts-grid{max-height:calc(100dvh - 300px);overflow:auto}
+.ts-grid thead th{position:sticky;top:0;z-index:1;background:var(--surface)}
+.ts-name{white-space:nowrap;position:sticky;left:0;background:var(--surface);z-index:1}
+.ts-cell{padding:2px 4px !important;min-width:92px}
+.ts-cell input{width:100%;border:1px solid transparent;border-radius:7px;background:var(--surface-2);padding:5px 7px;font:inherit;text-align:right;color:inherit}
+.ts-cell input:focus{outline:none;border-color:var(--accent);background:var(--surface)}
+.ts-cell input.bad{border-color:var(--bad);color:var(--bad)}
+.tr-legend{display:flex;gap:6px;flex-wrap:wrap}
+.tr-legend button{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:3px 10px;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--fg)}
+.tr-legend button i{width:10px;height:10px;border-radius:50%}
+.tr-legend button.off{opacity:.4}
+.tr-chart{width:100%;height:auto;display:block}
+.tr-chart .ax,.tr-spark .ax{font:11px var(--f-body);fill:var(--muted)}
+.tr-chart .grid{stroke:var(--line)} .tr-chart .zero{stroke:var(--muted);stroke-dasharray:4 3}
+.tr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.tr-box{gap:4px}
+.tr-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.tr-v{font:700 30px/1.05 var(--f-display)}
+.tr-d{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.tr-d .up{color:var(--st-green);font-weight:600} .tr-d .down{color:var(--st-red);font-weight:600}
+.tr-spark{width:100%;height:auto;display:block;margin-top:4px}
+.gg-top .card-head{align-items:flex-start}
+.gg-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start}
+.gg-col{border-top:4px solid var(--c)}
+.gg-col.green{--c:var(--st-green)} .gg-col.yellow{--c:var(--st-yellow)} .gg-col.red{--c:var(--st-red)}
+.gg-h{display:flex;justify-content:space-between;align-items:baseline;font:700 19px var(--f-display)}
+.gg-h b{color:var(--c)}
+.gg-focus{font-size:13px;background:var(--surface-2);border-radius:9px;padding:7px 10px}
+.gg-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.gg-p{border:1px solid var(--line);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:4px}
+.gg-ph{display:flex;align-items:center;gap:6px}
+.gg-ph b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gg-move{width:auto;padding:2px 6px;font-size:12px}
+.gg-vals{display:flex;gap:4px;flex-wrap:wrap}
+.gg-vals span{font-size:11.5px;padding:1px 7px;border-radius:999px;background:var(--surface-2)}
+.gg-vals span.ok{color:var(--st-green);background:color-mix(in oklab, var(--st-green) 12%, transparent)}
+.gg-vals span.low{color:var(--st-red);background:color-mix(in oklab, var(--st-red) 12%, transparent)}
+@media (max-width:1000px){.gg-grid{grid-template-columns:minmax(0,1fr)}}
 @media print{
   @page{margin:12mm}
   /* beats the dark-mode :root rules so a sheet printed from dark mode is still black on white */

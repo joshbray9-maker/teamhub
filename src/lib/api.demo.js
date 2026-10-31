@@ -75,6 +75,15 @@ export const api = {
   async saveScWeek(teamId, mk, w) { const s = D(teamId).sc; s.weeks = s.weeks || {}; s.weeks[mk] = w; save(); },
   async removeScWeek(teamId, mk, last) { const s = D(teamId).sc; delete (s.weeks || {})[mk]; Object.keys(s.days || {}).forEach((d) => { if (d >= mk && d <= last) delete s.days[d]; }); save(); },
   async saveScBulk(teamId, days, weeks) { const s = D(teamId).sc; s.days = { ...(s.days || {}), ...clone(days) }; s.weeks = { ...(s.weeks || {}), ...clone(weeks) }; save(); },
+  async listTests(teamId) { await load(); const d = D(teamId); return clone({ sessions: [...(d.testSessions || [])].sort((a, b) => a.tested_on.localeCompare(b.tested_on)), results: d.testResults || [] }); },
+  async createTestSession(teamId, tested_on, battery) { const s = { id: 'ts' + uid(), team_id: teamId, tested_on, battery, notes: '' }; (D(teamId).testSessions = D(teamId).testSessions || []).push(s); save(); return clone(s); },
+  async deleteTestSession(id) { Object.values(db.data).forEach((d) => { d.testSessions = (d.testSessions || []).filter((s) => s.id !== id); d.testResults = (d.testResults || []).filter((r) => r.session_id !== id); }); save(); },
+  async saveTestResults(teamId, sessionId, rows) {
+    const d = D(teamId); d.testResults = (d.testResults || []).filter((r) => !(r.session_id === sessionId && rows.some((x) => x.player_id === r.player_id)));
+    rows.filter((r) => Object.keys(r.values).length).forEach((r) => d.testResults.push({ session_id: sessionId, player_id: r.player_id, values: clone(r.values) })); save();
+  },
+  async getGymConfig(teamId) { await load(); return clone(D(teamId).gym || { targets: {}, overrides: {} }); },
+  async saveGymConfig(teamId, c) { D(teamId).gym = clone({ targets: c.targets || {}, overrides: c.overrides || {} }); save(); },
   async listDatasets(teamId) { await load(); return clone(D(teamId).datasets || []); },
   async saveDataset(teamId, d) { const l = (D(teamId).datasets = D(teamId).datasets || []); const [r] = upsert(l, [{ team_id: teamId, created_at: new Date().toISOString(), ...clone(d) }], 'ds'); save(); return clone(r); },
   async deleteDataset(id) { Object.values(db.data).forEach((d) => { d.datasets = (d.datasets || []).filter((x) => x.id !== id); }); save(); },

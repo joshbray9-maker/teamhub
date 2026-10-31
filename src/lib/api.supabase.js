@@ -185,6 +185,22 @@ export const api = {
   },
   async deleteLineup(teamId, key) { ok(await supabase.from('lineups').delete().eq('team_id', teamId).eq('key', key)); },
 
+  /* ---------- S&C testing (staff only) ---------- */
+  async listTests(teamId) {
+    const [s, r] = await Promise.all([supabase.from('test_sessions').select('*').eq('team_id', teamId).order('tested_on'), supabase.from('test_results').select('session_id, player_id, values').eq('team_id', teamId)]);
+    return { sessions: ok(s), results: ok(r) };
+  },
+  async createTestSession(teamId, tested_on, battery) { return ok(await supabase.from('test_sessions').insert({ team_id: teamId, tested_on, battery }).select().single()); },
+  async deleteTestSession(id) { ok(await supabase.from('test_sessions').delete().eq('id', id)); },
+  /** rows: [{player_id, values}]; a row with no values removes that player's results for the session. */
+  async saveTestResults(teamId, sessionId, rows) {
+    const keep = rows.filter((r) => Object.keys(r.values).length), drop = rows.filter((r) => !Object.keys(r.values).length).map((r) => r.player_id);
+    if (keep.length) ok(await supabase.from('test_results').upsert(keep.map((r) => ({ session_id: sessionId, player_id: r.player_id, team_id: teamId, values: r.values, updated_at: new Date().toISOString() }))));
+    if (drop.length) ok(await supabase.from('test_results').delete().eq('session_id', sessionId).in('player_id', drop));
+  },
+  async getGymConfig(teamId) { return ok(await supabase.from('gym_config').select('targets, overrides').eq('team_id', teamId).maybeSingle()) || { targets: {}, overrides: {} }; },
+  async saveGymConfig(teamId, c) { ok(await supabase.from('gym_config').upsert({ team_id: teamId, targets: c.targets || {}, overrides: c.overrides || {}, updated_at: new Date().toISOString() })); },
+
   /* ---------- data center ---------- */
   async listDatasets(teamId) { return ok(await supabase.from('datasets').select('*').eq('team_id', teamId).order('recorded_on', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false })); },
   async saveDataset(teamId, d) {
