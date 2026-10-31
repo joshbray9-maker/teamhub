@@ -7,6 +7,7 @@ export const LEVELS = { 'high-school': 'High school', junior: 'Junior', college:
 export const SWATCHES = ['#1f5fbf', '#0e7a5a', '#b3261e', '#6b3fa0', '#c25e00', '#a8861b', '#1b1f27', '#0a7c8c', '#8a1538', '#2f6b2f'];
 export const MENUS = [
   { id: 'home', label: 'Home', icon: 'home' },
+  { id: 'coach', label: "Coach's report", icon: 'report', coach: true },
   { id: 'chat', label: 'Chat', icon: 'chat' },
   { id: 'league', label: 'League', icon: 'trophy' },
   { id: 'opponents', label: 'Opponents', icon: 'target', coach: true },

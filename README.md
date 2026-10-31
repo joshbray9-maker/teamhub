@@ -73,6 +73,11 @@ link never see injuries or the flags. Give sports-med staff the **coach** role.
 - Injured players are flagged automatically (red = out, yellow = limited) on the Roster, the
   Lines page roster, and an **Injured players** card on S&C and Practice plan.
 
+**Coach's report (admins and coaches only):** the next game, player availability (out /
+limited / available, live from the Injury report), every active limitation, and a print /
+PDF button. **Team readiness** is a placeholder: it will come from weekly testing metrics
+once those are set up, and its scoring rules haven't been decided, so nothing is estimated.
+
 **Roster:** add players by hand or **Import CSV / PDF**. The file is read in the browser and
 shown for review before anything is saved; players are matched by name, so re-importing
 updates numbers and positions instead of duplicating. PDFs need selectable text (not a scan).

@@ -548,6 +548,25 @@ span.gd-row{cursor:default}
 .inj-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
 .inj-list li{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
 @media (max-width:760px){.inj-form,.prof-grid{grid-template-columns:minmax(0,1fr)}.prof-tl li{grid-template-columns:130px auto}.prof-tl em{grid-column:2}}
+/* ---------- coach's report ---------- */
+.cr-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px;align-items:start}
+.cr-side{display:flex;flex-direction:column;gap:16px;min-width:0}
+.cr-link{color:var(--accent-text)}
+.cr-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:0}
+.cr-dot.red{background:var(--st-red)} .cr-dot.yellow{background:var(--st-yellow)} .cr-dot.green{background:var(--st-green)}
+.cr-group ul{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-direction:column}
+.cr-group li{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 4px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.cr-group li.click{cursor:pointer} .cr-group li.click:hover{background:var(--surface-2)}
+.cr-gh{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-top:6px}
+.cr-gh i{width:10px;height:10px;border-radius:50%}
+.cr-gh.red{color:var(--st-red)} .cr-gh.red i{background:var(--st-red)}
+.cr-gh.yellow{color:var(--st-yellow)} .cr-gh.yellow i{background:var(--st-yellow)}
+.cr-gh.green{color:var(--st-green)} .cr-gh.green i{background:var(--st-green)}
+.cr-limits{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.cr-lh{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.cr-lt{white-space:pre-wrap;overflow-wrap:anywhere;margin-top:3px}
+.cr-ready .tile-v{color:var(--muted)}
+@media (max-width:1000px){.cr-grid{grid-template-columns:minmax(0,1fr)}}
 @media print{
   @page{margin:12mm}
   /* beats the dark-mode :root rules so a sheet printed from dark mode is still black on white */
@@ -559,7 +578,9 @@ span.gd-row{cursor:default}
   .print-only{display:block}
   .gd-print-head{font-size:15px;margin-bottom:6px}
   .page-head .eyebrow{display:none}
-  .gd-grid{display:block}
+  .gd-grid,.cr-grid{display:block}
+  .cr-side .card,.cr-grid>.card{margin-bottom:12px}
+  .cr-group li{padding:3px 0}
   .gd-lines{border:0;padding:0;break-inside:auto}
   .gd-lines .card-head{display:none}
   .gd-table{break-inside:avoid}
