@@ -23,6 +23,7 @@ them; coaches edit. Injury status will come from the coach-only Injury report ta
 | `src/lib/rosterImport.js` | Reads roster CSV / PDF files (in the browser) |
 | `src/lib/injury.js` | Injury markers: placeholder until the Injury report tab exists |
 | `supabase/functions/league-sync/` | Edge Function for the daily league sync |
+| `supabase/functions/roster-import/` | Edge Function that reads a public roster page's tables |
 | `supabase/functions/_shared/leagueParse.js` | League/.ics parsing, used by both the app and the sync |
 | `supabase/cron.sql` | Schedules the daily sync |
 | `seed/export/` | Data exported from the artifact (schedules, S&C plans, league tables) |
@@ -59,8 +60,12 @@ one-page lines sheet (choose "Save as PDF" there). Other sports still show the p
 **Roster:** add players by hand or **Import CSV / PDF**. The file is read in the browser and
 shown for review before anything is saved; players are matched by name, so re-importing
 updates numbers and positions instead of duplicating. PDFs need selectable text (not a scan).
-Pulling rosters from league sites isn't built yet (see the sync coverage table: CSSHL and
-EliteProspects block automated reads).
+**Import from a website** reads a roster page that lists players in a table (school athletics
+sites like gaiters.ca) through the `roster-import` function; nothing is stored until you
+review and press Import, and the page address is remembered per team. EliteProspects (blocks
+automated reads) and CSSHL (builds rosters with JavaScript) can't be read this way: save
+their roster page as a PDF and import the file. gaiters.ca's rugby roster has no numbers or
+positions, so those stay blank until filled in.
 
 These rules live in the database (row-level security), so they hold no matter what the app
 shows. A coach at BCS can't see Universel's teams, and the reverse.
@@ -149,6 +154,14 @@ game belongs on a team's calendar only when that team's S&C sheet has it.
 
 If a league publishes an .ics subscription link for a team, that's the most reliable source.
 Each run is logged under the team's **League sync** card.
+
+### 4b. Roster import from a website
+
+Same Supabase CLI setup as step 4 (`npx supabase login` and `link` once), then:
+```bash
+npx supabase functions deploy roster-import
+```
+No secrets needed. Until it's deployed, **Roster → Import → Read page** says it isn't set up.
 
 ### 5. Add coaches
 

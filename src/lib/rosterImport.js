@@ -10,7 +10,7 @@ const SYN = {
   last: ['last', 'lastname', 'surname', 'familyname', 'nomdefamille'],
   position: ['pos', 'position', 'positions', 'poste'],
   shoots: ['shoots', 'shot', 'catches', 'sc', 'shootscatches', 'handedness', 'hand', 'lance', 'tir'],
-  year: ['year', 'yr', 'birthyear', 'yob', 'born', 'dob', 'birthdate', 'dateofbirth', 'class', 'grade', 'eligibility', 'annee', 'naissance'],
+  year: ['year', 'yr', 'birthyear', 'yob', 'born', 'dob', 'birthdate', 'dateofbirth', 'class', 'grade', 'eligibility', 'annee', 'naissance', 'academicyear', 'yearinschool', 'cl', 'anneeacademique'],
   height: ['height', 'ht', 'taille'],
   weight: ['weight', 'wt', 'poids'],
   hometown: ['hometown', 'hometownpreviousschool', 'city', 'from', 'birthplace', 'ville', 'home'],
@@ -76,7 +76,8 @@ export function clean(raw, source) {
     year: (/\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4}/.test(year) && yy ? yy[0] : year).slice(0, 20),
     height: String(raw.height || '').trim().slice(0, 12),
     weight: String(raw.weight || '').trim().slice(0, 12),
-    hometown: String(raw.hometown || '').trim().slice(0, 80),
+    // "Hometown / High School" columns: keep the town only
+    hometown: String(raw.hometown || '').split(' / ')[0].trim().slice(0, 80),
     source,
   };
 }
@@ -116,6 +117,22 @@ export function pdfItemsToPlayers(items) {
     const p = clean({ num: m[1], name: m[2], position: m[3] || '' }, 'pdf'); if (p) players.push(p); else skipped++;
   }
   return { players, skipped, headings: false };
+}
+
+/* ---------- web page tables ---------- */
+/** tables: [[cells], ...] per table (from the roster-import function). Uses the table whose
+ *  heading row (one of its first three rows) gives the most players. */
+export function tablesToPlayers(tables) {
+  let best = null;
+  for (const rows of tables || []) {
+    for (let h = 0; h < Math.min(3, rows.length); h++) {
+      let r; try { r = rowsToPlayers(rows.slice(h), 'web'); } catch { continue; }
+      if (r.players.length && (!best || r.players.length > best.players.length)) best = r;
+      break;
+    }
+  }
+  if (!best) throw new Error('No roster table found on that page (it needs a table with a Name column). If the site builds its roster with JavaScript or blocks automated reads, save the roster as a PDF and import that instead.');
+  return best;
 }
 
 /** Matches imported players to the current roster by name (case/accents ignored). */

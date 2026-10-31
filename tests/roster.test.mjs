@@ -44,3 +44,18 @@ test('planImport matches by name (accents/case ignored) and lists missing player
   assert.deepEqual(plan.adds.map((p) => p.name), ['New One']);
   assert.deepEqual(plan.missing.map((p) => p.id), ['b']);
 });
+
+test('web page tables: picks the roster table, splits "Hometown / High School"', async () => {
+  const { parseHTML } = await import('linkedom');
+  const { tablesFromDoc } = await import('../supabase/functions/_shared/htmlTables.js');
+  const { tablesToPlayers } = await import('../src/lib/rosterImport.js');
+  const { document } = parseHTML(`<table><tr><th>Statistic</th><th>Value</th></tr><tr><td>a</td><td>1</td></tr><tr><td>b</td><td>2</td></tr><tr><td>c</td><td>3</td></tr></table>
+    <table><thead><tr><th>#</th><th>Full Name</th><th>Pos</th><th>Ht.</th><th>Academic Year</th><th>Hometown / High School</th></tr></thead>
+    <tbody><tr><td></td><td><a>Web Player One</a></td><td></td><td>6'0"</td><td>2nd</td><td>Sample, QC / Sample High</td></tr>
+    <tr><td>8</td><td>Web Player Two</td><td>Lock</td><td>6'4"</td><td>1st</td><td>Town, ON / Other School</td></tr>
+    <tr><td>9</td><td>Web Player Three</td><td>Wing</td><td></td><td>3rd</td><td>City, QC</td></tr></tbody></table>`);
+  const r = tablesToPlayers(tablesFromDoc(document));
+  assert.deepEqual(r.players.map((p) => [p.num, p.name, p.position, p.year, p.hometown, p.source]), [
+    ['', 'Web Player One', '', '2nd', 'Sample, QC', 'web'], ['8', 'Web Player Two', 'Lock', '1st', 'Town, ON', 'web'], ['9', 'Web Player Three', 'Wing', '3rd', 'City, QC', 'web']]);
+  assert.throws(() => tablesToPlayers([[['Statistic', 'Value'], ['a', '1'], ['b', '2']]]), /No roster table/);
+});

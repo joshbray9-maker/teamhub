@@ -484,6 +484,9 @@ span.gd-row{cursor:default}
 .ro-sep td{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding-top:14px}
 .ro-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .ro-wide{grid-column:1/-1}
+.ro-src{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:16px}
+.ro-src .field{gap:7px}
+@media (max-width:700px){.ro-src{grid-template-columns:minmax(0,1fr)}}
 .empty-state{display:flex;flex-direction:column;gap:6px;align-items:flex-start;padding:8px 0}
 .print-only{display:none}
 @media print{

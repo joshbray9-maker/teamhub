@@ -2,7 +2,7 @@
 // import (CSV or PDF, reviewed before saving). Injury markers come from lib/injury.js.
 import { useEffect, useState } from 'react';
 import { useHub } from '../lib/hub.jsx';
-import { parseCsv, rowsToPlayers, pdfItemsToPlayers, planImport } from '../lib/rosterImport.js';
+import { parseCsv, rowsToPlayers, pdfItemsToPlayers, tablesToPlayers, planImport } from '../lib/rosterImport.js';
 import { injuryStatus } from '../lib/injury.js';
 import PageHead from '../components/PageHead.jsx';
 import Modal from '../components/Modal.jsx';
@@ -33,7 +33,7 @@ export default function Roster() {
   const edit = (p) => H.isCoach && H.openDialog((c) => <PlayerDialog p={p} sport={t.sport} close={c} onSave={(x) => save([x])}
     onDelete={async () => { try { await H.api.deletePlayer(p.id); } catch (e) { H.toast(e.message); } load(); }} />);
   const acts = H.isCoach && <>
-    <button className="btn" onClick={() => H.openDialog((c) => <ImportDialog current={players || []} close={c} onSave={(list, msg) => save(list, msg)} />)}><Icon n="refresh" /> Import CSV / PDF</button>
+    <button className="btn" onClick={() => H.openDialog((c) => <ImportDialog current={players || []} close={c} onSave={(list, msg) => save(list, msg)} />)}><Icon n="refresh" /> Import</button>
     <button className="btn primary" onClick={() => edit(null)}><Icon n="plus" /> Player</button></>;
 
   const list = (players || []).filter((p) => p.active !== false).sort(byNumber);
@@ -48,7 +48,7 @@ export default function Roster() {
     <section className="card">
       {!players ? <div className="muted small">Loading…</div> : !players.length ? <div className="empty-state">
         <b>No players yet</b>
-        <span className="muted small">{H.isCoach ? 'Add players one by one, or import a CSV or PDF roster (a team sheet, a league roster saved as PDF, a spreadsheet export).' : 'Your coach will add the roster.'}</span>
+        <span className="muted small">{H.isCoach ? 'Add players one by one, or Import them from a team or school roster page, a CSV or a PDF.' : 'Your coach will add the roster.'}</span>
       </div> : <>
         <div className="card-head"><h2>{list.length} player{list.length === 1 ? '' : 's'}</h2>
           {gone.length > 0 && <label className="small muted" style={{ display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" className="cb" checked={former} onChange={(e) => setFormer(e.target.checked)} /> Show former players ({gone.length})</label>}</div>
@@ -107,6 +107,19 @@ function ImportDialog({ current, close, onSave }) {
   const [res, setRes] = useState(null); // { players, skipped, plan, file }
   const [retire, setRetire] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [url, setUrl] = useState('');
+  useEffect(() => { H.api.getSetting(H.teamId, 'roster_url').then((v) => { if (typeof v === 'string') setUrl(v); }).catch(() => {}); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const readPage = async () => {
+    const u = url.trim(); if (!/^https:\/\/\S+\.\S+/.test(u)) { H.toast('Enter the roster page address, starting with https://'); return; }
+    setBusy(true); setRes(null);
+    try {
+      const { tables, host } = await H.api.fetchRosterPage(H.teamId, u);
+      const r = tablesToPlayers(tables);
+      setRes({ ...r, file: host, plan: planImport(current, r.players) });
+      H.api.saveSetting(H.teamId, 'roster_url', u).catch(() => {}); // remembered for next time
+    } catch (err) { H.toast(err.message); }
+    finally { setBusy(false); }
+  };
   const pick = async (e) => {
     const file = e.target.files[0]; if (!file) return;
     setBusy(true); setRes(null);
@@ -125,8 +138,18 @@ function ImportDialog({ current, close, onSave }) {
   const p = res && res.plan;
   return <Modal title="Import roster" wide onClose={close}
     actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" disabled={!p || (!p.adds.length && !p.updates.length && !(retire && p.missing.length))} onClick={go}>Import</button></>}>
-    <p className="muted small" style={{ margin: 0 }}>Choose a <b>CSV</b> (first row: headings like Number, Name, Position, Shoots, Year, Height, Weight, Hometown) or a <b>PDF</b> roster with selectable text. The file is read in your browser; only the columns above are kept, and a date of birth is reduced to its year. Players already on the roster are matched by name and updated.</p>
-    <label className="btn" style={{ alignSelf: 'flex-start' }}><Icon n="plus" /> {busy ? 'Reading…' : res ? 'Choose another file' : 'Choose file'}<input type="file" accept=".csv,.txt,.pdf,text/csv,application/pdf" hidden onChange={pick} /></label>
+    <p className="muted small" style={{ margin: 0 }}>Only the roster columns are kept (number, name, position, shoots, year, height, weight, hometown); anything else is dropped and a date of birth is reduced to its year. Players already on the roster are matched by name and updated. Nothing is saved until you press Import.</p>
+    <div className="ro-src">
+      <div className="field"><span>From a website</span>
+        <form className="todo-add" onSubmit={(e) => { e.preventDefault(); readPage(); }}>
+          <input className="input" type="url" placeholder="https://gaiters.ca/sports/mens-rugby/roster" value={url} onChange={(e) => setUrl(e.target.value)} aria-label="Roster page address" />
+          <button className="btn" type="submit" disabled={busy}>{busy ? 'Reading…' : 'Read page'}</button>
+        </form>
+        <span className="muted small">A team or league page that lists the roster in a table (school athletics sites like gaiters.ca). EliteProspects and CSSHL pages can't be read this way: save them as a PDF and use the file option.</span></div>
+      <div className="field"><span>From a file</span>
+        <label className="btn" style={{ alignSelf: 'flex-start' }}><Icon n="plus" /> {busy ? 'Reading…' : 'Choose CSV or PDF'}<input type="file" accept=".csv,.txt,.pdf,text/csv,application/pdf" hidden onChange={pick} /></label>
+        <span className="muted small">CSV with headings like Number, Name, Position, Shoots, Year, Height, Weight, Hometown, or a PDF with selectable text (not a scan). Read in your browser.</span></div>
+    </div>
     {p && <>
       <div className="small"><b>{res.file}</b>: {p.adds.length} new, {p.updates.length} updated{res.skipped ? `, ${res.skipped} line${res.skipped === 1 ? '' : 's'} skipped (no name)` : ''}. Check the list before importing.</div>
       <div className="tbl-wrap" style={{ maxHeight: 320, overflow: 'auto' }}><table className="tbl ro-tbl">

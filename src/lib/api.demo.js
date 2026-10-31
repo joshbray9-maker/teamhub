@@ -74,7 +74,7 @@ export const api = {
   async saveScDay(teamId, date, x) { const s = D(teamId).sc; s.days = s.days || {}; if (x) s.days[date] = x; else delete s.days[date]; save(); },
   async saveScWeek(teamId, mk, w) { const s = D(teamId).sc; s.weeks = s.weeks || {}; s.weeks[mk] = w; save(); },
   async removeScWeek(teamId, mk, last) { const s = D(teamId).sc; delete (s.weeks || {})[mk]; Object.keys(s.days || {}).forEach((d) => { if (d >= mk && d <= last) delete s.days[d]; }); save(); },
-  async saveSetting(teamId, key, value) { const s = D(teamId).sc; if (key === 'sc_loads') s.loads = value; if (key === 'sc_band') s.band = value; save(); },
+  async saveSetting(teamId, key, value) { const s = D(teamId).sc; if (key === 'sc_loads') s.loads = value; if (key === 'sc_band') s.band = value; (D(teamId).settings = D(teamId).settings || {})[key] = value; save(); },
   async saveCoach(teamId, c) { D(teamId).coach = clone(c); save(); },
 
   async listChat(teamId, { channel = 'team', beforeTs, limit = 100 } = {}) {
@@ -92,6 +92,8 @@ export const api = {
 
   async listPlayers(teamId) { await load(); return clone(D(teamId).players || []); },
   async savePlayers(teamId, players) { const list = (D(teamId).players = D(teamId).players || []); const r = upsert(list, players.map((p) => ({ active: true, source: 'manual', ...p })), 'p'); save(); return clone(r); },
+  async fetchRosterPage() { throw new Error('Demo mode: importing from a website runs on Supabase once the roster-import function is deployed.'); },
+  async getSetting(teamId, key) { await load(); return (D(teamId).settings || {})[key] ?? null; },
   async deletePlayer(id) { Object.values(db.data).forEach((d) => { d.players = (d.players || []).filter((p) => p.id !== id); }); save(); },
   async listLineups(teamId) { await load(); return clone(D(teamId).lineups || {}); },
   async saveLineup(teamId, key, slots) { (D(teamId).lineups = D(teamId).lineups || {})[key] = { slots: clone(slots), updatedAt: Date.now() }; save(); },

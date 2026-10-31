@@ -132,6 +132,14 @@ export const api = {
     return saveRows('players', players.map((p) => ({ id: p.id, team_id: teamId, num: p.num || '', name: p.name, position: p.position || '', shoots: p.shoots || '', year: p.year || '', height: p.height || '', weight: p.weight || '', hometown: p.hometown || '', active: p.active !== false, source: p.source || 'manual' })));
   },
   async deletePlayer(id) { ok(await supabase.from('players').delete().eq('id', id)); },
+  /** Reads a public roster page through the roster-import function: { tables } or throws. */
+  async fetchRosterPage(teamId, url) {
+    const { data, error } = await supabase.functions.invoke('roster-import', { body: { team_id: teamId, url } });
+    if (error) throw new Error(/not found|failed to send|404/i.test(error.message) ? 'The roster import function isn\'t set up in Supabase yet (see README: Roster import from a website).' : error.message);
+    if (data.error) throw new Error(data.error);
+    return data;
+  },
+  async getSetting(teamId, key) { const r = ok(await supabase.from('settings').select('value').eq('team_id', teamId).eq('key', key).maybeSingle()); return r ? r.value : null; },
 
   /* ---------- game day lines ---------- */
   /** All of a team's lines: { default: {slots, updatedAt}, <gameId>: {...} } */

@@ -4,3 +4,7 @@
 # pg_cron calls with an x-cron-secret header instead of a user JWT; the function checks
 # the secret itself, and checks can_edit_team() for signed-in "Sync now" calls.
 verify_jwt = false
+
+[functions.roster-import]
+# Checks the caller's JWT itself (can_edit_team), like league-sync's "Sync now" path.
+verify_jwt = false
