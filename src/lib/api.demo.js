@@ -41,6 +41,7 @@ function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch {
 const D = (teamId) => db.data[teamId] || (db.data[teamId] = { games: [], groups: [], events: [], notifs: [], sc: { weeks: {}, days: {} }, coach: { notes: '', todos: [] }, candidates: [], lastRun: null });
 const upsert = (list, rows, prefix) => rows.map((r) => { const x = { ...r, id: r.id || prefix + uid() }; const i = list.findIndex((y) => y.id === x.id); if (i >= 0) list[i] = x; else list.push(x); return x; });
 
+const chatSubs = new Set();
 let authCb = null, signedIn = (() => { try { return localStorage.getItem(KEY + ':out') !== '1'; } catch { return true; } })();
 export const api = {
   demo: true,
@@ -75,6 +76,19 @@ export const api = {
   async removeScWeek(teamId, mk, last) { const s = D(teamId).sc; delete (s.weeks || {})[mk]; Object.keys(s.days || {}).forEach((d) => { if (d >= mk && d <= last) delete s.days[d]; }); save(); },
   async saveSetting(teamId, key, value) { const s = D(teamId).sc; if (key === 'sc_loads') s.loads = value; if (key === 'sc_band') s.band = value; save(); },
   async saveCoach(teamId, c) { D(teamId).coach = clone(c); save(); },
+
+  async listChat(teamId, { beforeTs, limit = 100 } = {}) {
+    await load(); const all = (D(teamId).chat || []).filter((m) => !beforeTs || m.ts < beforeTs);
+    return clone(all.slice(-limit));
+  },
+  async sendChat(teamId, body) {
+    const m = { id: 'm' + uid(), user_id: USER.id, author: USER.email, body: body.trim(), ts: Date.now() };
+    (D(teamId).chat = D(teamId).chat || []).push(m); save();
+    chatSubs.forEach((s) => s.teamId === teamId && s.onAdd(clone(m)));
+    return clone(m);
+  },
+  async deleteChat(id) { Object.values(db.data).forEach((d) => { d.chat = (d.chat || []).filter((m) => m.id !== id); }); save(); chatSubs.forEach((s) => s.onRemove(id)); },
+  subscribeChat(teamId, { onAdd, onRemove }) { const s = { teamId, onAdd, onRemove }; chatSubs.add(s); return () => chatSubs.delete(s); },
 
   async saveTeam(t) {
     if (t.id) { const i = db.teams.findIndex((x) => x.id === t.id); db.teams[i] = { ...db.teams[i], ...clone(t) }; save(); return clone(db.teams[i]); }

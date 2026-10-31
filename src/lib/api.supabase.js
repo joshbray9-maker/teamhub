@@ -11,6 +11,7 @@ const gameIn = (g) => ({ id: g.id, date: g.date, time: g.time, home: g.home, awa
 const gameOut = (teamId, g) => ({ team_id: teamId, date: g.date, time: g.time || '', home: g.home, away: g.away, home_score: g.hs ?? null, away_score: g.as ?? null, venue: g.venue || '', round: g.round || '', source: g.source || 'manual', ext_id: g.ext_id || null });
 const eventOut = (teamId, e) => ({ team_id: teamId, date: e.date, time: e.time || '', title: e.title, kind: e.kind === 'practice' ? 'practice' : 'event', location: e.location || '', ext_id: e.ext_id || null });
 const notifIn = (n) => ({ id: n.id, text: n.text, read: n.read, ts: Date.parse(n.created_at) });
+const chatIn = (m) => ({ id: m.id, user_id: m.user_id, author: m.author, body: m.body, ts: Date.parse(m.created_at) });
 
 async function saveRows(table, rows) {
   const upd = rows.filter((r) => r.id), ins = rows.filter((r) => !r.id).map(({ id, ...r }) => r);
@@ -102,6 +103,25 @@ export const api = {
   },
   async saveSetting(teamId, key, value) { ok(await supabase.from('settings').upsert({ team_id: teamId, key, value })); },
   async saveCoach(teamId, c) { ok(await supabase.from('coach_notes').upsert({ team_id: teamId, notes: c.notes || '', todos: c.todos || [], updated_at: new Date().toISOString() })); },
+
+  /* ---------- chat ---------- */
+  /** Newest `limit` messages (oldest first), or the ones before `beforeTs`. */
+  async listChat(teamId, { beforeTs, limit = 100 } = {}) {
+    let q = supabase.from('chat_messages').select('*').eq('team_id', teamId).order('created_at', { ascending: false }).limit(limit);
+    if (beforeTs) q = q.lt('created_at', new Date(beforeTs).toISOString());
+    return ok(await q).map(chatIn).reverse();
+  },
+  async sendChat(teamId, body) { return chatIn(ok(await supabase.from('chat_messages').insert({ team_id: teamId, body }).select().single())); },
+  async deleteChat(id) { ok(await supabase.from('chat_messages').delete().eq('id', id)); },
+  /** Live updates for one team's chat. Realtime only delivers rows this user may read. */
+  subscribeChat(teamId, { onAdd, onRemove }) {
+    const ch = supabase.channel('chat:' + teamId)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `team_id=eq.${teamId}` }, (p) => onAdd(chatIn(p.new)))
+      // delete events can't be filtered by team and carry only the id; ids from other teams are ignored
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'chat_messages' }, (p) => p.old && onRemove(p.old.id))
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  },
 
   /* ---------- teams / orgs / members ---------- */
   async saveTeam(t) {

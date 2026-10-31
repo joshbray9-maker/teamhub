@@ -2,7 +2,7 @@
 // stand-ins for Supabase's auth/storage schemas, then checks the RLS rules as different users.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { PGlite } from '@electric-sql/pglite';
 
@@ -28,7 +28,7 @@ const U = { josh: '00000000-0000-0000-0000-00000000000a', coach: '00000000-0000-
 async function setup() {
   const db = new PGlite();
   await db.exec(STUBS);
-  await db.exec(readFileSync('supabase/migrations/20261030000000_init.sql', 'utf8'));
+  for (const f of readdirSync('supabase/migrations').sort()) await db.exec(readFileSync('supabase/migrations/' + f, 'utf8'));
   await db.exec(GRANTS);
   // Josh signs up before the seed is run
   await db.exec(`insert into auth.users values ('${U.josh}', 'Josh@Example.test')`);
@@ -97,4 +97,26 @@ test('migration + seed load, and access follows memberships', async () => {
   // logo upload only into a team folder you can edit
   await as(db, U.coach, `insert into storage.objects (bucket_id, name) values ('logos', $1)`, [`${bcsTeam}/logo.png`]);
   await assert.rejects(as(db, U.coach, `insert into storage.objects (bucket_id, name) values ('logos', $1)`, [`${uniTeam}/logo.png`]));
+
+  // chat: every org member reads + posts; sender and author come from the session
+  const [vm] = await as(db, U.viewer, `insert into chat_messages (team_id, body, user_id, author) values ($1, '  hi team  ', $2, 'spoof@x.test') returning id, user_id, author, body`, [bcsTeam, U.coach]);
+  assert.equal(vm.user_id, U.viewer); assert.equal(vm.author, 'viewer@x.test'); assert.equal(vm.body, 'hi team');
+  const [cm] = await as(db, U.coach, `insert into chat_messages (team_id, body) values ($1, 'coach here') returning id`, [bcsTeam]);
+  assert.equal((await as(db, U.viewer, 'select count(*)::int c from chat_messages where team_id=$1', [bcsTeam]))[0].c, 2);
+  // outsiders and other orgs: no read, no post; anon sees nothing; empty messages rejected
+  assert.equal((await as(db, U.other, 'select count(*)::int c from chat_messages'))[0].c, 0);
+  await assert.rejects(as(db, U.other, `insert into chat_messages (team_id, body) values ($1, 'x')`, [bcsTeam]));
+  await assert.rejects(as(db, U.coach, `insert into chat_messages (team_id, body) values ($1, 'x')`, [uniTeam]));
+  await assert.rejects(as(db, U.coach, `insert into chat_messages (team_id, body) values ($1, '   ')`, [bcsTeam]));
+  assert.equal((await as(db, null, 'select count(*)::int c from chat_messages'))[0].c, 0);
+  // no editing; delete only your own (admins any)
+  await as(db, U.viewer, `update chat_messages set body='edited' where id=$1`, [vm.id]);
+  assert.equal((await db.query('select body from chat_messages where id=$1', [vm.id])).rows[0].body, 'hi team');
+  await as(db, U.viewer, 'delete from chat_messages where id=$1', [cm.id]);
+  assert.equal((await db.query('select count(*)::int c from chat_messages where id=$1', [cm.id])).rows[0].c, 1);
+  await as(db, U.josh, 'delete from chat_messages where id=$1', [cm.id]);
+  await as(db, U.viewer, 'delete from chat_messages where id=$1', [vm.id]);
+  assert.equal((await db.query('select count(*)::int c from chat_messages')).rows[0].c, 0);
+  // the public schedule never includes chat
+  assert.ok(!JSON.stringify((await as(db, null, `select public_schedule('bcs') s`))[0].s).includes('coach here'));
 });

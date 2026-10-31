@@ -15,6 +15,7 @@ it that way until the access rules have been reviewed for it.
 | `src/` | The app: team switcher, reorderable sidebar, Home (calendar, notifications, notes & to-do, fixtures, standings, league paste, .ics import, league-sync review), master schedules, S&C (calendar, periodization, Workload) |
 | `src/pages/PublicSchedule.jsx` | Public read-only page at `/schedule/<org>` |
 | `supabase/migrations/…_init.sql` | Tables, row-level security, sign-up trigger, public schedule function, logo storage |
+| `supabase/migrations/…_chat.sql` | Team chat table, its access rules and live updates |
 | `supabase/functions/league-sync/` | Edge Function for the daily league sync |
 | `supabase/functions/_shared/leagueParse.js` | League/.ics parsing, used by both the app and the sync |
 | `supabase/cron.sql` | Schedules the daily sync |
@@ -34,6 +35,11 @@ per organization:
 | **viewer** | Read-only. No notes & to-dos |
 | *public link* | Only that organization's games and calendar events. Off until an admin turns it on |
 
+**Chat:** each team has one group chat. Everyone in the team's organization (admin, coach,
+viewer) can read and post; the sender or an admin can delete a message; messages can't be
+edited. New messages show up live. The public link never shows chat. Like the notes card,
+chat is free text: keep injury or medical details about athletes out of it.
+
 These rules live in the database (row-level security), so they hold no matter what the app
 shows. A coach at BCS can't see Universel's teams, and the reverse.
 
@@ -46,6 +52,8 @@ Don't reuse the Performance Hub's Supabase project.
 
 1. supabase.com → **New project** → name it `teamhub`. Pick the Canada (Central) region if offered.
 2. **SQL Editor → New query**: paste all of `supabase/migrations/20261030000000_init.sql` and **Run**.
+   Then do the same, in order, for every later file in `supabase/migrations/` (e.g. `…_chat.sql`).
+   When a new migration file is added later, run just that file once.
 3. **Authentication → URL Configuration**: set **Site URL** to your Vercel address (step 3), e.g. `https://teamhub-xyz.vercel.app`, and add the same address to **Redirect URLs**. Leave Email as the provider.
 4. **Project Settings → API**: note the **Project URL** and the **publishable / anon** key. You'll paste them into Vercel. Don't copy the `service_role` / secret key anywhere. TeamHub never needs it outside Supabase.
 
@@ -153,7 +161,7 @@ check the access rules (coach vs viewer vs outsider vs public link).
 
 ## Not built yet
 
-Same placeholders as the artifact: Chat, League, Opponents, Practice plan, Game day,
+Same placeholders as the artifact: League, Opponents, Practice plan, Game day,
 Playbook, Roster, Data Center, Injury report, Recruitment, My Profile, S&C Gym groups and
 Tests. Workload load units and the acute:chronic band are **placeholder values**, editable
 per team. They're not a validated scale.

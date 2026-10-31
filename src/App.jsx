@@ -3,6 +3,7 @@ import { MENUS, PAGE_INFO } from './lib/util.js';
 import Shell, { menuLabel } from './components/Shell.jsx';
 import Home from './pages/Home.jsx';
 import SC from './pages/SC.jsx';
+import Chat from './pages/Chat.jsx';
 import OrgSchedule from './pages/OrgSchedule.jsx';
 import PageHead from './components/PageHead.jsx';
 import TeamForm from './components/TeamForm.jsx';
@@ -37,6 +38,7 @@ function Page() {
   if (H.tdata._loading) return <div className="loading">Loading {t.name}…</div>;
   if (H.page === 'home') return <Home key={t.id} />;
   if (H.page === 'sc') return <SC key={t.id} />;
+  if (H.page === 'chat') return <Chat key={t.id} />;
   const m = MENUS.find((x) => x.id === H.page) || MENUS[0];
   return <>
     <PageHead title={menuLabel(m, t)} />
