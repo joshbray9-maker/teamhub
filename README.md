@@ -29,6 +29,8 @@ organization can read them; coaches edit. Injuries live in their own staff-only 
 | `src/lib/testing.js` | Test metrics, batteries, gym-group formula, team trends, leaderboard |
 | `supabase/migrations/…_leaderboard.sql` | Leaderboard function and its on/off switch |
 | `supabase/migrations/…_practice.sql` | Practice plans and drill library (staff only) |
+| `supabase/migrations/…_playbook.sql` | Plays (padlock = coaches only) |
+| `src/components/PlayDiagram.jsx`, `src/lib/playbook.js` | Court, play diagrams, steps |
 | `src/lib/practice.js` | Block types per sport, clock times, practice CSV |
 | `src/lib/imports.js` | S&C, Lines and Data Center imports, blank templates |
 | `src/lib/injury.js` | Injury statuses, return countdowns, body regions, injury CSV/PDF import |
@@ -131,6 +133,14 @@ The formula is in `src/lib/testing.js`.
 **Data Center:** upload any CSV / PDF table as its own named table (Testing, Stats, Other) with
 a date. TeamHub doesn't calculate anything from it. Admins and coaches see every table;
 viewers only see tables marked **Shared**. Player names in a table link to the roster.
+
+**Playbook (basketball):** plays drawn on a half court (FIBA lines) in steps: offense 1–5,
+defense X1–X5 and the ball, with cut (solid), pass (dashed), dribble (zigzag) and screen (bar)
+arrows. **+ Step** starts the next step where this one's arrows end; the viewer steps through or
+plays it. Categories (sets, quick hitters, BLOB/SLOB, press break, zone, defense), a call word
+and notes. Everyone on the team sees unlocked plays; the **padlock** keeps a play to coaches and
+admins (enforced in the database). **Playcalling sheet** prints every play by category with its
+diagram and call.
 
 **Practice plan (admins and coaches only):** build a practice block by block: minutes, type
 (sport-specific, e.g. basketball: warm-up, ball handling, shooting, offense, defense,
@@ -300,6 +310,6 @@ check the access rules (coach vs viewer vs outsider vs public link).
 
 ## Not built yet
 
-Same placeholders as the artifact: League, Opponents, Game day (non-hockey),
-Playbook, Recruitment, My Profile. Workload load units and the acute:chronic band are **placeholder values**, editable
+Same placeholders as the artifact: League, Opponents, Game day (non-hockey), Playbook for
+football, Recruitment, My Profile. Workload load units and the acute:chronic band are **placeholder values**, editable
 per team. They're not a validated scale.

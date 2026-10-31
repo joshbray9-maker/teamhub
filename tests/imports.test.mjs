@@ -60,3 +60,15 @@ test('practice plans: running clock, totals, minutes per type, CSV', async () =>
   assert.deepEqual(csv[2], ['2026-11-03', '18:00', '18:15', 15, 'Shooting', 'Form shooting', '']);
   assert.deepEqual(csv[csv.length - 1], ['', '', '', 30, '', 'Total', '']);
 });
+
+test('playbook: the next step follows the arrows', async () => {
+  const { startFrame, nextFrame, nextLabel } = await import('../src/lib/playbook.js');
+  const f = startFrame();
+  const one = f.players.find((p) => p.label === '1'), two = f.players.find((p) => p.label === '2'), ball = f.players.find((p) => p.kind === 'ball');
+  f.lines = [{ id: 'a', kind: 'dribble', x1: one.x, y1: one.y, x2: 30, y2: 25 }, { id: 'b', kind: 'cut', x1: two.x, y1: two.y, x2: 33, y2: 10 }, { id: 'c', kind: 'cut', x1: 0, y1: 40, x2: 5, y2: 40 }];
+  const n = nextFrame(f);
+  assert.deepEqual([n.players.find((p) => p.label === '1').x, n.players.find((p) => p.label === '2').y], [30, 10]);
+  assert.ok(Math.abs(n.players.find((p) => p.kind === 'ball').x - 31.6) < 1e-9 && ball.x === 26.6);
+  assert.equal(n.lines.length, 0);
+  assert.equal(nextLabel(f, 'o'), '6'); assert.equal(nextLabel(f, 'x'), '1');
+});

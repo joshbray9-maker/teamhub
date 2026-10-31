@@ -244,6 +244,17 @@ test('migration + seed load, and access follows memberships', async () => {
   await assert.rejects(as(db, U.viewer, `insert into drills (team_id, title) values ($1, 'x')`, [bcsTeam]));
   await assert.rejects(as(db, U.coach, `insert into drills (team_id, title, minutes) values ($1, 'x', 0)`, [bcsTeam]));
 
+  // playbook: the team sees unlocked plays; locked (padlock) plays are staff only
+  await as(db, U.coach, `insert into plays (team_id, name) values ($1, 'Horns')`, [bcsTeam]);
+  await as(db, U.coach, `insert into plays (team_id, name, locked) values ($1, 'Secret set', true)`, [bcsTeam]);
+  assert.deepEqual((await as(db, U.viewer, 'select name from plays order by name')).map((r) => r.name), ['Horns']);
+  assert.equal((await as(db, U.coach, 'select count(*)::int c from plays'))[0].c, 2);
+  assert.equal((await as(db, U.other, 'select count(*)::int c from plays'))[0].c, 0);
+  assert.equal((await as(db, null, 'select count(*)::int c from plays'))[0].c, 0);
+  await assert.rejects(as(db, U.viewer, `insert into plays (team_id, name) values ($1, 'x')`, [bcsTeam]));
+  await as(db, U.viewer, `update plays set name = 'changed' where name = 'Horns'`);
+  assert.equal((await db.query(`select count(*)::int c from plays where name = 'Horns'`)).rows[0].c, 1);
+
   // game day lines: coaches write (default + their own team's games), viewers read only
   const bcsGame = (await db.query('select id from games where team_id=$1 limit 1', [bcsTeam])).rows[0].id;
   const uniGame = (await db.query('select id from games where team_id=$1 limit 1', [uniTeam])).rows[0].id;

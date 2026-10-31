@@ -217,6 +217,14 @@ export const api = {
   async saveDrill(teamId, d) { const row = { team_id: teamId, title: d.title, type: d.type || '', minutes: d.minutes || 10, notes: d.notes || '' }; return ok(d.id ? await supabase.from('drills').update(row).eq('id', d.id).select().single() : await supabase.from('drills').insert(row).select().single()); },
   async deleteDrill(id) { ok(await supabase.from('drills').delete().eq('id', id)); },
 
+  /* ---------- playbook ---------- */
+  async listPlays(teamId) { return ok(await supabase.from('plays').select('*').eq('team_id', teamId).order('category').order('sort_order').order('name')); },
+  async savePlay(teamId, p) {
+    const row = { team_id: teamId, name: p.name, category: p.category || 'sets', call: p.call || '', notes: p.notes || '', locked: !!p.locked, frames: p.frames || [], sort_order: p.sort_order || 0 };
+    return ok(p.id ? await supabase.from('plays').update(row).eq('id', p.id).select().single() : await supabase.from('plays').insert(row).select().single());
+  },
+  async deletePlay(id) { ok(await supabase.from('plays').delete().eq('id', id)); },
+
   /* ---------- data center ---------- */
   async listDatasets(teamId) { return ok(await supabase.from('datasets').select('*').eq('team_id', teamId).order('recorded_on', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false })); },
   async saveDataset(teamId, d) {
