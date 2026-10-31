@@ -34,7 +34,8 @@ export default function Roster() {
   const hockey = t.sport === 'hockey';
   const save = async (list, msg) => { try { await H.api.savePlayers(t.id, list); if (msg) H.toast(msg); } catch (e) { H.toast('Could not save. ' + e.message); } load(); };
   const edit = (p) => H.isCoach && H.openDialog((c) => <PlayerDialog p={p} photoUrl={p && photos[p.photo]} sport={t.sport} close={c} onSave={(x) => save([x])}
-    onDelete={async () => { try { await H.api.deletePlayer(p.id); } catch (e) { H.toast(e.message); } load(); }} />);
+    onDelete={async () => { try { await H.api.deletePlayer(p.id); } catch (e) { H.toast(e.message); } load(); }}
+    onMove={async (to) => { try { await H.api.movePlayer(p.id, to.id); H.toast(`${p.name} moved to ${to.name}`); } catch (e) { H.toast('Could not move. ' + e.message); } load(); H.reloadTeam(); }} />);
   const acts = H.isCoach && <>
     <button className="btn" onClick={() => H.openDialog((c) => <ImportDialog current={players || []} close={c} onSave={(list, msg) => save(list, msg)} />)}><Icon n="refresh" /> Import: file, paste or web</button>
     <button className="btn primary" onClick={() => edit(null)}><Icon n="plus" /> Player</button></>;
@@ -64,8 +65,16 @@ export default function Roster() {
   </>;
 }
 
-function PlayerDialog({ p, photoUrl, sport, close, onSave, onDelete }) {
+function PlayerDialog({ p, photoUrl, sport, close, onSave, onDelete, onMove }) {
   const H = useHub();
+  // teams this coach can move the player to: ones they can edit, other than this one
+  const targets = H.teamList.filter((x) => x.id !== H.teamId && ['admin', 'coach'].includes(H.roleOf(x)));
+  const [moveTo, setMoveTo] = useState('');
+  const move = async () => {
+    const to = targets.find((x) => x.id === moveTo); if (!to) return;
+    close();
+    if (await H.confirm(`Move ${p.name}?`, `${p.name} moves to ${to.name} with their injuries, and comes out of ${H.team.name}'s lines. Their test results stay with ${H.team.name}.`, 'Move')) onMove(to);
+  };
   const [pic, setPic] = useState(photoUrl || null), [upl, setUpl] = useState(false);
   const pickPhoto = async (e) => {
     const file = e.target.files[0]; e.target.value = ''; if (!file) return;
@@ -98,6 +107,10 @@ function PlayerDialog({ p, photoUrl, sport, close, onSave, onDelete }) {
       <label className="field"><span>Weight</span><input className="input" maxLength={12} value={f.weight} onChange={set('weight')} placeholder="175" /></label>
       <label className="field ro-wide"><span>Hometown</span><input className="input" maxLength={80} value={f.hometown} onChange={set('hometown')} /></label>
       {p && <label className="ro-wide" style={{ display: 'flex', gap: 8, alignItems: 'center' }}><input type="checkbox" className="cb" checked={f.active === false} onChange={(e) => setF({ ...f, active: !e.target.checked })} /> No longer on the team (keeps them under former players)</label>}
+      {p && targets.length > 0 && <div className="field ro-wide ro-move"><span>Move to another team</span>
+        <div className="todo-add"><select className="select" value={moveTo} onChange={(e) => setMoveTo(e.target.value)} aria-label="Team to move to">
+          <option value="">Choose a team…</option>{targets.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select>
+          <button type="button" className="btn" disabled={!moveTo} onClick={move}>Move</button></div></div>}
       <button type="submit" hidden />
     </form>
   </Modal>;

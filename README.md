@@ -126,6 +126,10 @@ The formula is in `src/lib/testing.js`.
 a date. TeamHub doesn't calculate anything from it. Admins and coaches see every table;
 viewers only see tables marked **Shared**. Player names in a table link to the roster.
 
+**Moving a player to another team:** Roster → click the player → **Move to another team**. You
+need coach or admin access to both teams. Their injuries go with them; they come out of the
+old team's lines and gym-group moves; their test results stay with the old team's sessions.
+
 **Roster:** add players by hand or **Import CSV / PDF**. The file is read in the browser and
 shown for review before anything is saved; players are matched by name, so re-importing
 updates numbers and positions instead of duplicating. PDFs need selectable text (not a scan).

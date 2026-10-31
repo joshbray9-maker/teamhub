@@ -145,6 +145,8 @@ export const api = {
     return saveRows('players', players.map((p) => ({ id: p.id, team_id: teamId, num: p.num || '', name: p.name, position: p.position || '', shoots: p.shoots || '', year: p.year || '', height: p.height || '', weight: p.weight || '', hometown: p.hometown || '', active: p.active !== false, source: p.source || 'manual', ...(p.photo !== undefined ? { photo: p.photo } : {}) })));
   },
   async deletePlayer(id) { ok(await supabase.from('players').delete().eq('id', id)); },
+  /** Moves a player (with their injuries) to another team; see the move_player() function. */
+  async movePlayer(id, teamId) { ok(await supabase.rpc('move_player', { p_player: id, p_team: teamId })); },
   /** Stores a player photo in the private bucket; returns its path (saved on the player). */
   async uploadPlayerPhoto(teamId, blob) {
     const path = `${teamId}/p-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;

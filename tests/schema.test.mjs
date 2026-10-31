@@ -184,6 +184,22 @@ test('migration + seed load, and access follows memberships', async () => {
   await assert.rejects(as(db, U.coach, `insert into test_results (session_id, player_id, team_id) values ($1, $2, $3)`, [ts.id, uniPlayer, bcsTeam]));
   await assert.rejects(as(db, U.coach, `insert into test_sessions (team_id, tested_on, battery) values ($1, '2026-11-02', 'other')`, [bcsTeam]));
 
+  // moving a player: needs edit access to both teams; injuries follow, old lines are cleared
+  const bcsU16 = (await db.query(`select id from teams where legacy_id='t_bcs_u16'`)).rows[0].id;
+  const [mp] = await as(db, U.coach, `insert into players (team_id, name) values ($1, 'Mover Test') returning id`, [bcsTeam]);
+  await as(db, U.coach, `insert into injuries (team_id, player_id, status) values ($1, $2, 'limited')`, [bcsTeam, mp.id]);
+  await as(db, U.coach, `insert into lineups (team_id, key, slots) values ($1, 'default', $2) on conflict (team_id, key) do update set slots = excluded.slots`, [bcsTeam, JSON.stringify({ F1C: { pid: mp.id, name: 'Mover Test' }, F1LW: { name: 'Typed' } })]);
+  await assert.rejects(as(db, U.viewer, 'select move_player($1, $2)', [mp.id, bcsU16]));
+  await assert.rejects(as(db, U.coach, 'select move_player($1, $2)', [mp.id, uniTeam]), /both teams/);
+  await as(db, U.coach, 'select move_player($1, $2)', [mp.id, bcsU16]);
+  assert.equal((await db.query('select team_id from players where id=$1', [mp.id])).rows[0].team_id, bcsU16);
+  assert.equal((await db.query('select team_id from injuries where player_id=$1', [mp.id])).rows[0].team_id, bcsU16);
+  assert.deepEqual(Object.keys((await db.query(`select slots from lineups where team_id=$1 and key='default'`, [bcsTeam])).rows[0].slots), ['F1LW']);
+  // an admin of both organizations can move across them
+  await as(db, U.josh, 'select move_player($1, $2)', [mp.id, uniTeam]);
+  assert.equal((await db.query('select team_id from players where id=$1', [mp.id])).rows[0].team_id, uniTeam);
+  await db.query(`delete from lineups where team_id=$1`, [bcsTeam]);
+
   // game day lines: coaches write (default + their own team's games), viewers read only
   const bcsGame = (await db.query('select id from games where team_id=$1 limit 1', [bcsTeam])).rows[0].id;
   const uniGame = (await db.query('select id from games where team_id=$1 limit 1', [uniTeam])).rows[0].id;

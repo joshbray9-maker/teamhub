@@ -111,6 +111,18 @@ export const api = {
   async photoUrls(paths) { return Object.fromEntries(paths.filter(Boolean).map((p) => [p, p])); },
   async saveInjuries(teamId, list) { const l = (D(teamId).injuries = D(teamId).injuries || []); const r = upsert(l, list.map((i) => ({ team_id: teamId, updated_at: new Date().toISOString(), ...i })), 'i'); save(); return clone(r); },
   async deleteInjury(id) { Object.values(db.data).forEach((d) => { d.injuries = (d.injuries || []).filter((i) => i.id !== id); }); save(); },
+  async movePlayer(id, teamId) {
+    await load(); let p = null, from = null;
+    Object.entries(db.data).forEach(([tid, d]) => { const i = (d.players || []).findIndex((x) => x.id === id); if (i >= 0) { p = d.players.splice(i, 1)[0]; from = tid; } });
+    if (!p || from === teamId) return;
+    const to = D(teamId); (to.players = to.players || []).push(p);
+    const fd = db.data[from];
+    to.injuries = [...(to.injuries || []), ...(fd.injuries || []).filter((x) => x.player_id === id).map((x) => ({ ...x, team_id: teamId }))];
+    fd.injuries = (fd.injuries || []).filter((x) => x.player_id !== id);
+    Object.values(fd.lineups || {}).forEach((l) => Object.keys(l.slots).forEach((k) => { if (l.slots[k].pid === id) delete l.slots[k]; }));
+    if (fd.gym) delete fd.gym.overrides[id];
+    save();
+  },
   async deletePlayer(id) { Object.values(db.data).forEach((d) => { d.players = (d.players || []).filter((p) => p.id !== id); }); save(); },
   async listLineups(teamId) { await load(); return clone(D(teamId).lineups || {}); },
   async saveLineup(teamId, key, slots, opponent = '') { (D(teamId).lineups = D(teamId).lineups || {})[key] = { slots: clone(slots), opponent, updatedAt: Date.now() }; save(); },
