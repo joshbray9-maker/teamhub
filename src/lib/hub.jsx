@@ -90,6 +90,7 @@ export function HubProvider({ api, user, children }) {
   const menuAvailable = useCallback((m, t = team) => {
     const r = roleOf(t); const coach = r === 'admin' || r === 'coach';
     if (m.coach && !coach) return false;
+    if (m.admin && r !== 'admin') return false;
     if (m.sports && !(t && m.sports.includes(t.sport))) return false;
     return true;
   }, [team, orgs]); // eslint-disable-line react-hooks/exhaustive-deps

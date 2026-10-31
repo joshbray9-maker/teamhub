@@ -11,6 +11,8 @@ import CoachReport from './pages/CoachReport.jsx';
 import DataCenter from './pages/DataCenter.jsx';
 import Practice from './pages/Practice.jsx';
 import Playbook from './pages/Playbook.jsx';
+import Stats from './pages/Stats.jsx';
+import Spectators from './pages/Spectators.jsx';
 import InjuredCard from './components/InjuredCard.jsx';
 import OrgSchedule from './pages/OrgSchedule.jsx';
 import PageHead from './components/PageHead.jsx';
@@ -54,6 +56,8 @@ function Page() {
   if (H.page === 'data') return <DataCenter key={t.id} />;
   if (H.page === 'practice') return <Practice key={t.id} />;
   if (H.page === 'playbook') return <Playbook key={t.id} />;
+  if (H.page === 'stats') return <Stats key={t.id} />;
+  if (H.page === 'spectators') return <Spectators key={t.id} />;
   const m = MENUS.find((x) => x.id === H.page) || MENUS[0];
   return <>
     <PageHead title={menuLabel(m, t)} />

@@ -85,3 +85,15 @@ test('hockey playbook: rink formation, shots move the puck, sizes scale with the
   assert.equal(nextFrame(f, 1).players.find((p) => p.label === 'LD').x, ld.x); // not on a court-sized radius
   assert.equal(categoriesFor('hockey')[0][1], 'Breakouts'); assert.equal(lineKindsFor('hockey')[3][1], 'Shot');
 });
+
+test('game stats: season totals, games played, derived points and save %', async () => {
+  const { seasonTotals, statOf } = await import('../src/lib/stats.js');
+  const r = (p, game, stats) => ({ player_id: p, name: 'P' + p, num: '', game_id: game, stats });
+  const h = seasonTotals([r('a', 1, { g: 1, a: 1 }), r('a', 2, { g: 2, pim: 2 }), r('b', 1, { a: 1 }), r('g', 1, { sa: 30, ga: 2 }), r('g', 2, { sa: 20, ga: 3 }), r('c', 2, {})], 'hockey');
+  const by = Object.fromEntries(h.map((p) => [p.player_id, p]));
+  assert.deepEqual([by.a.gp, by.a.tot.g, statOf(by.a, 'pts'), by.a.tot.pim], [2, 3, 4, 2]);
+  assert.equal(statOf(by.g, 'svp'), '.900'); assert.equal(by.c.gp, 0);
+  const rg = seasonTotals([r('x', 1, { t: 2, c: 1, pg: 1 })], 'rugby');
+  assert.equal(statOf(rg[0], 'pts'), 15);
+  assert.equal(seasonTotals([r('y', 1, { pts: 12, reb: 5 })], 'basketball')[0].tot.pts, 12);
+});

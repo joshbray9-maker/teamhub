@@ -103,6 +103,20 @@ export const api = {
   async listPlays(teamId) { await load(); return clone(D(teamId).plays || []); },
   async savePlay(teamId, p) { const l = (D(teamId).plays = D(teamId).plays || []); const [r] = upsert(l, [{ team_id: teamId, ...clone(p) }], 'pl'); save(); return clone(r); },
   async deletePlay(id) { Object.values(db.data).forEach((d) => { d.plays = (d.plays || []).filter((x) => x.id !== id); }); save(); },
+  async listGameStats(teamId) { await load(); return clone(D(teamId).gameStats || []); },
+  async saveGameStats(teamId, gameId, rows) { const d = D(teamId); d.gameStats = (d.gameStats || []).filter((r) => !(r.game_id === gameId && rows.some((x) => x.player_id === r.player_id))); rows.filter((r) => Object.keys(r.stats).length).forEach((r) => d.gameStats.push({ game_id: gameId, player_id: r.player_id, stats: clone(r.stats) })); save(); },
+  async listSpectatorLinks(orgId) { await load(); return clone((db.links || []).filter((l) => l.org_id === orgId)); },
+  async saveSpectatorLink(orgId, l) { db.links = db.links || []; const [r] = upsert(db.links, [{ org_id: orgId, token: l.token || uid() + uid() + uid(), created_at: new Date().toISOString(), ...clone(l), team_ids: l.team_ids && l.team_ids.length ? l.team_ids : null }], 'sl'); save(); return clone(r); },
+  async deleteSpectatorLink(id) { db.links = (db.links || []).filter((l) => l.id !== id); save(); },
+  async spectatorView(token) {
+    await load(); const l = (db.links || []).find((x) => x.token === token && !x.revoked); if (!l) return null;
+    const o = db.orgs.find((x) => x.id === l.org_id); const ts = db.teams.filter((t) => t.org_id === o.id && (!l.team_ids || l.team_ids.includes(t.id)));
+    const players = Object.fromEntries(ts.flatMap((t) => (D(t.id).players || []).filter((p) => p.active !== false).map((p) => [p.id, p])));
+    return clone({ label: l.label, org: { name: o.name, slug: o.slug, logo_url: o.logo_url }, teams: ts.map((t) => ({ id: t.id, name: t.name, school: t.school, sport: t.sport, color: t.color, logo_url: t.logo || o.logo_url, sort_order: t.sort_order })),
+      games: ts.flatMap((t) => D(t.id).games.map((g) => ({ ...g, team_id: t.id, home_score: g.hs, away_score: g.as }))), events: ts.flatMap((t) => D(t.id).events.map((e) => ({ ...e, team_id: t.id }))),
+      standings: ts.map((t) => ({ team_id: t.id, groups: D(t.id).groups || [] })),
+      stats: l.show_stats ? ts.flatMap((t) => (D(t.id).gameStats || []).filter((r) => players[r.player_id]).map((r) => ({ team_id: t.id, game_id: r.game_id, player_id: r.player_id, name: players[r.player_id].name, num: players[r.player_id].num, position: players[r.player_id].position, stats: r.stats }))) : null });
+  },
   async listDatasets(teamId) { await load(); return clone(D(teamId).datasets || []); },
   async saveDataset(teamId, d) { const l = (D(teamId).datasets = D(teamId).datasets || []); const [r] = upsert(l, [{ team_id: teamId, created_at: new Date().toISOString(), ...clone(d) }], 'ds'); save(); return clone(r); },
   async deleteDataset(id) { Object.values(db.data).forEach((d) => { d.datasets = (d.datasets || []).filter((x) => x.id !== id); }); save(); },

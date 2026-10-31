@@ -31,6 +31,8 @@ organization can read them; coaches edit. Injuries live in their own staff-only 
 | `supabase/migrations/…_practice.sql` | Practice plans and drill library (staff only) |
 | `supabase/migrations/…_playbook*.sql` | Plays (padlock = coaches only), court / rink surface |
 | `src/components/PlayDiagram.jsx`, `src/lib/playbook.js` | Court, play diagrams, steps |
+| `supabase/migrations/…_stats_spectators.sql` | Game stats, spectator links, `spectator_view()` |
+| `src/lib/stats.js` | Stat columns per sport, season totals |
 | `src/lib/practice.js` | Block types per sport, clock times, practice CSV |
 | `src/lib/imports.js` | S&C, Lines and Data Center imports, blank templates |
 | `src/lib/injury.js` | Injury statuses, return countdowns, body regions, injury CSV/PDF import |
@@ -146,6 +148,16 @@ plays it. Categories (sets, quick hitters, BLOB/SLOB, press break, zone, defense
 and notes. Everyone on the team sees unlocked plays; the **padlock** keeps a play to coaches and
 admins (enforced in the database). **Playcalling sheet** prints every play by category with its
 diagram and call.
+
+**Stats:** player game stats. Coaches enter them per game in a spreadsheet grid (type or paste);
+everyone on the team sees the season leaderboard (sortable; hockey adds points and save %, rugby
+points). Columns per sport live in `src/lib/stats.js`.
+
+**Spectators (organization admins):** links for parents and fans. Each link covers every team
+in the organization or chosen teams and shows the calendar, next game, results and standings;
+player stats only when ticked for that link. Anyone with the link can open it without signing
+in (`/s/<code>`, a 64-character random code); **Revoke** switches it off at once. Nothing about
+injuries, testing, notes, lines or plays is ever included (enforced by `spectator_view()`).
 
 **Practice plan (admins and coaches only):** build a practice block by block: minutes, type
 (sport-specific, e.g. basketball: warm-up, ball handling, shooting, offense, defense,

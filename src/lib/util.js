@@ -15,10 +15,12 @@ export const MENUS = [
   { id: 'gameday', label: 'Game day', icon: 'pitch', sports: ['soccer', 'rugby', 'hockey'] },
   { id: 'playbook', label: 'Playbook', icon: 'book', sports: ['football', 'basketball', 'hockey'] },
   { id: 'roster', label: 'Roster', icon: 'users' },
+  { id: 'stats', label: 'Stats', icon: 'chart' },
   { id: 'data', label: 'Data Center', icon: 'chart' },
   { id: 'injury', label: 'Injury report', icon: 'cross', coach: true },
   { id: 'sc', label: 'S&C', icon: 'dumbbell' },
   { id: 'recruit', label: 'Recruitment', icon: 'search', coach: true },
+  { id: 'spectators', label: 'Spectators', icon: 'ext', admin: true },
   { id: 'profile', label: 'My Profile', icon: 'user' },
 ];
 export const SISTER = { gameday: 'playbook', playbook: 'gameday' };

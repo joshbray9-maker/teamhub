@@ -255,6 +255,29 @@ test('migration + seed load, and access follows memberships', async () => {
   await as(db, U.viewer, `update plays set name = 'changed' where name = 'Horns'`);
   assert.equal((await db.query(`select count(*)::int c from plays where name = 'Horns'`)).rows[0].c, 1);
 
+  // game stats: team reads, coaches write (only their team's games and players)
+  const g1 = (await db.query('select id from games where team_id=$1 limit 1', [bcsTeam])).rows[0].id;
+  await as(db, U.coach, `insert into game_stats (game_id, player_id, team_id, stats) values ($1, $2, $3, '{"g": 2}')`, [g1, pa.id, bcsTeam]);
+  assert.equal((await as(db, U.viewer, 'select count(*)::int c from game_stats'))[0].c, 1);
+  await assert.rejects(as(db, U.viewer, `insert into game_stats (game_id, player_id, team_id) values ($1, $2, $3)`, [g1, pa.id, bcsTeam]));
+  await assert.rejects(as(db, U.coach, `insert into game_stats (game_id, player_id, team_id) values ($1, $2, $3)`, [g1, uniPlayer, bcsTeam]));
+  // spectator links: admins only; the public sees chosen teams, stats only when ticked, nothing once revoked
+  await assert.rejects(as(db, U.coach, `insert into spectator_links (org_id, label) values ($1, 'x')`, [bcs]));
+  const [sl] = await as(db, U.josh, `insert into spectator_links (org_id, label, team_ids) values ($1, 'Parents', $2) returning token`, [bcs, [bcsTeam]]);
+  assert.equal(sl.token.length, 64);
+  let v = (await as(db, null, 'select spectator_view($1) v', [sl.token]))[0].v;
+  assert.deepEqual(v.teams.map((x) => x.id), [bcsTeam]); assert.ok(v.games.length > 0); assert.equal(v.stats, null);
+  assert.ok(v.games.every((x) => x.team_id === bcsTeam)); assert.ok(!JSON.stringify(v).includes('injur'));
+  await as(db, U.josh, `update spectator_links set show_stats = true where token = $1`, [sl.token]);
+  v = (await as(db, null, 'select spectator_view($1) v', [sl.token]))[0].v;
+  assert.equal(v.stats.length, 1); assert.equal(v.stats[0].stats.g, 2);
+  await as(db, U.josh, `update spectator_links set team_ids = null where token = $1`, [sl.token]);
+  assert.equal((await as(db, null, 'select spectator_view($1) v', [sl.token]))[0].v.teams.length, (await db.query('select count(*)::int c from teams where org_id=$1', [bcs])).rows[0].c);
+  await as(db, U.josh, `update spectator_links set revoked = true where token = $1`, [sl.token]);
+  assert.equal((await as(db, null, 'select spectator_view($1) v', [sl.token]))[0].v, null);
+  assert.equal((await as(db, null, `select spectator_view('nope') v`))[0].v, null);
+  assert.equal((await as(db, U.viewer, 'select count(*)::int c from spectator_links'))[0].c, 0);
+
   // game day lines: coaches write (default + their own team's games), viewers read only
   const bcsGame = (await db.query('select id from games where team_id=$1 limit 1', [bcsTeam])).rows[0].id;
   const uniGame = (await db.query('select id from games where team_id=$1 limit 1', [uniTeam])).rows[0].id;

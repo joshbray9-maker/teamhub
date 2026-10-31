@@ -225,6 +225,25 @@ export const api = {
   },
   async deletePlay(id) { ok(await supabase.from('plays').delete().eq('id', id)); },
 
+  /* ---------- game stats ---------- */
+  async listGameStats(teamId) { return ok(await supabase.from('game_stats').select('game_id, player_id, stats').eq('team_id', teamId)); },
+  /** rows: [{player_id, stats}] for one game; a row with no stats removes it. */
+  async saveGameStats(teamId, gameId, rows) {
+    const keep = rows.filter((r) => Object.keys(r.stats).length), drop = rows.filter((r) => !Object.keys(r.stats).length).map((r) => r.player_id);
+    if (keep.length) ok(await supabase.from('game_stats').upsert(keep.map((r) => ({ game_id: gameId, player_id: r.player_id, team_id: teamId, stats: r.stats, updated_at: new Date().toISOString() }))));
+    if (drop.length) ok(await supabase.from('game_stats').delete().eq('game_id', gameId).in('player_id', drop));
+  },
+
+  /* ---------- spectator links (org admins) ---------- */
+  async listSpectatorLinks(orgId) { return ok(await supabase.from('spectator_links').select('*').eq('org_id', orgId).order('created_at', { ascending: false })); },
+  async saveSpectatorLink(orgId, l) {
+    const row = { org_id: orgId, label: l.label || '', team_ids: l.team_ids && l.team_ids.length ? l.team_ids : null, show_stats: !!l.show_stats, revoked: !!l.revoked };
+    return ok(l.id ? await supabase.from('spectator_links').update(row).eq('id', l.id).select().single() : await supabase.from('spectator_links').insert(row).select().single());
+  },
+  async deleteSpectatorLink(id) { ok(await supabase.from('spectator_links').delete().eq('id', id)); },
+  /** Public (no sign-in): what a spectator link shows, or null. */
+  async spectatorView(token) { return ok(await supabase.rpc('spectator_view', { p_token: token })); },
+
   /* ---------- data center ---------- */
   async listDatasets(teamId) { return ok(await supabase.from('datasets').select('*').eq('team_id', teamId).order('recorded_on', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false })); },
   async saveDataset(teamId, d) {

@@ -775,6 +775,25 @@ span.gd-row{cursor:default}
 .pb-mini{border-radius:4px;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .pb-call{font-weight:700;color:var(--team)}
 @media (max-width:1000px){.pb-grid{grid-template-columns:minmax(0,1fr)}.pb-meta{grid-template-columns:1fr 1fr}}
+/* ---------- stats + spectators ---------- */
+.st-pick{width:auto;max-width:min(360px,100%)}
+.st-tbl th.click{cursor:pointer;user-select:none;white-space:nowrap} .st-tbl th.on,.st-tbl td.on{color:var(--accent-text);font-weight:700}
+.sp-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.sp-list li{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.sp-list li.off{opacity:.6}
+.sp-main{display:flex;flex-direction:column;gap:3px;min-width:0}
+.sp-main b+.pill,.sp-main .pill{margin-left:6px}
+.sp-url{overflow-wrap:anywhere;color:var(--accent-text)}
+.sp-acts{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.spx{display:flex;flex-direction:column;gap:16px;max-width:1200px;margin:0 auto;padding:20px 16px 40px}
+.spx-head{display:flex;gap:14px;align-items:center}
+.spx-head h1{font:700 30px/1 var(--f-display);margin:0}
+.spx-next{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.spx-team{display:flex;flex-direction:column;gap:14px}
+.spx-tn{display:flex;align-items:center;gap:10px;font:700 22px var(--f-display);margin:8px 0 0}
+.spx-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:14px;align-items:start}
+.spx-foot{text-align:center}
+@media (max-width:900px){.spx-grid{grid-template-columns:minmax(0,1fr)}}
 /* ---------- weekly snapshot ---------- */
 .ws{display:flex;flex-direction:column;gap:16px}
 .ws-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}

@@ -6,6 +6,7 @@ import { HubProvider } from './lib/hub.jsx';
 import App from './App.jsx';
 import Login from './pages/Login.jsx';
 import PublicSchedule from './pages/PublicSchedule.jsx';
+import PublicSpectator from './pages/PublicSpectator.jsx';
 import './styles.css';
 
 function NotConfigured() {
@@ -24,6 +25,7 @@ function Root() {
   }, [api]);
   return <Routes>
     <Route path="/schedule/:org" element={api || backendMode === 'none' ? <PublicSchedule api={api} /> : null} />
+    <Route path="/s/:token" element={api || backendMode === 'none' ? <PublicSpectator api={api} /> : null} />
     <Route path="/reset" element={api ? <Login api={api} mode="reset" /> : null} />
     <Route path="*" element={backendMode === 'none' ? <NotConfigured /> : user === undefined ? <div className="loading">Loading TeamHub…</div>
       : !user ? <Login api={api} /> : <HubProvider key={user.id} api={api} user={user}><App /></HubProvider>} />
