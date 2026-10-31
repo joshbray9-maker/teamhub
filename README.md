@@ -22,6 +22,8 @@ organization can read them; coaches edit. Injuries live in their own staff-only 
 | `supabase/migrations/…_roster.sql` | Team rosters |
 | `src/lib/rosterImport.js` | Reads roster CSV / PDF files (in the browser) |
 | `supabase/migrations/…_injuries.sql` | Injury report (staff only) and private player photos |
+| `supabase/migrations/…_datasets.sql` | Data Center tables |
+| `src/lib/imports.js` | S&C, Lines and Data Center imports, blank templates |
 | `src/lib/injury.js` | Injury statuses, return countdowns, body regions, injury CSV/PDF import |
 | `supabase/functions/league-sync/` | Edge Function for the daily league sync |
 | `supabase/functions/roster-import/` | Edge Function that reads a public roster page's tables |
@@ -77,6 +79,22 @@ link never see injuries or the flags. Give sports-med staff the **coach** role.
 limited / available, live from the Injury report), every active limitation, and a print /
 PDF button. **Team readiness** is a placeholder: it will come from weekly testing metrics
 once those are set up, and its scoring rules haven't been decided, so nothing is estimated.
+
+**Imports at a glance:** every tab that holds team data has an **Import CSV / PDF** button
+(PDFs need selectable text and a row of column headings). Each one shows what it read before
+anything is saved, and most offer a **Download blank template**:
+
+| Tab | What it reads |
+|---|---|
+| Roster | Number, Name, Position, Shoots, Year, Height, Weight, Hometown, or a roster web page |
+| Injury report | Player / Number, Injury, Area, Side, Status, dates, Limitations, Notes |
+| Game day / Lines | Line, Position, Number, Player (or a grid: Line, LW, C, RW...) |
+| S&C | Date, Theme, Intensity, Note, Phase, Week |
+| Data Center | Any table, kept as uploaded (testing results, stats) |
+
+**Data Center:** upload any CSV / PDF table as its own named table (Testing, Stats, Other) with
+a date. TeamHub doesn't calculate anything from it. Admins and coaches see every table;
+viewers only see tables marked **Shared**. Player names in a table link to the roster.
 
 **Roster:** add players by hand or **Import CSV / PDF**. The file is read in the browser and
 shown for review before anything is saved; players are matched by name, so re-importing
@@ -218,6 +236,6 @@ check the access rules (coach vs viewer vs outsider vs public link).
 ## Not built yet
 
 Same placeholders as the artifact: League, Opponents, Practice plan, Game day (non-hockey),
-Playbook, Data Center, Recruitment, My Profile, S&C Gym groups and
+Playbook, Recruitment, My Profile, S&C Gym groups and
 Tests. Workload load units and the acute:chronic band are **placeholder values**, editable
 per team. They're not a validated scale.

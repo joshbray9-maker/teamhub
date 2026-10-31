@@ -8,15 +8,18 @@ import Modal from '../components/Modal.jsx';
 import Icon from '../components/Icon.jsx';
 import Table from '../components/Table.jsx';
 import InjuredCard from '../components/InjuredCard.jsx';
+import { rowsToSc, scField, SC_TEMPLATE, downloadCsv } from '../lib/imports.js';
+import { readRows } from '../lib/readRows.js';
 
 const cap = (k) => k[0].toUpperCase() + k.slice(1);
 export function IBadge({ k }) { const i = INT.find((x) => x.k === (k || '')) || INT[0]; return <span className={`ibadge i-${i.k || 'none'}`} aria-hidden="true">{i.short}</span>; }
 const Legend = () => <div className="sc-legend">{INT.slice(1).map((i) => <span key={i.k} className="ichip"><IBadge k={i.k} />{i.label}</span>)}<span className="ichip"><IBadge k="" />Unrated</span></div>;
 
 export default function SC() {
+  const H = useHub();
   const [tab, setTab] = useState('cal');
   return <>
-    <PageHead title="S&C" />
+    <PageHead title="S&C" actions={H.isCoach && <button className="btn" onClick={() => H.openDialog((c) => <ScImport close={c} />)}><Icon n="refresh" /> Import CSV / PDF</button>} />
     <InjuredCard />
     <div className="seg" role="tablist">{[['cal', 'Calendar'], ['load', 'Workload'], ['gym', 'Gym groups'], ['tests', 'Tests']].map(([k, l]) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
     {tab === 'cal' ? <ScCalendar /> : tab === 'load' ? <Workload /> : <section className="card"><div className="card-head"><h2>{tab === 'gym' ? 'Gym groups' : 'Tests'}</h2><span className="pill">Not built yet</span></div><p className="muted small" style={{ margin: 0 }}>Coming in a later step.</p></section>}
@@ -178,4 +181,43 @@ function LineChart({ weeks, get, max: m, band, fmt, label }) {
     <YGrid H={H} max={max} ticks={nt.ticks} fmt={fmt} /><line x1={CH.L} x2={CH.W - CH.R} y1={CH.T + ph} y2={CH.T + ph} className="base" /><path d={path} className="ln" />
     {last && <><circle cx={last[0]} cy={last[1]} r="4.5" className="dot" /><text x={Math.min(last[0] + 8, CH.W - CH.R - 2)} y={last[1] - 8} className="lab" textAnchor={last[0] > CH.W - 80 ? 'end' : 'start'}>{fmt(last[2])}</text></>}
     <XAxis weeks={weeks} H={H} /></svg>;
+}
+
+/* S&C plan import: a CSV or PDF table with a Date column plus Theme, Intensity, Note, Phase,
+   Week. Days in the file replace those days; everything else in the plan is kept. */
+function ScImport({ close }) {
+  const H = useHub();
+  const [res, setRes] = useState(null), [busy, setBusy] = useState(false);
+  const pick = async (e) => {
+    const file = e.target.files[0]; e.target.value = ''; if (!file) return;
+    setBusy(true); setRes(null);
+    try {
+      const r = rowsToSc(await readRows(file, scField));
+      const dates = Object.keys(r.days).sort();
+      if (!dates.length && !Object.keys(r.weeks).length) throw new Error('No dated sessions found in the file.');
+      const cur = H.tdata.sc.days || {};
+      setRes({ ...r, file: file.name, dates, replaced: dates.filter((d) => cur[d]).length });
+    } catch (err) { H.toast(err.message); }
+    finally { setBusy(false); }
+  };
+  const go = () => {
+    close();
+    H.save((api) => api.saveScBulk(H.teamId, res.days, res.weeks), { reload: true }).then(() => H.toast(`S&C plan updated: ${res.dates.length} days`)).catch(() => {});
+  };
+  return <Modal title="Import S&C plan" wide onClose={close}
+    actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" disabled={!res} onClick={go}>Import</button></>}>
+    <p className="muted small" style={{ margin: 0 }}>A CSV, or a PDF with selectable text, laid out as a table: one row per day with <b>Date</b> and any of <b>Theme</b>, <b>Intensity</b> (off, light, moderate, heavy, game), <b>Note</b>, <b>Phase</b>, <b>Week</b>. Days in the file replace those days in the plan; other days stay as they are. A colour-coded calendar PDF can't be read this way: export it as a table or use the template.</p>
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <label className="btn"><Icon n="plus" /> {busy ? 'Reading…' : res ? 'Choose another file' : 'Choose CSV or PDF'}<input type="file" accept=".csv,.txt,.pdf,text/csv,application/pdf" hidden onChange={pick} /></label>
+      <button className="btn ghost" onClick={() => downloadCsv('s&c-plan-template.csv', SC_TEMPLATE)}>Download blank template</button>
+    </div>
+    {res && <>
+      <div className="small"><b>{res.file}</b>: {res.dates.length} days{res.dates.length ? ` from ${fmtDate(res.dates[0])} to ${fmtDate(res.dates[res.dates.length - 1])}` : ''}{res.replaced ? `, ${res.replaced} already in the plan (will be replaced)` : ''}, {Object.keys(res.weeks).length} week labels{res.skipped ? `, ${res.skipped} rows without a readable date skipped` : ''}.</div>
+      {res.unknown.length > 0 && <div className="hint">Intensity not recognised, left unrated: {res.unknown.join(', ')}</div>}
+      <div className="tbl-wrap" style={{ maxHeight: 300, overflow: 'auto' }}><table className="tbl">
+        <thead><tr><th>Date</th><th>Theme</th><th>Intensity</th><th>Note</th></tr></thead>
+        <tbody>{res.dates.map((d) => { const x = res.days[d]; return <tr key={d}><td>{fmtDate(d)}</td><td>{x.theme}</td><td><span className="ichip"><IBadge k={x.intensity} />{(INT.find((i) => i.k === x.intensity) || INT[0]).label}</span></td><td>{x.note || ''}</td></tr>; })}</tbody>
+      </table></div>
+    </>}
+  </Modal>;
 }

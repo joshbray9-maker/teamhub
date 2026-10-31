@@ -104,6 +104,13 @@ export const api = {
     ok(await supabase.from('sc_weeks').delete().eq('team_id', teamId).eq('week_start', mk));
     ok(await supabase.from('sc_days').delete().eq('team_id', teamId).gte('date', mk).lte('date', lastDay));
   },
+  /** Imported S&C plan: upserts the given days and weeks, leaves the rest alone. */
+  async saveScBulk(teamId, days, weeks) {
+    const d = Object.entries(days).map(([date, x]) => ({ team_id: teamId, date, theme: x.theme || '', intensity: x.intensity || '', note: x.note || '', pdf_color: null }));
+    const w = Object.entries(weeks).map(([mk, x]) => ({ team_id: teamId, week_start: mk, phase: x.phase || '', season_week: x.week || '' }));
+    if (d.length) ok(await supabase.from('sc_days').upsert(d));
+    if (w.length) ok(await supabase.from('sc_weeks').upsert(w));
+  },
   async saveSetting(teamId, key, value) { ok(await supabase.from('settings').upsert({ team_id: teamId, key, value })); },
   async saveCoach(teamId, c) { ok(await supabase.from('coach_notes').upsert({ team_id: teamId, notes: c.notes || '', todos: c.todos || [], updated_at: new Date().toISOString() })); },
 
@@ -174,6 +181,14 @@ export const api = {
     ok(await supabase.from('lineups').upsert({ team_id: teamId, key, game_id: key === 'default' ? null : key, slots, updated_at: new Date().toISOString() }));
   },
   async deleteLineup(teamId, key) { ok(await supabase.from('lineups').delete().eq('team_id', teamId).eq('key', key)); },
+
+  /* ---------- data center ---------- */
+  async listDatasets(teamId) { return ok(await supabase.from('datasets').select('*').eq('team_id', teamId).order('recorded_on', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false })); },
+  async saveDataset(teamId, d) {
+    const row = { team_id: teamId, title: d.title, kind: d.kind, recorded_on: d.recorded_on || null, columns: d.columns, rows: d.rows, shared: !!d.shared, source: d.source || '' };
+    return ok(d.id ? await supabase.from('datasets').update(row).eq('id', d.id).select().single() : await supabase.from('datasets').insert(row).select().single());
+  },
+  async deleteDataset(id) { ok(await supabase.from('datasets').delete().eq('id', id)); },
 
   /* ---------- teams / orgs / members ---------- */
   async saveTeam(t) {

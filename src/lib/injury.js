@@ -95,7 +95,10 @@ export function toISO(s) {
   s = String(s || '').trim(); if (!s) return '';
   let m = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/); if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
   m = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/); if (m) return `${m[3]}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}`;
-  const d = new Date(s + (/\d{4}/.test(s) ? '' : ' ' + new Date().getFullYear())); return isNaN(d) ? '' : d.toISOString().slice(0, 10);
+  // "Nov 4 2026" / "4 November": only when there's a month name and a day number
+  if (!/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/i.test(s) || !/\d/.test(s)) return '';
+  const d = new Date(s + (/\d{4}/.test(s) ? '' : ' ' + new Date().getFullYear()));
+  return isNaN(d) ? '' : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 /** rows[0] = headings. Matches each row to a roster player by number or name.
  *  Returns { injuries: [{...fields, player_id}], unmatched: [names] } */

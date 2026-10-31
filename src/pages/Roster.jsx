@@ -5,6 +5,7 @@ import { useHub } from '../lib/hub.jsx';
 import { parseCsv, rowsToPlayers, pdfItemsToPlayers, tablesToPlayers, planImport } from '../lib/rosterImport.js';
 import { pdfTextItems } from '../lib/pdfText.js';
 import { resizePhoto } from '../lib/photo.js';
+import { downloadCsv } from '../lib/imports.js';
 import PageHead from '../components/PageHead.jsx';
 import Modal from '../components/Modal.jsx';
 import Icon from '../components/Icon.jsx';
@@ -34,7 +35,7 @@ export default function Roster() {
   const edit = (p) => H.isCoach && H.openDialog((c) => <PlayerDialog p={p} photoUrl={p && photos[p.photo]} sport={t.sport} close={c} onSave={(x) => save([x])}
     onDelete={async () => { try { await H.api.deletePlayer(p.id); } catch (e) { H.toast(e.message); } load(); }} />);
   const acts = H.isCoach && <>
-    <button className="btn" onClick={() => H.openDialog((c) => <ImportDialog current={players || []} close={c} onSave={(list, msg) => save(list, msg)} />)}><Icon n="refresh" /> Import</button>
+    <button className="btn" onClick={() => H.openDialog((c) => <ImportDialog current={players || []} close={c} onSave={(list, msg) => save(list, msg)} />)}><Icon n="refresh" /> Import CSV / PDF / web</button>
     <button className="btn primary" onClick={() => edit(null)}><Icon n="plus" /> Player</button></>;
 
   const list = (players || []).filter((p) => p.active !== false).sort(byNumber);
@@ -149,7 +150,8 @@ function ImportDialog({ current, close, onSave }) {
         <span className="muted small">A team or league page that lists the roster in a table (school athletics sites like gaiters.ca). EliteProspects and CSSHL pages can't be read this way: save them as a PDF and use the file option.</span></div>
       <div className="field"><span>From a file</span>
         <label className="btn" style={{ alignSelf: 'flex-start' }}><Icon n="plus" /> {busy ? 'Reading…' : 'Choose CSV or PDF'}<input type="file" accept=".csv,.txt,.pdf,text/csv,application/pdf" hidden onChange={pick} /></label>
-        <span className="muted small">CSV with headings like Number, Name, Position, Shoots, Year, Height, Weight, Hometown, or a PDF with selectable text (not a scan). Read in your browser.</span></div>
+        <span className="muted small">CSV with headings like Number, Name, Position, Shoots, Year, Height, Weight, Hometown, or a PDF with selectable text (not a scan). Read in your browser.</span>
+        <button type="button" className="btn sm ghost" style={{ alignSelf: 'flex-start' }} onClick={() => downloadCsv('roster-template.csv', [['Number', 'Name', 'Position', 'Shoots', 'Year', 'Height', 'Weight', 'Hometown']])}>Download blank template</button></div>
     </div>
     {p && <>
       <div className="small"><b>{res.file}</b>: {p.adds.length} new, {p.updates.length} updated{res.skipped ? `, ${res.skipped} line${res.skipped === 1 ? '' : 's'} skipped (no name)` : ''}. Check the list before importing.</div>

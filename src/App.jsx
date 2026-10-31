@@ -8,6 +8,7 @@ import GameDay from './pages/GameDay.jsx';
 import Roster from './pages/Roster.jsx';
 import Injury from './pages/Injury.jsx';
 import CoachReport from './pages/CoachReport.jsx';
+import DataCenter from './pages/DataCenter.jsx';
 import InjuredCard from './components/InjuredCard.jsx';
 import OrgSchedule from './pages/OrgSchedule.jsx';
 import PageHead from './components/PageHead.jsx';
@@ -48,6 +49,7 @@ function Page() {
   if (H.page === 'roster') return <Roster key={t.id} />;
   if (H.page === 'injury') return <Injury key={t.id} />;
   if (H.page === 'coach') return <CoachReport key={t.id} />;
+  if (H.page === 'data') return <DataCenter key={t.id} />;
   const m = MENUS.find((x) => x.id === H.page) || MENUS[0];
   return <>
     <PageHead title={menuLabel(m, t)} />

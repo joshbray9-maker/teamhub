@@ -1,0 +1,41 @@
+// S&C plan, game-day lines and Data Center imports, on made-up data.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { parseCsv } from '../src/lib/rosterImport.js';
+import { rowsToSc, rowsToSlots, tidyTable, LINES_TEMPLATE } from '../src/lib/imports.js';
+
+test('S&C: dates, intensities (words, letters, colours), notes and week labels', () => {
+  const r = rowsToSc(parseCsv('Date,Session,Intensity,Notes,Phase,Week\n2026-11-02,Lift 1,H,,GPP,Wk 1\n11/03/2026,Skate,light,Easy,,\n2026-11-04,Recovery,Off,,,\n2026-11-05,Game,yellow,,,\nnot a date,Lift,M,,,\n2026-11-06,Speed,purple,,,'));
+  assert.deepEqual(r.days['2026-11-02'], { theme: 'Lift 1', intensity: 'heavy' });
+  assert.deepEqual(r.days['2026-11-03'], { theme: 'Skate', intensity: 'light', note: 'Easy' });
+  assert.equal(r.days['2026-11-04'].intensity, 'off'); assert.equal(r.days['2026-11-05'].intensity, 'game');
+  assert.equal(r.days['2026-11-06'].intensity, ''); assert.deepEqual(r.unknown, ['purple']);
+  assert.deepEqual(r.weeks, { '2026-11-02': { phase: 'GPP', week: 'Wk 1' } });
+  assert.equal(r.skipped, 1);
+  assert.throws(() => rowsToSc([['Session'], ['x']]), /No Date column/);
+});
+
+const roster = [{ id: 'a', num: '9', name: 'Test One' }, { id: 'b', num: '4', name: 'Test Two' }, { id: 'c', num: '30', name: 'Test Goalie' }];
+
+test('lines, one row per spot: roster matching, goalies, extras, PK forwards', () => {
+  const rows = parseCsv('Line,Position,Number,Player\nF1,LW,9,\nLine 1,C,,Test Two\nD2,RD,,Someone New\nG,G1,30,\nExtra,,,#4\nPK1,F,9,\nPK1,F,4,\nPP3,C,9,\nF1,XX,9,');
+  const r = rowsToSlots(rows, roster);
+  assert.deepEqual(r.slots.F1LW, { pid: 'a', num: '9', name: 'Test One' });
+  assert.equal(r.slots.F1C.pid, 'b');
+  assert.deepEqual(r.slots.D2R, { num: '', name: 'Someone New' });
+  assert.equal(r.slots.G1.pid, 'c'); assert.equal(r.slots.X1.pid, 'b');
+  assert.equal(r.slots.PK1F1.pid, 'a'); assert.equal(r.slots.PK1F2.pid, 'b');
+  assert.deepEqual(r.unmatched, ['Someone New']); assert.equal(r.skipped, 2);
+});
+
+test('lines, grid layout and the blank template', () => {
+  const r = rowsToSlots(parseCsv('Line,LW,C,RW\nF1,9 Test One,#4,\nD1,,,\n'), roster);
+  assert.deepEqual(Object.keys(r.slots).sort(), ['F1C', 'F1LW']);
+  const t = rowsToSlots(LINES_TEMPLATE, roster);
+  assert.equal(t.filled, 0);
+  assert.equal(LINES_TEMPLATE.length - 1, 12 + 6 + 2 + 4 + 10 + 8);
+});
+
+test('Data Center tables are trimmed to their used rows and columns', () => {
+  assert.deepEqual(tidyTable([['Name', '', 'CMJ'], ['', '', ''], ['A', '', '40'], ['B', '', '']]), [['Name', 'CMJ'], ['A', '40'], ['B', '']]);
+});

@@ -74,6 +74,10 @@ export const api = {
   async saveScDay(teamId, date, x) { const s = D(teamId).sc; s.days = s.days || {}; if (x) s.days[date] = x; else delete s.days[date]; save(); },
   async saveScWeek(teamId, mk, w) { const s = D(teamId).sc; s.weeks = s.weeks || {}; s.weeks[mk] = w; save(); },
   async removeScWeek(teamId, mk, last) { const s = D(teamId).sc; delete (s.weeks || {})[mk]; Object.keys(s.days || {}).forEach((d) => { if (d >= mk && d <= last) delete s.days[d]; }); save(); },
+  async saveScBulk(teamId, days, weeks) { const s = D(teamId).sc; s.days = { ...(s.days || {}), ...clone(days) }; s.weeks = { ...(s.weeks || {}), ...clone(weeks) }; save(); },
+  async listDatasets(teamId) { await load(); return clone(D(teamId).datasets || []); },
+  async saveDataset(teamId, d) { const l = (D(teamId).datasets = D(teamId).datasets || []); const [r] = upsert(l, [{ team_id: teamId, created_at: new Date().toISOString(), ...clone(d) }], 'ds'); save(); return clone(r); },
+  async deleteDataset(id) { Object.values(db.data).forEach((d) => { d.datasets = (d.datasets || []).filter((x) => x.id !== id); }); save(); },
   async saveSetting(teamId, key, value) { const s = D(teamId).sc; if (key === 'sc_loads') s.loads = value; if (key === 'sc_band') s.band = value; (D(teamId).settings = D(teamId).settings || {})[key] = value; save(); },
   async saveCoach(teamId, c) { D(teamId).coach = clone(c); save(); },
 

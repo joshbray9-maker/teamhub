@@ -9,6 +9,7 @@ import { useHub } from '../lib/hub.jsx';
 import { fmtDate, todayISO } from '../lib/util.js';
 import { STATUS, GO, REGIONS, isActive, currentInjury, nextStep, inDays, daysFrom, rowsToInjuries, injuryField } from '../lib/injury.js';
 import { parseCsv, pdfItemsToTable } from '../lib/rosterImport.js';
+import { downloadCsv } from '../lib/imports.js';
 import { pdfTextItems } from '../lib/pdfText.js';
 import PageHead from '../components/PageHead.jsx';
 import Modal from '../components/Modal.jsx';
@@ -58,7 +59,7 @@ export default function Injury() {
 
   const rows = (roster || []).map((p) => ({ p, i: currentInjury(p.id, injuries) })).sort((a, b) => statusOf(b.i).rank - statusOf(a.i).rank || byNumber(a.p, b.p));
   const n = { out: rows.filter((r) => r.i && r.i.status === 'out').length, limited: rows.filter((r) => r.i && r.i.status === 'limited').length };
-  const acts = <div className="seg" role="tablist">{[['team', 'Team'], ['med', 'Sports med']].map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>;
+  const acts = <><button className="btn" disabled={!roster || !roster.length} onClick={() => H.openDialog((c) => <ImportInjuries roster={roster} close={c} onSave={save} />)}><Icon n="refresh" /> Import CSV / PDF</button><div className="seg" role="tablist">{[['team', 'Team'], ['med', 'Sports med']].map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div></>;
 
   return <>
     <PageHead title="Injury report" actions={acts} />
@@ -205,7 +206,10 @@ function ImportInjuries({ roster, close, onSave }) {
   return <Modal title="Import injuries" wide onClose={close}
     actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" disabled={!res} onClick={() => { close(); onSave(res.injuries, `${res.injuries.length} injur${res.injuries.length === 1 ? 'y' : 'ies'} imported`); }}>Import</button></>}>
     <p className="muted small" style={{ margin: 0 }}>A CSV or PDF (selectable text) with headings like <b>Player</b> (or #), <b>Injury</b>, <b>Area</b>, <b>Side</b>, <b>Status</b> (out / limited / cleared), <b>Date</b>, <b>Return to practice</b>, <b>Return to play</b>, <b>Limitations</b>, <b>Notes</b>. Read in your browser; players are matched to the roster by name or number, and each row is added as a new injury. Dates: YYYY-MM-DD, or month/day/year.</p>
-    <label className="btn" style={{ alignSelf: 'flex-start' }}><Icon n="plus" /> {busy ? 'Reading…' : res ? 'Choose another file' : 'Choose CSV or PDF'}<input type="file" accept=".csv,.txt,.pdf,text/csv,application/pdf" hidden onChange={pick} /></label>
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <label className="btn"><Icon n="plus" /> {busy ? 'Reading…' : res ? 'Choose another file' : 'Choose CSV or PDF'}<input type="file" accept=".csv,.txt,.pdf,text/csv,application/pdf" hidden onChange={pick} /></label>
+      <button className="btn ghost" onClick={() => downloadCsv('injuries-template.csv', [['Player', 'Number', 'Injury', 'Area', 'Side', 'Status', 'Injury date', 'Return to practice', 'Return to play', 'Limitations', 'Notes']])}>Download blank template</button>
+    </div>
     {res && <>
       <div className="small"><b>{res.file}</b>: {res.injuries.length} to add{res.unmatched.length ? `; not on the roster (skipped): ${res.unmatched.join(', ')}` : ''}.</div>
       <div className="tbl-wrap" style={{ maxHeight: 320, overflow: 'auto' }}><table className="tbl inj-tbl">

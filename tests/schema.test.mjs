@@ -154,6 +154,16 @@ test('migration + seed load, and access follows memberships', async () => {
   assert.equal((await as(db, U.viewer, `select count(*)::int c from storage.objects where bucket_id='player-photos'`))[0].c, 1);
   assert.equal((await as(db, U.other, `select count(*)::int c from storage.objects where bucket_id='player-photos'`))[0].c, 0);
 
+  // data center: coaches upload; viewers see only shared tables
+  await as(db, U.coach, `insert into datasets (team_id, title, kind, columns, rows) values ($1, 'Private test', 'testing', '["Name"]', '[["x"]]')`, [bcsTeam]);
+  await as(db, U.coach, `insert into datasets (team_id, title, kind, shared) values ($1, 'Shared stats', 'stats', true)`, [bcsTeam]);
+  assert.equal((await as(db, U.coach, 'select count(*)::int c from datasets'))[0].c, 2);
+  assert.deepEqual((await as(db, U.viewer, 'select title from datasets')).map((r) => r.title), ['Shared stats']);
+  assert.equal((await as(db, U.other, 'select count(*)::int c from datasets'))[0].c, 0);
+  await assert.rejects(as(db, U.viewer, `insert into datasets (team_id, title) values ($1, 'x')`, [bcsTeam]));
+  await as(db, U.viewer, `update datasets set shared = true where title = 'Private test'`);
+  assert.equal((await db.query(`select shared from datasets where title = 'Private test'`)).rows[0].shared, false);
+
   // game day lines: coaches write (default + their own team's games), viewers read only
   const bcsGame = (await db.query('select id from games where team_id=$1 limit 1', [bcsTeam])).rows[0].id;
   const uniGame = (await db.query('select id from games where team_id=$1 limit 1', [uniTeam])).rows[0].id;
