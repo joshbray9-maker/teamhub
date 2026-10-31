@@ -133,6 +133,27 @@ test('migration + seed load, and access follows memberships', async () => {
   assert.equal((await as(db, U.other, 'select count(*)::int c from players'))[0].c, 0);
   assert.equal((await as(db, null, 'select count(*)::int c from players'))[0].c, 0);
 
+  // injuries: staff only. Viewers (players/parents), other orgs and anon see nothing
+  const [pa] = await db.query(`select id from players where team_id=$1 limit 1`, [bcsTeam]).then((r) => r.rows);
+  await db.query(`insert into players (team_id, name) values ($1, 'Other Team Player')`, [uniTeam]);
+  const uniPlayer = (await db.query(`select id from players where team_id=$1`, [uniTeam])).rows[0].id;
+  await as(db, U.coach, `insert into injuries (team_id, player_id, status, injury, body_area, side, return_play) values ($1, $2, 'out', 'Test sprain', 'ankle', 'L', '2026-11-20')`, [bcsTeam, pa.id]);
+  assert.equal((await as(db, U.coach, 'select count(*)::int c from injuries'))[0].c, 1);
+  assert.equal((await as(db, U.josh, 'select count(*)::int c from injuries'))[0].c, 1);
+  assert.equal((await as(db, U.viewer, 'select count(*)::int c from injuries'))[0].c, 0);
+  assert.equal((await as(db, U.other, 'select count(*)::int c from injuries'))[0].c, 0);
+  assert.equal((await as(db, null, 'select count(*)::int c from injuries'))[0].c, 0);
+  await assert.rejects(as(db, U.viewer, `insert into injuries (team_id, player_id) values ($1, $2)`, [bcsTeam, pa.id]));
+  // a player from another team can't be attached, and bad statuses are refused
+  await assert.rejects(as(db, U.coach, `insert into injuries (team_id, player_id) values ($1, $2)`, [bcsTeam, uniPlayer]));
+  await assert.rejects(as(db, U.coach, `insert into injuries (team_id, player_id, status) values ($1, $2, 'maybe')`, [bcsTeam, pa.id]));
+  // player photos: team members read, coaches write, only into their own team's folder
+  await as(db, U.coach, `insert into storage.objects (bucket_id, name) values ('player-photos', $1)`, [`${bcsTeam}/p.jpg`]);
+  await assert.rejects(as(db, U.coach, `insert into storage.objects (bucket_id, name) values ('player-photos', $1)`, [`${uniTeam}/p.jpg`]));
+  await assert.rejects(as(db, U.viewer, `insert into storage.objects (bucket_id, name) values ('player-photos', $1)`, [`${bcsTeam}/v.jpg`]));
+  assert.equal((await as(db, U.viewer, `select count(*)::int c from storage.objects where bucket_id='player-photos'`))[0].c, 1);
+  assert.equal((await as(db, U.other, `select count(*)::int c from storage.objects where bucket_id='player-photos'`))[0].c, 0);
+
   // game day lines: coaches write (default + their own team's games), viewers read only
   const bcsGame = (await db.query('select id from games where team_id=$1 limit 1', [bcsTeam])).rows[0].id;
   const uniGame = (await db.query('select id from games where team_id=$1 limit 1', [uniTeam])).rows[0].id;

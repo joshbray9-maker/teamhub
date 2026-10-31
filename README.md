@@ -7,8 +7,8 @@ Vite + React on Vercel, Supabase for the database, sign-in and the daily league 
 **What it holds:** schedules (games, events), league standings, S&C day themes, intensity and
 periodization, team notes/to-dos, team chat, game-day lines and rosters. Rosters hold only what
 league and school sites publish (number, name, position, shoots, year, height, weight,
-hometown): **no medical, contact or date-of-birth fields**. Members of the organization can read
-them; coaches edit. Injury status will come from the coach-only Injury report tab, not the roster.
+hometown, optional photo): **no medical, contact or date-of-birth fields**. Members of the
+organization can read them; coaches edit. Injuries live in their own staff-only table (below).
 
 ## What's in here
 
@@ -21,7 +21,8 @@ them; coaches edit. Injury status will come from the coach-only Injury report ta
 | `supabase/migrations/…_lineups.sql` | Game day lines (hockey) |
 | `supabase/migrations/…_roster.sql` | Team rosters |
 | `src/lib/rosterImport.js` | Reads roster CSV / PDF files (in the browser) |
-| `src/lib/injury.js` | Injury markers: placeholder until the Injury report tab exists |
+| `supabase/migrations/…_injuries.sql` | Injury report (staff only) and private player photos |
+| `src/lib/injury.js` | Injury statuses, return countdowns, body regions, injury CSV/PDF import |
 | `supabase/functions/league-sync/` | Edge Function for the daily league sync |
 | `supabase/functions/roster-import/` | Edge Function that reads a public roster page's tables |
 | `supabase/functions/_shared/leagueParse.js` | League/.ics parsing, used by both the app and the sync |
@@ -56,6 +57,21 @@ else in the organization sees the lines read-only. Also **power play** (PP1, PP2
 kill** (PK1, PK2) units, the team's **roster** down the right side (drag a player in, or pick
 them when clicking a spot), and **Print / PDF**, which opens the browser's print dialog with a
 one-page lines sheet (choose "Save as PDF" there). Other sports still show the placeholder.
+
+**Injury report (admins and coaches only):** health information, so the database only lets an
+organization's admins and coaches read or write it; viewers, other organizations and the public
+link never see injuries or the flags. Give sports-med staff the **coach** role.
+- **Team** view: every rostered player in red (**out**: not practising or playing), yellow
+  (**limited**: hurt but can practise and play) or green (**available**), with the countdown to
+  return to practice and play. Click a player for their profile: photo and roster details, a
+  front/back body diagram glowing on the injured areas, limitations, the return timeline, and
+  past injuries.
+- **Sports med** view: add, edit and clear injuries (click the body diagram to pick the area),
+  or import a CSV / PDF injury sheet (players matched to the roster by name or number).
+- Statuses never change by themselves: when a return date passes, the report says
+  "update status" until sports med clears or updates the injury.
+- Injured players are flagged automatically (red = out, yellow = limited) on the Roster, the
+  Lines page roster, and an **Injured players** card on S&C and Practice plan.
 
 **Roster:** add players by hand or **Import CSV / PDF**. The file is read in the browser and
 shown for review before anything is saved; players are matched by name, so re-importing
@@ -197,6 +213,6 @@ check the access rules (coach vs viewer vs outsider vs public link).
 ## Not built yet
 
 Same placeholders as the artifact: League, Opponents, Practice plan, Game day (non-hockey),
-Playbook, Data Center, Injury report, Recruitment, My Profile, S&C Gym groups and
+Playbook, Data Center, Recruitment, My Profile, S&C Gym groups and
 Tests. Workload load units and the acute:chronic band are **placeholder values**, editable
 per team. They're not a validated scale.

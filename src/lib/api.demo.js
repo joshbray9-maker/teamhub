@@ -56,7 +56,7 @@ export const api = {
   async savePrefs(_u, v) { db.prefs = clone(v); save(); },
   async loadTeamData(teamId, canEdit) {
     await load(); const d = D(teamId);
-    return clone({ league: { groups: d.groups, updatedAt: d.updatedAt, games: d.games }, events: d.events, notifs: [...d.notifs].sort((a, b) => b.ts - a.ts), sc: d.sc, coach: canEdit ? d.coach : null, candidates: d.candidates.filter((c) => c.status !== 'added' && c.status !== 'dismissed'), lastRun: d.lastRun });
+    return clone({ league: { groups: d.groups, updatedAt: d.updatedAt, games: d.games }, events: d.events, notifs: [...d.notifs].sort((a, b) => b.ts - a.ts), sc: d.sc, coach: canEdit ? d.coach : null, candidates: d.candidates.filter((c) => c.status !== 'added' && c.status !== 'dismissed'), lastRun: d.lastRun, injuries: canEdit ? (d.injuries || []) : [] });
   },
   async loadOrgData(ids) { await load(); return clone(Object.fromEntries(ids.map((id) => [id, { games: D(id).games, events: D(id).events }]))); },
   async saveGames(teamId, games) { const r = upsert(D(teamId).games, games, 'g'); save(); return clone(r); },
@@ -94,6 +94,10 @@ export const api = {
   async savePlayers(teamId, players) { const list = (D(teamId).players = D(teamId).players || []); const r = upsert(list, players.map((p) => ({ active: true, source: 'manual', ...p })), 'p'); save(); return clone(r); },
   async fetchRosterPage() { throw new Error('Demo mode: importing from a website runs on Supabase once the roster-import function is deployed.'); },
   async getSetting(teamId, key) { await load(); return (D(teamId).settings || {})[key] ?? null; },
+  async uploadPlayerPhoto(_teamId, blob) { return new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(blob); }); },
+  async photoUrls(paths) { return Object.fromEntries(paths.filter(Boolean).map((p) => [p, p])); },
+  async saveInjuries(teamId, list) { const l = (D(teamId).injuries = D(teamId).injuries || []); const r = upsert(l, list.map((i) => ({ team_id: teamId, updated_at: new Date().toISOString(), ...i })), 'i'); save(); return clone(r); },
+  async deleteInjury(id) { Object.values(db.data).forEach((d) => { d.injuries = (d.injuries || []).filter((i) => i.id !== id); }); save(); },
   async deletePlayer(id) { Object.values(db.data).forEach((d) => { d.players = (d.players || []).filter((p) => p.id !== id); }); save(); },
   async listLineups(teamId) { await load(); return clone(D(teamId).lineups || {}); },
   async saveLineup(teamId, key, slots) { (D(teamId).lineups = D(teamId).lineups || {})[key] = { slots: clone(slots), updatedAt: Date.now() }; save(); },

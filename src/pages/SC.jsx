@@ -7,6 +7,7 @@ import PageHead from '../components/PageHead.jsx';
 import Modal from '../components/Modal.jsx';
 import Icon from '../components/Icon.jsx';
 import Table from '../components/Table.jsx';
+import InjuredCard from '../components/InjuredCard.jsx';
 
 const cap = (k) => k[0].toUpperCase() + k.slice(1);
 export function IBadge({ k }) { const i = INT.find((x) => x.k === (k || '')) || INT[0]; return <span className={`ibadge i-${i.k || 'none'}`} aria-hidden="true">{i.short}</span>; }
@@ -16,6 +17,7 @@ export default function SC() {
   const [tab, setTab] = useState('cal');
   return <>
     <PageHead title="S&C" />
+    <InjuredCard />
     <div className="seg" role="tablist">{[['cal', 'Calendar'], ['load', 'Workload'], ['gym', 'Gym groups'], ['tests', 'Tests']].map(([k, l]) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
     {tab === 'cal' ? <ScCalendar /> : tab === 'load' ? <Workload /> : <section className="card"><div className="card-head"><h2>{tab === 'gym' ? 'Gym groups' : 'Tests'}</h2><span className="pill">Not built yet</span></div><p className="muted small" style={{ margin: 0 }}>Coming in a later step.</p></section>}
   </>;

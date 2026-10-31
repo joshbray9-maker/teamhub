@@ -119,6 +119,32 @@ export function pdfItemsToPlayers(items) {
   return { players, skipped, headings: false };
 }
 
+/** Any PDF table: finds the first row where at least two cells are headings `fieldFn` knows,
+ *  and returns [heading cells, ...row cells] with each text placed under its column.
+ *  null when no heading row is found. */
+export function pdfItemsToTable(items, fieldFn) {
+  const rows = [];
+  for (const it of [...items].filter((i) => i.str.trim()).sort((a, b) => a.y - b.y || a.x - b.x)) {
+    const r = rows.find((x) => Math.abs(x.y - it.y) < 3);
+    if (r) r.items.push(it); else rows.push({ y: it.y, items: [it] });
+  }
+  rows.forEach((r) => r.items.sort((a, b) => a.x - b.x));
+  const isHead = (r) => r.items.filter((i) => fieldFn(i.str)).length >= 2;
+  const hi = rows.findIndex(isHead); if (hi < 0) return null;
+  const cols = rows[hi].items.map((i) => i.x);
+  const out = [rows[hi].items.map((i) => i.str.trim())];
+  for (const r of rows.slice(hi + 1)) {
+    if (isHead(r)) continue; // repeated heading on a new page
+    const cells = cols.map(() => '');
+    for (const it of r.items) {
+      let c = 0; cols.forEach((x, k) => { if (x <= it.x + 12) c = k; });
+      cells[c] = cells[c] ? cells[c] + ' ' + it.str.trim() : it.str.trim();
+    }
+    out.push(cells);
+  }
+  return out;
+}
+
 /* ---------- web page tables ---------- */
 /** tables: [[cells], ...] per table (from the roster-import function). Uses the table whose
  *  heading row (one of its first three rows) gives the most players. */

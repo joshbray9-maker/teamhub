@@ -8,7 +8,7 @@ import Modal from '../components/Modal.jsx';
 const Ctx = createContext(null);
 export const useHub = () => useContext(Ctx);
 
-const EMPTY = { league: { groups: [], games: [] }, events: [], notifs: [], sc: { weeks: {}, days: {} }, coach: null, candidates: [], lastRun: null };
+const EMPTY = { league: { groups: [], games: [] }, events: [], notifs: [], sc: { weeks: {}, days: {} }, coach: null, candidates: [], lastRun: null, injuries: [] };
 
 export function HubProvider({ api, user, children }) {
   const [hub, setHub] = useState(null); // {orgs, teams, prefs}

@@ -59,3 +59,21 @@ test('web page tables: picks the roster table, splits "Hometown / High School"',
     ['', 'Web Player One', '', '2nd', 'Sample, QC', 'web'], ['8', 'Web Player Two', 'Lock', '1st', 'Town, ON', 'web'], ['9', 'Web Player Three', 'Wing', '3rd', 'City, QC', 'web']]);
   assert.throws(() => tablesToPlayers([[['Statistic', 'Value'], ['a', '1'], ['b', '2']]]), /No roster table/);
 });
+
+test('injury import: matches roster by name or number, maps status / area / side / dates', async () => {
+  const { rowsToInjuries, regionFromText, statusFromText, nextStep, currentInjury } = await import('../src/lib/injury.js');
+  const roster = [{ id: 'a', name: 'Sam Test', num: '4' }, { id: 'b', name: 'Alex Sample', num: '12' }];
+  const csv = 'Player,#,Injury,Area,Side,Status,Date,Return to practice,Return to play,Restrictions\n"Test, Sam",,Sprain,Ankle,Left,Out,2026-11-01,2026-11-08,11/15/2026,No skating\n,12,Concussion,,,Day-to-day,,,,\nNobody Here,,Bruise,,,Limited,,,,';
+  const { injuries, unmatched } = rowsToInjuries(parseCsv(csv), roster);
+  assert.deepEqual(unmatched, ['Nobody Here']);
+  assert.deepEqual(injuries.map((i) => [i.player_id, i.status, i.body_area, i.side, i.injured_on, i.return_practice, i.return_play, i.limitations]),
+    [['a', 'out', 'ankle', 'L', '2026-11-01', '2026-11-08', '2026-11-15', 'No skating'], ['b', 'limited', 'head', '', null, null, null, '']]);
+  assert.equal(regionFromText('torn ACL'), 'knee'); assert.equal(regionFromText('high ankle'), 'ankle'); assert.equal(statusFromText('Cleared'), 'cleared');
+  // out: next step is practice until that date, then play; passed dates are flagged, never auto-cleared
+  const i = injuries[0];
+  assert.deepEqual(nextStep(i, '2026-11-05'), { what: 'Practice', days: 3 });
+  assert.deepEqual(nextStep(i, '2026-11-10'), { what: 'Play', days: 5, overdue: false });
+  assert.equal(nextStep(i, '2026-11-20').overdue, true);
+  assert.equal(currentInjury('b', [...injuries, { player_id: 'b', status: 'out' }]).status, 'out');
+  assert.equal(currentInjury('a', [{ player_id: 'a', status: 'cleared' }]), null);
+});

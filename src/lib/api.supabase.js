@@ -46,13 +46,15 @@ export const api = {
 
   async loadTeamData(teamId, canEdit) {
     const q = (t) => supabase.from(t).select('*').eq('team_id', teamId);
-    const [games, events, standings, notifs, weeks, days, settings, coach, cands, run] = await Promise.all([
+    const [games, events, standings, notifs, weeks, days, settings, coach, cands, run, inj] = await Promise.all([
       q('games').order('date'), q('events').order('date'), q('standings').maybeSingle(),
       q('notifications').order('created_at', { ascending: false }).limit(60),
       q('sc_weeks'), q('sc_days'), q('settings'),
       canEdit ? q('coach_notes').maybeSingle() : Promise.resolve({ data: null }),
       canEdit ? q('sync_candidates').eq('status', 'open').order('found_at') : Promise.resolve({ data: [] }),
       supabase.from('sync_runs').select('*').eq('team_id', teamId).order('ran_at', { ascending: false }).limit(1).maybeSingle(),
+      // injuries are staff-only (RLS); everyone else gets none
+      canEdit ? q('injuries').order('updated_at', { ascending: false }) : Promise.resolve({ data: [] }),
     ]);
     const st = ok(standings), set = Object.fromEntries(ok(settings).map((s) => [s.key, s.value])), c = ok(coach), r = ok(run);
     return {
@@ -67,6 +69,7 @@ export const api = {
       coach: canEdit ? (c ? { notes: c.notes, todos: c.todos } : { notes: '', todos: [] }) : null,
       candidates: ok(cands),
       lastRun: r ? { ok: r.ok, message: r.message, ts: Date.parse(r.ran_at) } : null,
+      injuries: ok(inj),
     };
   },
   async loadOrgData(teamIds) {
@@ -129,9 +132,29 @@ export const api = {
   async listPlayers(teamId) { return ok(await supabase.from('players').select('*').eq('team_id', teamId).order('created_at')); },
   /** Insert or update players (rows with an id are updated). */
   async savePlayers(teamId, players) {
-    return saveRows('players', players.map((p) => ({ id: p.id, team_id: teamId, num: p.num || '', name: p.name, position: p.position || '', shoots: p.shoots || '', year: p.year || '', height: p.height || '', weight: p.weight || '', hometown: p.hometown || '', active: p.active !== false, source: p.source || 'manual' })));
+    return saveRows('players', players.map((p) => ({ id: p.id, team_id: teamId, num: p.num || '', name: p.name, position: p.position || '', shoots: p.shoots || '', year: p.year || '', height: p.height || '', weight: p.weight || '', hometown: p.hometown || '', active: p.active !== false, source: p.source || 'manual', ...(p.photo !== undefined ? { photo: p.photo } : {}) })));
   },
   async deletePlayer(id) { ok(await supabase.from('players').delete().eq('id', id)); },
+  /** Stores a player photo in the private bucket; returns its path (saved on the player). */
+  async uploadPlayerPhoto(teamId, blob) {
+    const path = `${teamId}/p-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+    ok(await supabase.storage.from('player-photos').upload(path, blob, { contentType: 'image/jpeg' }));
+    return path;
+  },
+  /** Short-lived links for photo paths: { path: url } */
+  async photoUrls(paths) {
+    const list = [...new Set(paths.filter(Boolean))]; if (!list.length) return {};
+    const r = ok(await supabase.storage.from('player-photos').createSignedUrls(list, 3600));
+    return Object.fromEntries(r.filter((x) => x.signedUrl).map((x) => [x.path, x.signedUrl]));
+  },
+
+  /* ---------- injuries (staff only) ---------- */
+  async saveInjuries(teamId, list) {
+    const text = ['player_id', 'status', 'injury', 'body_area', 'side', 'details', 'limitations'], dates = ['injured_on', 'return_practice', 'return_play', 'cleared_on'];
+    return saveRows('injuries', list.map((i) => ({ id: i.id, team_id: teamId,
+      ...Object.fromEntries(text.map((c) => [c, i[c] ?? ''])), ...Object.fromEntries(dates.map((c) => [c, i[c] || null])) })));
+  },
+  async deleteInjury(id) { ok(await supabase.from('injuries').delete().eq('id', id)); },
   /** Reads a public roster page through the roster-import function: { tables } or throws. */
   async fetchRosterPage(teamId, url) {
     const { data, error } = await supabase.functions.invoke('roster-import', { body: { team_id: teamId, url } });

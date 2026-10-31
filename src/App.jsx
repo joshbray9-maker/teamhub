@@ -6,6 +6,8 @@ import SC from './pages/SC.jsx';
 import Chat from './pages/Chat.jsx';
 import GameDay from './pages/GameDay.jsx';
 import Roster from './pages/Roster.jsx';
+import Injury from './pages/Injury.jsx';
+import InjuredCard from './components/InjuredCard.jsx';
 import OrgSchedule from './pages/OrgSchedule.jsx';
 import PageHead from './components/PageHead.jsx';
 import TeamForm from './components/TeamForm.jsx';
@@ -43,9 +45,11 @@ function Page() {
   if (H.page === 'chat') return <Chat key={t.id} />;
   if (H.page === 'gameday' && t.sport === 'hockey') return <GameDay key={t.id} />;
   if (H.page === 'roster') return <Roster key={t.id} />;
+  if (H.page === 'injury') return <Injury key={t.id} />;
   const m = MENUS.find((x) => x.id === H.page) || MENUS[0];
   return <>
     <PageHead title={menuLabel(m, t)} />
+    {m.id === 'practice' && <InjuredCard key={t.id} />}
     <div className="soon"><section className="card"><div className="card-head"><h2>Coming next</h2><span className="pill">Not built yet</span></div>
       <p className="muted small" style={{ margin: 0 }}>This menu is in place in the sidebar and keeps its spot in your order. We'll build it in a later step.</p>
       <ul>{(PAGE_INFO[m.id] || []).map((x) => <li key={x}>{x}</li>)}</ul></section></div>

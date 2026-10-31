@@ -3,10 +3,14 @@
 import { useEffect, useState } from 'react';
 import { useHub } from '../lib/hub.jsx';
 import { parseCsv, rowsToPlayers, pdfItemsToPlayers, tablesToPlayers, planImport } from '../lib/rosterImport.js';
-import { injuryStatus } from '../lib/injury.js';
+import { pdfTextItems } from '../lib/pdfText.js';
+import { resizePhoto } from '../lib/photo.js';
 import PageHead from '../components/PageHead.jsx';
 import Modal from '../components/Modal.jsx';
 import Icon from '../components/Icon.jsx';
+import InjuryFlag from '../components/InjuryFlag.jsx';
+import Avatar from '../components/Avatar.jsx';
+export { default as InjuryMark } from '../components/InjuryFlag.jsx';
 
 export const POSITIONS = {
   hockey: ['C', 'LW', 'RW', 'F', 'D', 'G'],
@@ -17,20 +21,17 @@ export const POSITIONS = {
 };
 export const byNumber = (a, b) => (a.num === '' ? 999 : +a.num) - (b.num === '' ? 999 : +b.num) || a.name.localeCompare(b.name);
 
-export function InjuryMark({ p }) {
-  const s = injuryStatus(p);
-  return s ? <span className={`inj ${s.level}`} title={s.label}>{s.level === 'out' ? '+' : '!'}</span> : null;
-}
-
 export default function Roster() {
   const H = useHub(); const t = H.team;
   const [players, setPlayers] = useState(null);
   const [former, setFormer] = useState(false);
-  const load = () => H.api.listPlayers(t.id).then(setPlayers).catch((e) => { setPlayers([]); H.toast('Could not load roster: ' + e.message); });
+  const [photos, setPhotos] = useState({});
+  const load = () => H.api.listPlayers(t.id).then((ps) => { setPlayers(ps); H.api.photoUrls(ps.map((p) => p.photo)).then(setPhotos).catch(() => {}); })
+    .catch((e) => { setPlayers([]); H.toast('Could not load roster: ' + e.message); });
   useEffect(() => { load(); }, [t.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const hockey = t.sport === 'hockey';
   const save = async (list, msg) => { try { await H.api.savePlayers(t.id, list); if (msg) H.toast(msg); } catch (e) { H.toast('Could not save. ' + e.message); } load(); };
-  const edit = (p) => H.isCoach && H.openDialog((c) => <PlayerDialog p={p} sport={t.sport} close={c} onSave={(x) => save([x])}
+  const edit = (p) => H.isCoach && H.openDialog((c) => <PlayerDialog p={p} photoUrl={p && photos[p.photo]} sport={t.sport} close={c} onSave={(x) => save([x])}
     onDelete={async () => { try { await H.api.deletePlayer(p.id); } catch (e) { H.toast(e.message); } load(); }} />);
   const acts = H.isCoach && <>
     <button className="btn" onClick={() => H.openDialog((c) => <ImportDialog current={players || []} close={c} onSave={(list, msg) => save(list, msg)} />)}><Icon n="refresh" /> Import</button>
@@ -40,7 +41,7 @@ export default function Roster() {
   const gone = (players || []).filter((p) => p.active === false).sort(byNumber);
   const Rows = ({ ps }) => ps.map((p) => <tr key={p.id} className={H.isCoach ? 'click' : ''} onClick={() => edit(p)}>
     <td className="num tnum">{p.num}</td>
-    <td><span className="ro-name">{p.name}</span>{H.isCoach && <InjuryMark p={p} />}</td>
+    <td><span className="inj-who"><Avatar p={p} url={photos[p.photo]} size={26} /><span className="ro-name">{p.name}</span><InjuryFlag p={p} /></span></td>
     <td>{p.position}</td>{hockey && <td>{p.shoots}</td>}<td>{p.year}</td><td>{p.height}</td><td>{p.weight}</td><td>{p.hometown}</td>
   </tr>);
   return <>
@@ -61,8 +62,16 @@ export default function Roster() {
   </>;
 }
 
-function PlayerDialog({ p, sport, close, onSave, onDelete }) {
+function PlayerDialog({ p, photoUrl, sport, close, onSave, onDelete }) {
   const H = useHub();
+  const [pic, setPic] = useState(photoUrl || null), [upl, setUpl] = useState(false);
+  const pickPhoto = async (e) => {
+    const file = e.target.files[0]; e.target.value = ''; if (!file) return;
+    setUpl(true);
+    try { const blob = await resizePhoto(file); const path = await H.api.uploadPlayerPhoto(H.teamId, blob); setF((x) => ({ ...x, photo: path })); setPic(URL.createObjectURL(blob)); }
+    catch (err) { H.toast('Could not upload the photo. ' + err.message); }
+    finally { setUpl(false); }
+  };
   const [f, setF] = useState({ num: '', name: '', position: '', shoots: '', year: '', height: '', weight: '', hometown: '', active: true, ...(p || {}) });
   const set = (k) => (e) => setF({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
   const submit = () => {
@@ -74,6 +83,9 @@ function PlayerDialog({ p, sport, close, onSave, onDelete }) {
   return <Modal title={p ? 'Edit player' : 'Add player'} onClose={close}
     actions={<>{p && <><button className="btn danger" onClick={del}><Icon n="trash" /> Delete</button><span className="spacer" /></>}<button className="btn" onClick={close}>Cancel</button><button className="btn primary" onClick={submit}>Save</button></>}>
     <form className="ro-form" onSubmit={(e) => { e.preventDefault(); submit(); }}>
+      <div className="ro-wide ro-photo"><Avatar p={f} url={pic} size={64} />
+        <label className="btn sm"><Icon n="plus" /> {upl ? 'Uploading…' : pic ? 'Change photo' : 'Add photo'}<input type="file" accept="image/*" hidden onChange={pickPhoto} /></label>
+        {pic && <button type="button" className="btn sm ghost" onClick={() => { setPic(null); setF({ ...f, photo: null }); }}>Remove</button>}</div>
       <label className="field"><span>Number</span><input className="input tnum" inputMode="numeric" maxLength={3} value={f.num} onChange={set('num')} /></label>
       <label className="field"><span>Name</span><input className="input" maxLength={80} value={f.name} onChange={set('name')} /></label>
       <label className="field"><span>Position</span><input className="input" list="ro-pos" maxLength={30} value={f.position} onChange={set('position')} />
@@ -89,18 +101,7 @@ function PlayerDialog({ p, sport, close, onSave, onDelete }) {
   </Modal>;
 }
 
-async function readPdf(file) {
-  const pdfjs = await import('pdfjs-dist');
-  pdfjs.GlobalWorkerOptions.workerSrc = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
-  const doc = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
-  const items = []; let offset = 0;
-  for (let n = 1; n <= Math.min(doc.numPages, 20); n++) {
-    const page = await doc.getPage(n); const h = page.getViewport({ scale: 1 }).height;
-    for (const it of (await page.getTextContent()).items) if (it.str) items.push({ str: it.str, x: it.transform[4], y: offset + (h - it.transform[5]) });
-    offset += h + 50;
-  }
-  return pdfItemsToPlayers(items);
-}
+async function readPdf(file) { return pdfItemsToPlayers(await pdfTextItems(file)); }
 
 function ImportDialog({ current, close, onSave }) {
   const H = useHub();
