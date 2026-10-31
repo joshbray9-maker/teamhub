@@ -23,7 +23,7 @@ async function build() {
     const t = await get(`teams/${id}.json`);
     const orgName = t.org || ORG_FOR_UNSET[id] || t.school || t.name;
     let org = db.orgs.find((o) => o.name === orgName);
-    if (!org) { org = { id: 'o_' + slugify(orgName), slug: slugify(orgName), name: orgName, public_schedule: true, role: 'admin' }; db.orgs.push(org); db.members[org.id] = [{ user_id: USER.id, email: USER.email, role: 'admin' }]; }
+    if (!org) { org = { id: 'o_' + slugify(orgName), slug: slugify(orgName), name: orgName, public_schedule: true, role: 'admin', logo_url: slugify(orgName) === 'bcs' ? '/logos/bcs.png' : null }; db.orgs.push(org); db.members[org.id] = [{ user_id: USER.id, email: USER.email, role: 'admin' }]; }
     db.teams.push({ id, org_id: org.id, name: t.name, school: t.school || '', sport: t.sport, level: t.level, color: t.color, logo: t.logo && /^https?:/.test(t.logo) ? t.logo : null, leagueName: t.leagueName || '', leagueUrl: t.leagueUrl || '', syncUrl: '', syncEnabled: true, sort_order: i, created_at: t.created });
     const league = (await get(`teams/${id}/data/league.json`)) || { groups: [], games: [] };
     const sc = (await get(`teams/${id}/data/sc.json`)) || { weeks: {}, days: {} };
@@ -52,7 +52,7 @@ export const api = {
   async signOut() { signedIn = false; localStorage.setItem(KEY + ':out', '1'); authCb && authCb(null); },
   async resetPassword() {}, async updatePassword() {},
 
-  async loadHub() { await load(); return clone({ orgs: db.orgs, teams: [...db.teams].sort((a, b) => a.sort_order - b.sort_order), prefs: db.prefs }); },
+  async loadHub() { await load(); const lg = Object.fromEntries(db.orgs.map((o) => [o.id, o.logo_url || null])); return clone({ orgs: db.orgs, teams: [...db.teams].sort((a, b) => a.sort_order - b.sort_order).map((t) => ({ ...t, orgLogo: lg[t.org_id] })), prefs: db.prefs }); },
   async savePrefs(_u, v) { db.prefs = clone(v); save(); },
   async loadTeamData(teamId, canEdit) {
     await load(); const d = D(teamId);
@@ -104,7 +104,7 @@ export const api = {
   async deleteInjury(id) { Object.values(db.data).forEach((d) => { d.injuries = (d.injuries || []).filter((i) => i.id !== id); }); save(); },
   async deletePlayer(id) { Object.values(db.data).forEach((d) => { d.players = (d.players || []).filter((p) => p.id !== id); }); save(); },
   async listLineups(teamId) { await load(); return clone(D(teamId).lineups || {}); },
-  async saveLineup(teamId, key, slots) { (D(teamId).lineups = D(teamId).lineups || {})[key] = { slots: clone(slots), updatedAt: Date.now() }; save(); },
+  async saveLineup(teamId, key, slots, opponent = '') { (D(teamId).lineups = D(teamId).lineups || {})[key] = { slots: clone(slots), opponent, updatedAt: Date.now() }; save(); },
   async deleteLineup(teamId, key) { delete (D(teamId).lineups || {})[key]; save(); },
 
   async saveTeam(t) {

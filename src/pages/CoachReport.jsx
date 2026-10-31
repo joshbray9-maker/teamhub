@@ -8,6 +8,7 @@ import { fmtDate, fmtTime, todayISO, gameView, ourGames, hasScore, daysUntil } f
 import { STATUS, currentInjury, nextStep, inDays, isActive } from '../lib/injury.js';
 import PageHead from '../components/PageHead.jsx';
 import Avatar from '../components/Avatar.jsx';
+import Logo from '../components/Logo.jsx';
 import Icon from '../components/Icon.jsx';
 import { useRoster, StatusPill, where } from './Injury.jsx';
 
@@ -32,7 +33,7 @@ export default function CoachReport() {
 
   return <>
     <PageHead title="Coach's report" actions={<button className="btn" onClick={() => window.print()}><Icon n="clipboard" /> Print / PDF</button>} />
-    <div className="print-only gd-print-head"><b>{t.name}</b> · Coach's report · {fmtDate(today, true)}</div>
+    <header className="print-only gp-head"><Logo t={t} cls="gp-logo" /><div className="gp-title"><div className="gp-team">{t.name}</div><div className="gp-meta">{fmtDate(today, true)}</div></div><div className="gp-tag">Coach's report</div></header>
     <section className="strip">
       <div className="tile">
         <div className="tile-k">Next game</div>

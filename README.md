@@ -23,6 +23,8 @@ organization can read them; coaches edit. Injuries live in their own staff-only 
 | `src/lib/rosterImport.js` | Reads roster CSV / PDF files (in the browser) |
 | `supabase/migrations/…_injuries.sql` | Injury report (staff only) and private player photos |
 | `supabase/migrations/…_datasets.sql` | Data Center tables |
+| `public/logos/` | Organization logos (BCS) used for teams without their own logo |
+| `supabase/migrations/…_org_logo.sql` | Organization logos, lineup opponent |
 | `src/lib/imports.js` | S&C, Lines and Data Center imports, blank templates |
 | `src/lib/injury.js` | Injury statuses, return countdowns, body regions, injury CSV/PDF import |
 | `supabase/functions/league-sync/` | Edge Function for the daily league sync |
@@ -58,7 +60,12 @@ back). Coaches click a spot to type a player's number and name and drag to swap;
 else in the organization sees the lines read-only. Also **power play** (PP1, PP2) and **penalty
 kill** (PK1, PK2) units, the team's **roster** down the right side (drag a player in, or pick
 them when clicking a spot), and **Print / PDF**, which opens the browser's print dialog with a
-one-page lines sheet (choose "Save as PDF" there). Other sports still show the placeholder.
+game-day sheet (choose "Save as PDF" there): team logo, team name, opponent (from the
+schedule, or typed in the **Opponent** box), date, time and venue, the starting lineup on the
+rink, every line and special-teams unit, then the full roster with player details and where
+each player is slotted. Tick **Injury status on printout** to add Out / Limited / Available
+(off by default, since printouts get passed around). Typing an opponent for a game that
+uses your default lines saves that game's own copy of the lines. Other sports still show the placeholder.
 
 **Injury report (admins and coaches only):** health information, so the database only lets an
 organization's admins and coaches read or write it; viewers, other organizations and the public

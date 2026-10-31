@@ -40,7 +40,10 @@ export const api = {
       supabase.from('user_settings').select('value').eq('user_id', user.id).maybeSingle(),
     ]);
     const roles = Object.fromEntries(ok(mem).map((m) => [m.org_id, m.role]));
-    return { orgs: ok(orgs).map((o) => ({ ...o, role: roles[o.id] || null })), teams: ok(teams).map(teamIn), prefs: (ok(prefs) || {}).value || {} };
+    const og = ok(orgs);
+    const orgLogo = Object.fromEntries(og.map((o) => [o.id, o.logo_url || null]));
+    // orgLogo: the organization's logo, shown for teams without their own (never saved on the team)
+    return { orgs: og.map((o) => ({ ...o, role: roles[o.id] || null })), teams: ok(teams).map((t) => ({ ...teamIn(t), orgLogo: orgLogo[t.org_id] })), prefs: (ok(prefs) || {}).value || {} };
   },
   async savePrefs(user, value) { ok(await supabase.from('user_settings').upsert({ user_id: user.id, value })); },
 
@@ -174,11 +177,11 @@ export const api = {
   /* ---------- game day lines ---------- */
   /** All of a team's lines: { default: {slots, updatedAt}, <gameId>: {...} } */
   async listLineups(teamId) {
-    const rows = ok(await supabase.from('lineups').select('key, slots, updated_at').eq('team_id', teamId));
-    return Object.fromEntries(rows.map((r) => [r.key, { slots: r.slots || {}, updatedAt: Date.parse(r.updated_at) }]));
+    const rows = ok(await supabase.from('lineups').select('key, slots, opponent, updated_at').eq('team_id', teamId));
+    return Object.fromEntries(rows.map((r) => [r.key, { slots: r.slots || {}, opponent: r.opponent || '', updatedAt: Date.parse(r.updated_at) }]));
   },
-  async saveLineup(teamId, key, slots) {
-    ok(await supabase.from('lineups').upsert({ team_id: teamId, key, game_id: key === 'default' ? null : key, slots, updated_at: new Date().toISOString() }));
+  async saveLineup(teamId, key, slots, opponent = '') {
+    ok(await supabase.from('lineups').upsert({ team_id: teamId, key, game_id: key === 'default' ? null : key, slots, opponent, updated_at: new Date().toISOString() }));
   },
   async deleteLineup(teamId, key) { ok(await supabase.from('lineups').delete().eq('team_id', teamId).eq('key', key)); },
 

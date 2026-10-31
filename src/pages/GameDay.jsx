@@ -11,6 +11,8 @@ import PageHead from '../components/PageHead.jsx';
 import Modal from '../components/Modal.jsx';
 import Icon from '../components/Icon.jsx';
 import Rink from '../components/Rink.jsx';
+import Logo from '../components/Logo.jsx';
+import { STATUS, currentInjury } from '../lib/injury.js';
 import { InjuryMark, byNumber } from './Roster.jsx';
 import { rowsToSlots, lineField, LINES_TEMPLATE } from '../lib/imports.js';
 import ImportSource from '../components/ImportSource.jsx';
@@ -49,6 +51,7 @@ export default function GameDay() {
   const [view, setView] = useState('EV');
   const [unit, setUnit] = useState({ f: 1, d: 1 });
   const [free, setFree] = useState(false);
+  const [printInj, setPrintInj] = useState(false);
   const load = () => H.api.listLineups(t.id).then(setAll).catch((e) => { setAll({}); H.toast('Could not load lines: ' + e.message); });
   useEffect(() => {
     load();
@@ -64,10 +67,14 @@ export default function GameDay() {
   // a slot linked to a roster player shows the roster's current number and name
   const who = (s) => (s && s.pid && byId[s.pid] ? { ...s, num: byId[s.pid].num, name: byId[s.pid].name, player: byId[s.pid] } : s);
 
-  const write = (next) => {
-    setAll((a) => ({ ...a, [key]: { slots: next, updatedAt: Date.now() } }));
-    H.save((api) => api.saveLineup(t.id, key, next)).catch(() => load());
+  // opponent: typed by the coach, else the game's opponent from the schedule
+  const schedOpp = game ? gameView(game, t).opp : '';
+  const opponent = (own && own.opponent) || schedOpp;
+  const write = (next, opp = own ? own.opponent || '' : '') => {
+    setAll((a) => ({ ...a, [key]: { slots: next, opponent: opp, updatedAt: Date.now() } }));
+    H.save((api) => api.saveLineup(t.id, key, next, opp)).catch(() => load());
   };
+  const setOpponent = (v) => { v = v.trim().slice(0, 80); if (v === opponent) return; write(slots, v === schedOpp ? '' : v); };
   const put = (id, p) => {
     const n = { ...slots };
     if (p && p.pid) Object.keys(n).forEach((k) => { if (k !== id && group(k) === group(id) && n[k].pid === p.pid) delete n[k]; });
@@ -117,16 +124,19 @@ export default function GameDay() {
   return <>
     <PageHead title="Game day / Lines" actions={acts} />
     {!all ? <div className="loading">Loading lines…</div> : <>
-      <div className="print-only gd-print-head"><b>{t.name}</b> · {game ? `${label(game)}${game.time ? ' · ' + fmtTime(game.time) : ''}${game.venue ? ' · ' + game.venue : ''}` : 'Default lines'}</div>
+      <PrintSheet t={t} game={game} opponent={opponent} slots={slots} who={who} roster={roster} where={where} injuries={printInj ? H.tdata.injuries : null} />
       <div className="gd-status no-print">
         {game ? <span>{fmtDate(game.date, true)}{game.time ? ' · ' + fmtTime(game.time) : ''}{game.venue ? ' · ' + game.venue : ''}</span> : <span>Default lines. Every game uses these until you change that game's lines.</span>}
         {usingDefault && <span className="pill">Using default lines</span>}
+        <label className="gd-opp"><span className="muted small">Opponent</span>
+          {edit ? <input key={key + opponent} className="input" defaultValue={opponent} maxLength={80} placeholder="Type the opponent" onBlur={(e) => setOpponent(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') e.target.blur(); }} /> : <b>{opponent || '—'}</b>}</label>
+        {edit && <label className="small muted" style={{ display: 'flex', gap: 6, alignItems: 'center' }} title="Adds each player's Out / Limited status to the roster on the printout"><input type="checkbox" className="cb" checked={printInj} onChange={(e) => setPrintInj(e.target.checked)} /> Injury status on printout</label>}
         {edit && <span className="gd-tools">
           {key !== 'default' && own && <button className="btn sm" onClick={useDefault}>Use default lines</button>}
           {Object.keys(slots).length > 0 && !usingDefault && <button className="btn sm ghost" onClick={clearAll}>Clear all</button>}
         </span>}
       </div>
-      <div className="gd-grid">
+      <div className="gd-grid no-print">
         <div className="gd-main">
           <section className="card gd-rink-card no-print">
             <div className="card-head"><h2>On the ice</h2>
@@ -183,6 +193,51 @@ export default function GameDay() {
     </>}
     {drag.ghost && <div className="gd-ghost" style={{ left: drag.ghost.x, top: drag.ghost.y }}>{drag.ghost.text}</div>}
   </>;
+}
+
+/* Printout (print / Save as PDF only): logo, team, opponent and game details, the starting
+   lineup on the rink, every line and special-teams unit, then the full roster. Injury status
+   is only included when the coach ticks it. */
+function PrintSheet({ t, game, opponent, slots, who, roster, where, injuries }) {
+  const v = game ? gameView(game, t) : null;
+  const name = (id) => { const p = who(slots[id]); return p ? <>{p.num && <b className="tnum">{p.num}</b>} {p.name}</> : null; };
+  const row = (label, ids) => <tr key={label}><th>{label}</th>{ids.map((id) => <td key={id}>{name(id)}</td>)}</tr>;
+  const table = (title, head, rows) => <table className="gp-t"><thead><tr><th>{title}</th>{head.map((h, i) => <th key={i}>{h}</th>)}</tr></thead><tbody>{rows}</tbody></table>;
+  return <div className="gp print-only">
+    <header className="gp-head">
+      <Logo t={t} cls="gp-logo" />
+      <div className="gp-title">
+        <div className="gp-team">{t.name}</div>
+        <div className="gp-vs">{v ? (v.home ? 'vs ' : '@ ') : opponent ? 'vs ' : ''}{opponent || (game ? '' : 'Default lines')}</div>
+        <div className="gp-meta">{game ? [fmtDate(game.date, true), game.time && fmtTime(game.time), game.venue].filter(Boolean).join(' · ') : ''}</div>
+      </div>
+      <div className="gp-tag">Game day lineup</div>
+    </header>
+    <section className="gp-rink">
+      <div className="gp-cap">Starting lineup</div>
+      <Rink label="Starting lineup">
+        {SPOTS('EV', 1, 1).map(([id, pos, x, y]) => { const p = who(slots[id]); return <g key={id} className={`gd-token ${p ? '' : 'empty'}`} transform={`translate(${x} ${y})`}>
+          <circle r="6.5" /><text className="gd-num" dy="1.9">{p ? p.num || pos : pos}</text><text className="gd-name" y="11.5">{p ? short(p.name, 18) : pos}</text></g>; })}
+      </Rink>
+    </section>
+    <section className="gp-lines">
+      {table('Forwards', ['LW', 'C', 'RW'], FWD.map((n) => row(`L${n}`, ['LW', 'C', 'RW'].map((p) => `F${n}${p}`))))}
+      <div>
+        {table('Defence', ['LD', 'RD'], DEF.map((n) => row(`D${n}`, [`D${n}L`, `D${n}R`])))}
+        {table('Goalies', ['Starter', 'Backup'], [row('G', ['G1', 'G2'])])}
+      </div>
+      <div className="gp-wide">{table('Power play', PP_POS, UNITS.map((n) => row(`PP${n}`, PP_POS.map((p) => `PP${n}${p}`))))}</div>
+      <div className="gp-wide">{table('Penalty kill', ['F', 'F', 'LD', 'RD'], UNITS.map((n) => row(`PK${n}`, PK_POS.map((p) => `PK${n}${p}`))))}</div>
+      <div className="gp-wide">{table('Extras', ['', '', '', ''], [row('', ['X1', 'X2', 'X3', 'X4'])])}</div>
+    </section>
+    {roster.length > 0 && <section className="gp-roster">
+      <div className="gp-cap">Roster</div>
+      <table className="gp-r"><thead><tr><th>#</th><th>Name</th><th>Pos</th><th>Shoots</th><th>Year</th><th>Ht</th><th>Wt</th><th>Hometown</th><th>Lines</th>{injuries && <th>Status</th>}</tr></thead>
+        <tbody>{roster.map((p) => { const i = injuries && currentInjury(p.id, injuries); return <tr key={p.id} className={where[p.id] ? '' : 'gp-out'}>
+          <td className="tnum">{p.num}</td><td><b>{p.name}</b></td><td>{p.position}</td><td>{p.shoots}</td><td>{p.year}</td><td>{p.height}</td><td>{p.weight}</td><td>{p.hometown}</td>
+          <td>{(where[p.id] || []).map(shortSlot).join(', ') || 'Not dressed'}</td>{injuries && <td>{i ? STATUS[i.status].label : 'Available'}</td>}</tr>; })}</tbody></table>
+    </section>}
+  </div>;
 }
 
 /* Lines import: a CSV or PDF table, either one row per spot (Line, Position, Number, Player) or

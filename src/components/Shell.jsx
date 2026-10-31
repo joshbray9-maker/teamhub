@@ -35,7 +35,7 @@ export default function Shell({ children }) {
       <div style={{ minWidth: 0 }}>
         <header className="topbar">
           <button className="icon-btn" onClick={() => setDrawer(true)} aria-label="Open menu"><Icon n="menu" /></button>
-          <Logo t={o ? { name: o.name } : t} />
+          <Logo t={o ? { name: o.name, logo: o.logo_url } : t} />
           <div className="topbar-title"><span className="ts-name">{o ? o.name : t ? t.name : 'TeamHub'}</span></div>
         </header>
         <main className="main"><div className="main-in">{children}</div></main>
@@ -62,7 +62,7 @@ function Side({ onNavigate }) {
   return (<>
     <div className="team-switch" ref={wrap}>
       <button className="ts-btn" onClick={() => setOpen(!open)} aria-haspopup="true" aria-expanded={open}>
-        <Logo t={o ? { name: o.name } : t} />
+        <Logo t={o ? { name: o.name, logo: o.logo_url } : t} />
         <span className="ts-txt"><span className="ts-name">{o ? o.name : t ? t.name : 'TeamHub'}</span>
           <span className="ts-meta">{o ? `Master schedule · ${ots.length} team${ots.length === 1 ? '' : 's'}` : t ? `${SPORTS[t.sport] || ''} · ${LEVELS[t.level] || ''}` : 'No team yet'}</span></span>
         <Icon n="down" />
@@ -72,7 +72,7 @@ function Side({ onNavigate }) {
           <Logo t={x} /><span className="ts-txt">{x.name}<span className="ts-meta">{SPORTS[x.sport] || ''} · {LEVELS[x.level] || ''}</span></span>{x.id === H.teamId && !o && <Icon n="check" />}</button>)}
         {orgsWithTeams.length > 0 && <><div className="pop-sep" /><div className="pop-label">Master schedules</div>
           {orgsWithTeams.map((x) => <button key={x.id} className="pop-item" role="menuitem" onClick={pick(() => H.openOrg(x.id))}>
-            <Logo t={{ name: x.name }} /><span className="ts-txt">{x.name}<span className="ts-meta">{x.n} team{x.n === 1 ? '' : 's'}</span></span>{o && o.id === x.id && <Icon n="check" />}</button>)}</>}
+            <Logo t={{ name: x.name, logo: x.logo_url }} /><span className="ts-txt">{x.name}<span className="ts-meta">{x.n} team{x.n === 1 ? '' : 's'}</span></span>{o && o.id === x.id && <Icon n="check" />}</button>)}</>}
         {(H.isCoach || adminOrgs.length > 0) && <><div className="pop-sep" />
           {t && !o && H.isCoach && <button className="pop-item dim" onClick={pick(() => H.openDialog((c) => <TeamForm t={t} close={c} />))}><Icon n="gear" /> Team settings</button>}
           {t && !o && H.isAdmin && <button className="pop-item dim" onClick={pick(() => H.openDialog((c) => <MembersDialog org={H.orgOf(t)} close={c} />))}><Icon n="users" /> Members & sharing</button>}

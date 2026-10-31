@@ -83,12 +83,17 @@ test('migration + seed load, and access follows memberships', async () => {
   await assert.rejects(as(db, U.coach, `select invite_member($1, 'z@x.test', 'admin')`, [bcs]));
   await as(db, U.josh, `insert into teams (org_id, name) values ($1, 'New team')`, [uni]);
 
+  // BCS gets its organization logo; teams without their own logo show it on the public page
+  assert.equal((await db.query(`select logo_url from organizations where slug='bcs'`)).rows[0].logo_url, '/logos/bcs.png');
+
   // public schedule: off by default, then exposes only that org
   assert.equal((await as(db, null, `select public_schedule('bcs') s`))[0].s, null);
   await db.exec(`update organizations set public_schedule = true where slug = 'bcs'`);
   const pub = (await as(db, null, `select public_schedule('bcs') s`))[0].s;
   assert.equal(pub.org.slug, 'bcs');
   assert.equal(pub.teams.length, 3);
+  assert.equal(pub.org.logo_url, '/logos/bcs.png');
+  assert.ok(pub.teams.every((t) => t.logo_url === '/logos/bcs.png'));
   assert.ok(pub.games.length > 0 && pub.events.length > 0);
   assert.ok(!('notes' in pub) && !JSON.stringify(pub).includes('sc_days'));
   // anon can't read tables directly
