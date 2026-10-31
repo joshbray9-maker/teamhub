@@ -682,6 +682,18 @@ span.gd-row{cursor:default}
 .lb-who{display:inline-flex;gap:8px;align-items:baseline}
 .lb-rank{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;font-weight:700;font-size:13px;background:var(--surface-2);color:var(--muted)}
 .lb-rank.r1{background:#f5c518;color:#3d2e00} .lb-rank.r2{background:#c9ced6;color:#24282e} .lb-rank.r3{background:#d38a52;color:#2e1503}
+/* ---------- weekly snapshot ---------- */
+.ws{display:flex;flex-direction:column;gap:16px}
+.ws-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ws-bar b{font:700 18px var(--f-display)}
+.ws-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+.ws-list,.ws-days{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.ws-list li{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ws-days li{display:grid;grid-template-columns:96px 22px minmax(0,1fr);gap:8px;align-items:center}
+.ws-d{color:var(--muted);font-size:13px;min-width:96px}
+.ws-k{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-top:6px}
+.ws-up{color:var(--st-green);font-weight:600} .ws-down{color:var(--st-red);font-weight:600}
+@media (max-width:1000px){.ws-grid{grid-template-columns:minmax(0,1fr)}}
 @media print{
   @page{margin:12mm}
   /* beats the dark-mode :root rules so a sheet printed from dark mode is still black on white */
@@ -692,6 +704,9 @@ span.gd-row{cursor:default}
   .main{padding:0 !important}
   .print-only{display:block}
   .main-in:has(.gp) > .page-head,.main-in:has(.gp-head) > .page-head{display:none}
+  .ws-grid{grid-template-columns:1fr 1fr;gap:10px}
+  .ws .card,.ws .tile{break-inside:avoid;box-shadow:none}
+  .ws .strip{gap:10px}
   .gp-head{display:flex}
   .gp-roster{break-before:auto}
   .gp-r tr{break-inside:avoid}

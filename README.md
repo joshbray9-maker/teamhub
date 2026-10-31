@@ -87,7 +87,10 @@ link never see injuries or the flags. Give sports-med staff the **coach** role.
 
 **Coach's report (admins and coaches only):** the next game, player availability (out /
 limited / available, live from the Injury report), every active limitation, and a print /
-PDF button. **Team readiness** is a placeholder: it will come from weekly testing metrics
+PDF button. A **Weekly snapshot** view (week picker, print / PDF) shows that week's games and results plus
+next week's, team events, the S&C week with its load versus the week before, who's out or
+limited with new and returning injuries, and any testing compared with the previous session.
+**Team readiness** is a placeholder: it will come from weekly testing metrics
 once those are set up, and its scoring rules haven't been decided, so nothing is estimated.
 
 **Imports at a glance:** every tab that holds team data has an **Import** button with two

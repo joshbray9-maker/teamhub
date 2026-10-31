@@ -3,7 +3,9 @@
 // readiness score.
 // Readiness is a PLACEHOLDER: it will come from weekly testing metrics that aren't set up
 // yet, and its scoring rules are Josh's to define. Nothing here estimates it.
+import { useState } from 'react';
 import { useHub } from '../lib/hub.jsx';
+import WeeklySnapshot from './WeeklySnapshot.jsx';
 import { fmtDate, fmtTime, todayISO, gameView, ourGames, hasScore, daysUntil } from '../lib/util.js';
 import { STATUS, currentInjury, nextStep, inDays, isActive } from '../lib/injury.js';
 import PageHead from '../components/PageHead.jsx';
@@ -13,6 +15,7 @@ import Icon from '../components/Icon.jsx';
 import { useRoster, StatusPill, where } from './Injury.jsx';
 
 export default function CoachReport() {
+  const [view, setView] = useState('today');
   const H = useHub(); const t = H.team;
   const { roster, photos } = useRoster();
   if (!H.isCoach) return <><PageHead title="Coach's report" /><section className="card"><p className="muted" style={{ margin: 0 }}>The coach's report is only visible to coaches and admins.</p></section></>;
@@ -32,7 +35,8 @@ export default function CoachReport() {
       {person(p)}{i && <span className="muted small">{i.injury || where(i)}{n && n.days !== null ? ` · ${n.what.toLowerCase()} ${inDays(n.days)}` : ''}</span>}</li>; })}</ul></div>;
 
   return <>
-    <PageHead title="Coach's report" actions={<button className="btn" onClick={() => window.print()}><Icon n="clipboard" /> Print / PDF</button>} />
+    <PageHead title="Coach's report" actions={<>{view === 'today' && <button className="btn" onClick={() => window.print()}><Icon n="clipboard" /> Print / PDF</button>}<div className="seg" role="tablist">{[['today', 'Today'], ['week', 'Weekly snapshot']].map(([k, l]) => <button key={k} role="tab" aria-selected={view === k} className={view === k ? 'on' : ''} onClick={() => setView(k)}>{l}</button>)}</div></>} />
+    {view === 'week' ? <WeeklySnapshot key={t.id} /> : <>
     <header className="print-only gp-head"><Logo t={t} cls="gp-logo" /><div className="gp-title"><div className="gp-team">{t.name}</div><div className="gp-meta">{fmtDate(today, true)}</div></div><div className="gp-tag">Coach's report</div></header>
     <section className="strip">
       <div className="tile">
@@ -72,5 +76,6 @@ export default function CoachReport() {
         </section>
       </div>
     </div>}
+    </>}
   </>;
 }
