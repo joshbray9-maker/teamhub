@@ -47,3 +47,16 @@ test('pasted spreadsheet cells: tabs, quoted line breaks, and trimming empty row
   assert.deepEqual(rows, [['Number', 'Name', 'Position'], ['9', 'Paste One', 'C'], ['', 'Paste\nTwo', 'D']]);
   assert.deepEqual(rowsToPlayers(rows).players.map((p) => p.name), ['Paste One', 'Paste Two']);
 });
+
+test('practice plans: running clock, totals, minutes per type, CSV', async () => {
+  const { timeline, byType, practiceCsv } = await import('../src/lib/practice.js');
+  const blocks = [{ title: 'Dynamic warm-up', minutes: 10, type: 'warmup' }, { title: 'Form shooting', minutes: 15, type: 'shooting' }, { title: 'Spot-up', minutes: '5', type: 'shooting' }];
+  const t = timeline('17:50', blocks);
+  assert.deepEqual(t.rows.map((r) => [r.from, r.to]), [['17:50', '18:00'], ['18:00', '18:15'], ['18:15', '18:20']]);
+  assert.equal(t.total, 30); assert.equal(t.end, '18:20');
+  assert.equal(timeline('', blocks).rows[0].from, '');
+  assert.deepEqual(byType(blocks), [['shooting', 20], ['warmup', 10]]);
+  const csv = practiceCsv({ practice_on: '2026-11-03', start_time: '17:50', blocks }, 'basketball');
+  assert.deepEqual(csv[2], ['2026-11-03', '18:00', '18:15', 15, 'Shooting', 'Form shooting', '']);
+  assert.deepEqual(csv[csv.length - 1], ['', '', '', 30, '', 'Total', '']);
+});

@@ -206,6 +206,17 @@ export const api = {
   async setLeaderboardShared(teamId, on) { ok(await supabase.from('gym_config').upsert({ team_id: teamId, leaderboard: on })); },
   async saveGymConfig(teamId, c) { ok(await supabase.from('gym_config').upsert({ team_id: teamId, targets: c.targets || {}, overrides: c.overrides || {}, updated_at: new Date().toISOString() })); },
 
+  /* ---------- practice plans (staff only) ---------- */
+  async listPractices(teamId) { return ok(await supabase.from('practice_plans').select('*').eq('team_id', teamId).order('practice_on', { ascending: false })); },
+  async savePractice(teamId, p) {
+    const row = { team_id: teamId, practice_on: p.practice_on, start_time: p.start_time || '', location: p.location || '', focus: p.focus || '', notes: p.notes || '', blocks: p.blocks || [] };
+    return ok(p.id ? await supabase.from('practice_plans').update(row).eq('id', p.id).select().single() : await supabase.from('practice_plans').insert(row).select().single());
+  },
+  async deletePractice(id) { ok(await supabase.from('practice_plans').delete().eq('id', id)); },
+  async listDrills(teamId) { return ok(await supabase.from('drills').select('*').eq('team_id', teamId).order('title')); },
+  async saveDrill(teamId, d) { const row = { team_id: teamId, title: d.title, type: d.type || '', minutes: d.minutes || 10, notes: d.notes || '' }; return ok(d.id ? await supabase.from('drills').update(row).eq('id', d.id).select().single() : await supabase.from('drills').insert(row).select().single()); },
+  async deleteDrill(id) { ok(await supabase.from('drills').delete().eq('id', id)); },
+
   /* ---------- data center ---------- */
   async listDatasets(teamId) { return ok(await supabase.from('datasets').select('*').eq('team_id', teamId).order('recorded_on', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false })); },
   async saveDataset(teamId, d) {

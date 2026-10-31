@@ -28,6 +28,8 @@ organization can read them; coaches edit. Injuries live in their own staff-only 
 | `supabase/migrations/…_testing.sql` | S&C testing sessions, results, gym-group targets (staff only) |
 | `src/lib/testing.js` | Test metrics, batteries, gym-group formula, team trends, leaderboard |
 | `supabase/migrations/…_leaderboard.sql` | Leaderboard function and its on/off switch |
+| `supabase/migrations/…_practice.sql` | Practice plans and drill library (staff only) |
+| `src/lib/practice.js` | Block types per sport, clock times, practice CSV |
 | `src/lib/imports.js` | S&C, Lines and Data Center imports, blank templates |
 | `src/lib/injury.js` | Injury statuses, return countdowns, body regions, injury CSV/PDF import |
 | `supabase/functions/league-sync/` | Edge Function for the daily league sync |
@@ -129,6 +131,14 @@ The formula is in `src/lib/testing.js`.
 **Data Center:** upload any CSV / PDF table as its own named table (Testing, Stats, Other) with
 a date. TeamHub doesn't calculate anything from it. Admins and coaches see every table;
 viewers only see tables marked **Shared**. Player names in a table link to the roster.
+
+**Practice plan (admins and coaches only):** build a practice block by block: minutes, type
+(sport-specific, e.g. basketball: warm-up, ball handling, shooting, offense, defense,
+transition, scrimmage, conditioning…), what you're running and coaching notes. Clock times run
+from the start time, a bar shows the split by type, blocks reorder with the arrows, and any
+block can be saved to the team's **drill library** and reused. **New practice** can start from
+a copy of an earlier one; **Print / PDF** and **CSV** export. Injured players are flagged at
+the top. Block types live in `src/lib/practice.js`.
 
 **Player profile (admins and coaches only):** Roster → **Profile** on a player (or **Full
 profile / print** in the Injury report): photo and roster details, current status, the body
@@ -290,6 +300,6 @@ check the access rules (coach vs viewer vs outsider vs public link).
 
 ## Not built yet
 
-Same placeholders as the artifact: League, Opponents, Practice plan, Game day (non-hockey),
+Same placeholders as the artifact: League, Opponents, Game day (non-hockey),
 Playbook, Recruitment, My Profile. Workload load units and the acute:chronic band are **placeholder values**, editable
 per team. They're not a validated scale.

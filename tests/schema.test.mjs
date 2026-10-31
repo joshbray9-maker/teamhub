@@ -233,6 +233,17 @@ test('migration + seed load, and access follows memberships', async () => {
   assert.equal((await as(db, U.coach, 'select count(*)::int c from teams where org_id=$1', [bcs]))[0].c >= 3, true);
   await db.query('delete from memberships where user_id = $1', [U.other]);
 
+  // practice plans + drill library: coaching staff only
+  await as(db, U.coach, `insert into practice_plans (team_id, practice_on, blocks) values ($1, '2026-11-03', '[{"title":"Warm-up","minutes":10}]')`, [bcsTeam]);
+  await as(db, U.coach, `insert into drills (team_id, title) values ($1, 'Shell drill')`, [bcsTeam]);
+  assert.equal((await as(db, U.coach, 'select count(*)::int c from practice_plans'))[0].c, 1);
+  for (const who of [U.viewer, U.other, null]) {
+    assert.equal((await as(db, who, 'select count(*)::int c from practice_plans'))[0].c, 0);
+    assert.equal((await as(db, who, 'select count(*)::int c from drills'))[0].c, 0);
+  }
+  await assert.rejects(as(db, U.viewer, `insert into drills (team_id, title) values ($1, 'x')`, [bcsTeam]));
+  await assert.rejects(as(db, U.coach, `insert into drills (team_id, title, minutes) values ($1, 'x', 0)`, [bcsTeam]));
+
   // game day lines: coaches write (default + their own team's games), viewers read only
   const bcsGame = (await db.query('select id from games where team_id=$1 limit 1', [bcsTeam])).rows[0].id;
   const uniGame = (await db.query('select id from games where team_id=$1 limit 1', [uniTeam])).rows[0].id;
