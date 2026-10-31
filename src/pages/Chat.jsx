@@ -1,7 +1,8 @@
-// Team chat: one plain-text group thread per team, live for everyone in the team's organization.
+// Team chat: plain-text group threads per team, live. 'Team' is for everyone in the team's
+// organization; 'Coaching staff' is a private board for its admins and coaches (enforced by RLS).
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useHub } from '../lib/hub.jsx';
-import { iso, fmtDate, todayISO, pad } from '../lib/util.js';
+import { iso, fmtDate, todayISO, pad, store } from '../lib/util.js';
 import PageHead from '../components/PageHead.jsx';
 import Icon from '../components/Icon.jsx';
 
@@ -26,6 +27,21 @@ const addMsgs = (list, add) => {
 
 export default function Chat() {
   const H = useHub(); const t = H.team;
+  const [chan, setChan] = useState(() => (H.isCoach && store.get('chatChannel') === 'staff' ? 'staff' : 'team'));
+  const channel = H.isCoach ? chan : 'team';
+  const pick = (c) => { setChan(c); store.set('chatChannel', c); };
+  return <>
+    <PageHead title="Chat" actions={H.isCoach && <div className="seg" role="tablist" aria-label="Chat">
+      <button role="tab" aria-selected={channel === 'team'} className={channel === 'team' ? 'on' : ''} onClick={() => pick('team')}>Team</button>
+      <button role="tab" aria-selected={channel === 'staff'} className={channel === 'staff' ? 'on' : ''} onClick={() => pick('staff')}><Icon n="lock" /> Coaching staff</button>
+    </div>} />
+    <Thread key={t.id + ':' + channel} channel={channel} />
+  </>;
+}
+
+function Thread({ channel }) {
+  const H = useHub(); const t = H.team;
+  const staff = channel === 'staff';
   const [msgs, setMsgs] = useState(null);
   const [more, setMore] = useState(false);
   const [text, setText] = useState('');
@@ -37,15 +53,15 @@ export default function Chat() {
   useEffect(() => {
     let live = true;
     setMsgs(null); stick.current = true;
-    H.api.listChat(t.id, { limit: PAGE })
+    H.api.listChat(t.id, { channel, limit: PAGE })
       .then((r) => { if (live) { setMsgs((cur) => addMsgs(cur || [], r)); setMore(r.length === PAGE); } })
       .catch((e) => { if (live) { setMsgs([]); H.toast('Could not load chat: ' + e.message); } });
-    const off = H.api.subscribeChat(t.id, {
+    const off = H.api.subscribeChat(t.id, channel, {
       onAdd: (m) => setMsgs((cur) => addMsgs(cur || [], [m])),
       onRemove: (id) => setMsgs((cur) => (cur ? cur.filter((m) => m.id !== id) : cur)),
     });
     return () => { live = false; off(); };
-  }, [t.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [t.id, channel]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useLayoutEffect(() => {
     const el = list.current; if (!el || !msgs) return;
@@ -56,7 +72,7 @@ export default function Chat() {
 
   const earlier = async () => {
     try {
-      const r = await H.api.listChat(t.id, { beforeTs: msgs[0].ts, limit: PAGE });
+      const r = await H.api.listChat(t.id, { channel, beforeTs: msgs[0].ts, limit: PAGE });
       keepFrom.current = list.current.scrollHeight;
       setMsgs((cur) => addMsgs(cur, r)); setMore(r.length === PAGE);
     } catch (e) { H.toast('Could not load earlier messages: ' + e.message); }
@@ -65,7 +81,7 @@ export default function Chat() {
     const body = text.trim(); if (!body || sending) return;
     if (body.length > MAX) { H.toast(`Messages can be up to ${MAX} characters.`); return; }
     setSending(true); stick.current = true;
-    try { const m = await H.api.sendChat(t.id, body); setMsgs((cur) => addMsgs(cur || [], [m])); setText(''); }
+    try { const m = await H.api.sendChat(t.id, body, channel); setMsgs((cur) => addMsgs(cur || [], [m])); setText(''); }
     catch (e) { H.toast('Could not send. ' + (e.message || 'Try again.')); }
     finally { setSending(false); box.current && box.current.focus(); }
   };
@@ -79,11 +95,11 @@ export default function Chat() {
 
   let prev = null;
   return <>
-    <PageHead title="Chat" />
     <section className="card chat">
+      {staff && <div className="chat-note"><Icon n="lock" /> Only admins and coaches of {H.orgOf(t) ? H.orgOf(t).name : 'this organization'} see this board. Viewers don't.</div>}
       <div className="chat-list" ref={list} onScroll={onScroll} aria-live="polite">
         {!msgs ? <div className="muted small chat-empty">Loading…</div>
-          : !msgs.length ? <div className="chat-empty"><Icon n="chat" /><b>No messages yet</b><span className="muted small">Everyone with access to {t.name} sees this chat.</span></div>
+          : !msgs.length ? <div className="chat-empty"><Icon n="chat" /><b>No messages yet</b><span className="muted small">{staff ? 'A private board for the coaching staff.' : `Everyone with access to ${t.name} sees this chat.`}</span></div>
           : <>
             {more && <button className="btn sm chat-more" onClick={earlier}>Load earlier messages</button>}
             {msgs.map((m) => {
@@ -106,7 +122,7 @@ export default function Chat() {
           </>}
       </div>
       <form className="chat-compose" onSubmit={(e) => { e.preventDefault(); send(); }}>
-        <textarea ref={box} className="input" rows={1} value={text} maxLength={MAX} placeholder={`Message ${t.name}`} aria-label="Message"
+        <textarea ref={box} className="input" rows={1} value={text} maxLength={MAX} placeholder={staff ? 'Message the coaching staff' : `Message ${t.name}`} aria-label="Message"
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send(); } }} />
         <button className="btn primary" type="submit" disabled={!text.trim() || sending}>Send</button>

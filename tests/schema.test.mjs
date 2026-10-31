@@ -117,6 +117,14 @@ test('migration + seed load, and access follows memberships', async () => {
   await as(db, U.josh, 'delete from chat_messages where id=$1', [cm.id]);
   await as(db, U.viewer, 'delete from chat_messages where id=$1', [vm.id]);
   assert.equal((await db.query('select count(*)::int c from chat_messages')).rows[0].c, 0);
+  // coaching-staff board: coaches + admins only
+  await as(db, U.coach, `insert into chat_messages (team_id, channel, body) values ($1, 'staff', 'staff only')`, [bcsTeam]);
+  assert.equal((await as(db, U.josh, `select count(*)::int c from chat_messages where channel='staff'`))[0].c, 1);
+  assert.equal((await as(db, U.viewer, `select count(*)::int c from chat_messages where channel='staff'`))[0].c, 0);
+  await assert.rejects(as(db, U.viewer, `insert into chat_messages (team_id, channel, body) values ($1, 'staff', 'x')`, [bcsTeam]));
+  await assert.rejects(as(db, U.coach, `insert into chat_messages (team_id, channel, body) values ($1, 'staff', 'x')`, [uniTeam]));
+  await assert.rejects(as(db, U.coach, `insert into chat_messages (team_id, channel, body) values ($1, 'other', 'x')`, [bcsTeam]));
   // the public schedule never includes chat
-  assert.ok(!JSON.stringify((await as(db, null, `select public_schedule('bcs') s`))[0].s).includes('coach here'));
+  const pubNow = JSON.stringify((await as(db, null, `select public_schedule('bcs') s`))[0].s);
+  assert.ok(!pubNow.includes('coach here') && !pubNow.includes('staff only'));
 });

@@ -77,18 +77,18 @@ export const api = {
   async saveSetting(teamId, key, value) { const s = D(teamId).sc; if (key === 'sc_loads') s.loads = value; if (key === 'sc_band') s.band = value; save(); },
   async saveCoach(teamId, c) { D(teamId).coach = clone(c); save(); },
 
-  async listChat(teamId, { beforeTs, limit = 100 } = {}) {
-    await load(); const all = (D(teamId).chat || []).filter((m) => !beforeTs || m.ts < beforeTs);
+  async listChat(teamId, { channel = 'team', beforeTs, limit = 100 } = {}) {
+    await load(); const all = (D(teamId).chat || []).filter((m) => (m.channel || 'team') === channel && (!beforeTs || m.ts < beforeTs));
     return clone(all.slice(-limit));
   },
-  async sendChat(teamId, body) {
-    const m = { id: 'm' + uid(), user_id: USER.id, author: USER.email, body: body.trim(), ts: Date.now() };
+  async sendChat(teamId, body, channel = 'team') {
+    const m = { id: 'm' + uid(), channel, user_id: USER.id, author: USER.email, body: body.trim(), ts: Date.now() };
     (D(teamId).chat = D(teamId).chat || []).push(m); save();
-    chatSubs.forEach((s) => s.teamId === teamId && s.onAdd(clone(m)));
+    chatSubs.forEach((s) => s.teamId === teamId && s.channel === channel && s.onAdd(clone(m)));
     return clone(m);
   },
   async deleteChat(id) { Object.values(db.data).forEach((d) => { d.chat = (d.chat || []).filter((m) => m.id !== id); }); save(); chatSubs.forEach((s) => s.onRemove(id)); },
-  subscribeChat(teamId, { onAdd, onRemove }) { const s = { teamId, onAdd, onRemove }; chatSubs.add(s); return () => chatSubs.delete(s); },
+  subscribeChat(teamId, channel, { onAdd, onRemove }) { const s = { teamId, channel, onAdd, onRemove }; chatSubs.add(s); return () => chatSubs.delete(s); },
 
   async saveTeam(t) {
     if (t.id) { const i = db.teams.findIndex((x) => x.id === t.id); db.teams[i] = { ...db.teams[i], ...clone(t) }; save(); return clone(db.teams[i]); }

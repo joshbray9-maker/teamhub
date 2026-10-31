@@ -15,7 +15,7 @@ it that way until the access rules have been reviewed for it.
 | `src/` | The app: team switcher, reorderable sidebar, Home (calendar, notifications, notes & to-do, fixtures, standings, league paste, .ics import, league-sync review), master schedules, S&C (calendar, periodization, Workload) |
 | `src/pages/PublicSchedule.jsx` | Public read-only page at `/schedule/<org>` |
 | `supabase/migrations/…_init.sql` | Tables, row-level security, sign-up trigger, public schedule function, logo storage |
-| `supabase/migrations/…_chat.sql` | Team chat table, its access rules and live updates |
+| `supabase/migrations/…_chat*.sql` | Team chat + coaching-staff board: table, access rules, live updates |
 | `supabase/functions/league-sync/` | Edge Function for the daily league sync |
 | `supabase/functions/_shared/leagueParse.js` | League/.ics parsing, used by both the app and the sync |
 | `supabase/cron.sql` | Schedules the daily sync |
@@ -35,8 +35,9 @@ per organization:
 | **viewer** | Read-only. No notes & to-dos |
 | *public link* | Only that organization's games and calendar events. Off until an admin turns it on |
 
-**Chat:** each team has one group chat. Everyone in the team's organization (admin, coach,
-viewer) can read and post; the sender or an admin can delete a message; messages can't be
+**Chat:** each team has a group chat that everyone in the team's organization (admin, coach,
+viewer) can read and post in, plus a private **Coaching staff** board that only admins and
+coaches can see (viewers don't even get the switch, and the database refuses them). In both, the sender or an admin can delete a message; messages can't be
 edited. New messages show up live. The public link never shows chat. Like the notes card,
 chat is free text: keep injury or medical details about athletes out of it.
 
