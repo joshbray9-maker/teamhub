@@ -124,6 +124,22 @@ test('migration + seed load, and access follows memberships', async () => {
   await assert.rejects(as(db, U.viewer, `insert into chat_messages (team_id, channel, body) values ($1, 'staff', 'x')`, [bcsTeam]));
   await assert.rejects(as(db, U.coach, `insert into chat_messages (team_id, channel, body) values ($1, 'staff', 'x')`, [uniTeam]));
   await assert.rejects(as(db, U.coach, `insert into chat_messages (team_id, channel, body) values ($1, 'other', 'x')`, [bcsTeam]));
+  // game day lines: coaches write (default + their own team's games), viewers read only
+  const bcsGame = (await db.query('select id from games where team_id=$1 limit 1', [bcsTeam])).rows[0].id;
+  const uniGame = (await db.query('select id from games where team_id=$1 limit 1', [uniTeam])).rows[0].id;
+  const slots = JSON.stringify({ F1C: { num: '9', name: 'Player A' } });
+  await as(db, U.coach, `insert into lineups (team_id, key, slots) values ($1, 'default', $2)`, [bcsTeam, slots]);
+  await as(db, U.coach, `insert into lineups (team_id, key, game_id, slots) values ($1, $2::text, $2::uuid, $3)`, [bcsTeam, bcsGame, slots]);
+  assert.equal((await as(db, U.viewer, 'select count(*)::int c from lineups where team_id=$1', [bcsTeam]))[0].c, 2);
+  await assert.rejects(as(db, U.viewer, `insert into lineups (team_id, key, slots) values ($1, 'x', '{}')`, [bcsTeam]));
+  await as(db, U.viewer, `update lineups set slots='{}' where team_id=$1`, [bcsTeam]);
+  assert.equal((await db.query(`select slots->'F1C'->>'name' n from lineups where team_id=$1 and key='default'`, [bcsTeam])).rows[0].n, 'Player A');
+  // another team's game can't be attached, other orgs see nothing, deleting the game removes its lines
+  await assert.rejects(as(db, U.coach, `insert into lineups (team_id, key, game_id) values ($1, $2::text, $2::uuid)`, [bcsTeam, uniGame]));
+  assert.equal((await as(db, U.other, 'select count(*)::int c from lineups'))[0].c, 0);
+  await db.query('delete from games where id=$1', [bcsGame]);
+  assert.equal((await db.query('select count(*)::int c from lineups where team_id=$1', [bcsTeam])).rows[0].c, 1);
+
   // the public schedule never includes chat
   const pubNow = JSON.stringify((await as(db, null, `select public_schedule('bcs') s`))[0].s);
   assert.ok(!pubNow.includes('coach here') && !pubNow.includes('staff only'));

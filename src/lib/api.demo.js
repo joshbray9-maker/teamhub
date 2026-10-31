@@ -90,6 +90,10 @@ export const api = {
   async deleteChat(id) { Object.values(db.data).forEach((d) => { d.chat = (d.chat || []).filter((m) => m.id !== id); }); save(); chatSubs.forEach((s) => s.onRemove(id)); },
   subscribeChat(teamId, channel, { onAdd, onRemove }) { const s = { teamId, channel, onAdd, onRemove }; chatSubs.add(s); return () => chatSubs.delete(s); },
 
+  async listLineups(teamId) { await load(); return clone(D(teamId).lineups || {}); },
+  async saveLineup(teamId, key, slots) { (D(teamId).lineups = D(teamId).lineups || {})[key] = { slots: clone(slots), updatedAt: Date.now() }; save(); },
+  async deleteLineup(teamId, key) { delete (D(teamId).lineups || {})[key]; save(); },
+
   async saveTeam(t) {
     if (t.id) { const i = db.teams.findIndex((x) => x.id === t.id); db.teams[i] = { ...db.teams[i], ...clone(t) }; save(); return clone(db.teams[i]); }
     const n = { ...clone(t), id: 't' + uid(), created_at: Date.now() }; db.teams.push(n); save(); return clone(n);

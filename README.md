@@ -16,6 +16,7 @@ it that way until the access rules have been reviewed for it.
 | `src/pages/PublicSchedule.jsx` | Public read-only page at `/schedule/<org>` |
 | `supabase/migrations/…_init.sql` | Tables, row-level security, sign-up trigger, public schedule function, logo storage |
 | `supabase/migrations/…_chat*.sql` | Team chat + coaching-staff board: table, access rules, live updates |
+| `supabase/migrations/…_lineups.sql` | Game day lines (hockey) |
 | `supabase/functions/league-sync/` | Edge Function for the daily league sync |
 | `supabase/functions/_shared/leagueParse.js` | League/.ics parsing, used by both the app and the sync |
 | `supabase/cron.sql` | Schedules the daily sync |
@@ -40,6 +41,13 @@ viewer) can read and post in, plus a private **Coaching staff** board that only 
 coaches can see (viewers don't even get the switch, and the database refuses them). In both, the sender or an admin can delete a message; messages can't be
 edited. New messages show up live. The public link never shows chat. Like the notes card,
 chat is free text: keep injury or medical details about athletes out of it.
+
+**Game day / Lines (hockey teams):** four forward lines, three defence pairs, two goalies and
+four extras, with the selected line shown on a rink. There's one set of **default lines** per
+team; each game uses them until a coach changes that game's lines (**Use default lines** goes
+back). Coaches click a spot to type a player's number and name and drag to swap; everyone
+else in the organization sees the lines read-only. Players are typed in by hand until the
+Roster tab exists. Other sports still show the placeholder.
 
 These rules live in the database (row-level security), so they hold no matter what the app
 shows. A coach at BCS can't see Universel's teams, and the reverse.
@@ -162,7 +170,7 @@ check the access rules (coach vs viewer vs outsider vs public link).
 
 ## Not built yet
 
-Same placeholders as the artifact: League, Opponents, Practice plan, Game day,
+Same placeholders as the artifact: League, Opponents, Practice plan, Game day (non-hockey),
 Playbook, Roster, Data Center, Injury report, Recruitment, My Profile, S&C Gym groups and
 Tests. Workload load units and the acute:chronic band are **placeholder values**, editable
 per team. They're not a validated scale.
