@@ -147,7 +147,8 @@ export const api = {
   async createOrg(name, slug) { const o = { id: 'o_' + slug, slug, name, public_schedule: false, role: 'admin' }; db.orgs.push(o); db.members[o.id] = [{ user_id: USER.id, email: USER.email, role: 'admin' }]; save(); return clone(o); },
   async updateOrg(id, patch) { Object.assign(db.orgs.find((o) => o.id === id), patch); save(); },
   async listMembers(orgId) { return clone(db.members[orgId] || []); },
-  async inviteMember(orgId, email, role) { (db.members[orgId] = db.members[orgId] || []).push({ email: email.toLowerCase(), role, pending: true }); save(); return 'invited'; },
+  async inviteMember(orgId, email, role, teams = null) { (db.members[orgId] = db.members[orgId] || []).push({ email: email.toLowerCase(), role, pending: true, teams: teams && teams.length ? teams : null }); save(); return 'invited'; },
+  async setMemberTeams(orgId, m, teams) { const x = (db.members[orgId] || []).find((y) => y.email === m.email); if (x) x.teams = teams && teams.length ? teams : null; save(); },
   async setMemberRole(orgId, m, role) { const x = (db.members[orgId] || []).find((y) => y.email === m.email); if (x) x.role = role; save(); },
   async removeMember(orgId, m) { db.members[orgId] = (db.members[orgId] || []).filter((y) => y.email !== m.email); save(); },
 

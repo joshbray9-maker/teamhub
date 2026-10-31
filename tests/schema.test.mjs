@@ -211,6 +211,28 @@ test('migration + seed load, and access follows memberships', async () => {
   assert.equal((await db.query('select team_id from players where id=$1', [mp.id])).rows[0].team_id, uniTeam);
   await db.query(`delete from lineups where team_id=$1`, [bcsTeam]);
 
+  // team-level access: a coach limited to one team sees and edits only that team
+  const LIM = '00000000-0000-0000-0000-00000000000e';
+  assert.equal((await as(db, U.josh, `select invite_member($1, 'limited@x.test', 'coach', $2) r`, [bcs, [bcsTeam]]))[0].r, 'invited');
+  await assert.rejects(as(db, U.josh, `select invite_member($1, 'z2@x.test', 'coach', $2)`, [bcs, [uniTeam]]), /not in this organization/);
+  await db.exec(`insert into auth.users values ('${LIM}', 'limited@x.test')`);
+  assert.deepEqual((await as(db, LIM, 'select id from teams')).map((r) => r.id), [bcsTeam]);
+  assert.equal((await as(db, LIM, 'select count(*)::int c from games where team_id=$1', [bcsU16]))[0].c, 0);
+  assert.ok((await as(db, LIM, 'select count(*)::int c from games where team_id=$1', [bcsTeam]))[0].c > 0);
+  await as(db, LIM, `insert into games (team_id, date, home, away) values ($1, '2026-12-01', 'a', 'b')`, [bcsTeam]);
+  await assert.rejects(as(db, LIM, `insert into games (team_id, date, home, away) values ($1, '2026-12-01', 'a', 'b')`, [bcsU16]));
+  await assert.rejects(as(db, LIM, 'select set_member_teams($1, $2, null)', [bcs, LIM]), /Only an organization admin/);
+  // the admin widens it to every team, then narrows it again
+  await as(db, U.josh, 'select set_member_teams($1, $2, null)', [bcs, LIM]);
+  assert.equal((await as(db, LIM, 'select count(*)::int c from teams'))[0].c, (await as(db, U.coach, 'select count(*)::int c from teams'))[0].c);
+  await as(db, U.josh, 'select set_member_teams($1, $2, $3)', [bcs, LIM, [bcsU16]]);
+  assert.deepEqual((await as(db, LIM, 'select id from teams')).map((r) => r.id), [bcsU16]);
+  // existing account added with a team choice: applies straight away; unlimited coaches unaffected
+  assert.equal((await as(db, U.josh, `select invite_member($1, 'other@x.test', 'viewer', $2) r`, [bcs, [bcsTeam]]))[0].r, 'added');
+  assert.deepEqual((await as(db, U.other, 'select id from teams')).map((r) => r.id), [bcsTeam]);
+  assert.equal((await as(db, U.coach, 'select count(*)::int c from teams where org_id=$1', [bcs]))[0].c >= 3, true);
+  await db.query('delete from memberships where user_id = $1', [U.other]);
+
   // game day lines: coaches write (default + their own team's games), viewers read only
   const bcsGame = (await db.query('select id from games where team_id=$1 limit 1', [bcsTeam])).rows[0].id;
   const uniGame = (await db.query('select id from games where team_id=$1 limit 1', [uniTeam])).rows[0].id;

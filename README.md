@@ -249,7 +249,9 @@ No secrets needed. Until it's deployed, **Roster → Import → Read page** says
 
 ### 5. Add coaches
 
-Team switcher → **Members & sharing** (admins only). Enter the coach's email and role. If
+Team switcher → **Members & sharing** (admins only). Enter the coach's email and role, and
+choose **All teams** or tick **only these teams** (admins always see every team; change it later
+with the teams button on each member). If
 they already have an account they get access right away; otherwise they get it the moment
 they sign up at your TeamHub address with that email. Turn on **Public master schedule
 link** there to get `https://<your-app>/schedule/<org>` for parents/staff. It shows games
