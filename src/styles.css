@@ -511,6 +511,10 @@ span.gd-row{cursor:default}
 .ro-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .ro-wide{grid-column:1/-1}
 .ro-move{border-top:1px solid var(--line);padding-top:12px}
+.ro-cb{width:34px;text-align:center !important;cursor:default}
+.ro-tbl tr.sel td{background:var(--accent-soft)}
+.ro-bulk{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;border-radius:10px;background:var(--accent-soft)}
+.ro-bulk .select{width:auto}
 .ro-src{display:flex;flex-direction:column;gap:16px}
 .ro-src .field{gap:7px}
 @media (max-width:700px){.ro-src{grid-template-columns:minmax(0,1fr)}}
@@ -664,6 +668,13 @@ span.gd-row{cursor:default}
 .gg-vals span.ok{color:var(--st-green);background:color-mix(in oklab, var(--st-green) 12%, transparent)}
 .gg-vals span.low{color:var(--st-red);background:color-mix(in oklab, var(--st-red) 12%, transparent)}
 @media (max-width:1000px){.gg-grid{grid-template-columns:minmax(0,1fr)}}
+.lb-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.lb-tabs button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px;font-weight:600;font-size:13px;cursor:pointer;color:var(--fg)}
+.lb-tabs button.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.lb-tbl td{vertical-align:middle}
+.lb-who{display:inline-flex;gap:8px;align-items:baseline}
+.lb-rank{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;font-weight:700;font-size:13px;background:var(--surface-2);color:var(--muted)}
+.lb-rank.r1{background:#f5c518;color:#3d2e00} .lb-rank.r2{background:#c9ced6;color:#24282e} .lb-rank.r3{background:#d38a52;color:#2e1503}
 @media print{
   @page{margin:12mm}
   /* beats the dark-mode :root rules so a sheet printed from dark mode is still black on white */

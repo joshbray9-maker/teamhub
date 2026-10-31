@@ -8,7 +8,7 @@ import Modal from '../components/Modal.jsx';
 import Icon from '../components/Icon.jsx';
 import Table from '../components/Table.jsx';
 import InjuredCard from '../components/InjuredCard.jsx';
-import Tests, { GymGroups } from './Tests.jsx';
+import Tests, { GymGroups, Leaderboard } from './Tests.jsx';
 import { rowsToSc, scField, SC_TEMPLATE } from '../lib/imports.js';
 import ImportSource from '../components/ImportSource.jsx';
 
@@ -22,8 +22,8 @@ export default function SC() {
   return <>
     <PageHead title="S&C" actions={H.isCoach && (tab === 'cal' || tab === 'load') && <button className="btn" onClick={() => H.openDialog((c) => <ScImport close={c} />)}><Icon n="refresh" /> Import: file or paste</button>} />
     <InjuredCard />
-    <div className="seg" role="tablist">{[['cal', 'Calendar'], ['load', 'Workload'], ['gym', 'Gym groups'], ['tests', 'Tests']].map(([k, l]) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
-    {tab === 'cal' ? <ScCalendar /> : tab === 'load' ? <Workload /> : tab === 'gym' ? <GymGroups key={H.teamId} /> : <Tests key={H.teamId} />}
+    <div className="seg" role="tablist">{[['cal', 'Calendar'], ['load', 'Workload'], ['gym', 'Gym groups'], ['tests', 'Tests'], ['board', 'Leaderboard']].map(([k, l]) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
+    {tab === 'cal' ? <ScCalendar /> : tab === 'load' ? <Workload /> : tab === 'gym' ? <GymGroups key={H.teamId} /> : tab === 'board' ? <Leaderboard key={H.teamId} /> : <Tests key={H.teamId} />}
   </>;
 }
 

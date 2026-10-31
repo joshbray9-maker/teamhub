@@ -28,6 +28,8 @@ export default function Roster() {
   const [players, setPlayers] = useState(null);
   const [former, setFormer] = useState(false);
   const [photos, setPhotos] = useState({});
+  const [sel, setSel] = useState(() => new Set()); // selected player ids (coaches)
+  useEffect(() => setSel(new Set()), [t.id]);
   const load = () => H.api.listPlayers(t.id).then((ps) => { setPlayers(ps); H.api.photoUrls(ps.map((p) => p.photo)).then(setPhotos).catch(() => {}); })
     .catch((e) => { setPlayers([]); H.toast('Could not load roster: ' + e.message); });
   useEffect(() => { load(); }, [t.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -36,13 +38,35 @@ export default function Roster() {
   const edit = (p) => H.isCoach && H.openDialog((c) => <PlayerDialog p={p} photoUrl={p && photos[p.photo]} sport={t.sport} close={c} onSave={(x) => save([x])}
     onDelete={async () => { try { await H.api.deletePlayer(p.id); } catch (e) { H.toast(e.message); } load(); }}
     onMove={async (to) => { try { await H.api.movePlayer(p.id, to.id); H.toast(`${p.name} moved to ${to.name}`); } catch (e) { H.toast('Could not move. ' + e.message); } load(); H.reloadTeam(); }} />);
+  const openImport = (paste) => H.openDialog((c) => <ImportDialog current={players || []} paste={paste} close={c} onSave={(list, msg) => save(list, msg)} />);
   const acts = H.isCoach && <>
-    <button className="btn" onClick={() => H.openDialog((c) => <ImportDialog current={players || []} close={c} onSave={(list, msg) => save(list, msg)} />)}><Icon n="refresh" /> Import: file, paste or web</button>
+    <button className="btn" onClick={() => openImport(false)}><Icon n="refresh" /> Import: file, paste or web</button>
+    <button className="btn" onClick={() => openImport(true)}><Icon n="users" /> Add several</button>
     <button className="btn primary" onClick={() => edit(null)}><Icon n="plus" /> Player</button></>;
+
+  /* ---------- bulk actions on the selected players ---------- */
+  const chosen = (players || []).filter((p) => sel.has(p.id));
+  const toggle = (id) => setSel((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const done = async (msg) => { setSel(new Set()); if (msg) H.toast(msg); await load(); H.reloadTeam(); };
+  const bulkDelete = async () => {
+    if (!(await H.confirm(`Delete ${chosen.length} player${chosen.length === 1 ? '' : 's'}?`, `${chosen.map((p) => p.name).join(', ')} will be removed from the roster, with their injuries and test results. To keep their history, mark them as former players instead.`))) return;
+    let n = 0; for (const p of chosen) { try { await H.api.deletePlayer(p.id); n++; } catch (e) { H.toast(`Could not delete ${p.name}. ${e.message}`); } }
+    done(`${n} deleted`);
+  };
+  const bulkActive = async (active) => { try { await H.api.savePlayers(t.id, chosen.map((p) => ({ ...p, active }))); } catch (e) { H.toast('Could not save. ' + e.message); } done(active ? 'Back on the active roster' : 'Moved to former players'); };
+  const bulkMove = async (to) => {
+    if (!(await H.confirm(`Move ${chosen.length} player${chosen.length === 1 ? '' : 's'} to ${to.name}?`, `They move with their injuries and come out of ${t.name}'s lines. Their test results stay with ${t.name}.`, 'Move'))) return;
+    let n = 0; for (const p of chosen) { try { await H.api.movePlayer(p.id, to.id); n++; } catch (e) { H.toast(`Could not move ${p.name}. ${e.message}`); } }
+    done(`${n} moved to ${to.name}`);
+  };
+  const moveTargets = H.teamList.filter((x) => x.id !== t.id && ['admin', 'coach'].includes(H.roleOf(x)));
 
   const list = (players || []).filter((p) => p.active !== false).sort(byNumber);
   const gone = (players || []).filter((p) => p.active === false).sort(byNumber);
-  const Rows = ({ ps }) => ps.map((p) => <tr key={p.id} className={H.isCoach ? 'click' : ''} onClick={() => edit(p)}>
+  const shown = [...list, ...(former ? gone : [])];
+  const allOn = shown.length > 0 && shown.every((p) => sel.has(p.id));
+  const Rows = ({ ps }) => ps.map((p) => <tr key={p.id} className={`${H.isCoach ? 'click' : ''} ${sel.has(p.id) ? 'sel' : ''}`} onClick={() => edit(p)}>
+    {H.isCoach && <td className="ro-cb" onClick={(e) => { e.stopPropagation(); toggle(p.id); }}><input type="checkbox" className="cb" checked={sel.has(p.id)} onChange={() => {}} aria-label={`Select ${p.name}`} /></td>}
     <td className="num tnum">{p.num}</td>
     <td><span className="inj-who"><Avatar p={p} url={photos[p.photo]} size={26} /><span className="ro-name">{p.name}</span><InjuryFlag p={p} /></span></td>
     <td>{p.position}</td>{hockey && <td>{p.shoots}</td>}<td>{p.year}</td><td>{p.height}</td><td>{p.weight}</td><td>{p.hometown}</td>
@@ -56,9 +80,18 @@ export default function Roster() {
       </div> : <>
         <div className="card-head"><h2>{list.length} player{list.length === 1 ? '' : 's'}</h2>
           {gone.length > 0 && <label className="small muted" style={{ display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" className="cb" checked={former} onChange={(e) => setFormer(e.target.checked)} /> Show former players ({gone.length})</label>}</div>
+        {H.isCoach && chosen.length > 0 && <div className="ro-bulk">
+          <b>{chosen.length} selected</b>
+          {moveTargets.length > 0 && <select className="select" value="" onChange={(e) => { const to = moveTargets.find((x) => x.id === e.target.value); if (to) bulkMove(to); }} aria-label="Move selected players to">
+            <option value="">Move to team…</option>{moveTargets.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select>}
+          {chosen.some((p) => p.active !== false) && <button className="btn sm" onClick={() => bulkActive(false)}>Mark as former</button>}
+          {chosen.some((p) => p.active === false) && <button className="btn sm" onClick={() => bulkActive(true)}>Mark as active</button>}
+          <button className="btn sm danger" onClick={bulkDelete}><Icon n="trash" /> Delete</button>
+          <button className="btn sm ghost" onClick={() => setSel(new Set())}>Clear selection</button>
+        </div>}
         <div className="tbl-wrap"><table className="tbl ro-tbl">
-          <thead><tr><th className="num">#</th><th>Name</th><th>Pos</th>{hockey && <th>Shoots</th>}<th>Year</th><th>Ht</th><th>Wt</th><th>Hometown</th></tr></thead>
-          <tbody><Rows ps={list} />{former && gone.length > 0 && <><tr className="ro-sep"><td colSpan={hockey ? 8 : 7}>Former players</td></tr><Rows ps={gone} /></>}</tbody>
+          <thead><tr>{H.isCoach && <th className="ro-cb"><input type="checkbox" className="cb" checked={allOn} onChange={() => setSel(allOn ? new Set() : new Set(shown.map((p) => p.id)))} aria-label="Select all players" /></th>}<th className="num">#</th><th>Name</th><th>Pos</th>{hockey && <th>Shoots</th>}<th>Year</th><th>Ht</th><th>Wt</th><th>Hometown</th></tr></thead>
+          <tbody><Rows ps={list} />{former && gone.length > 0 && <><tr className="ro-sep"><td colSpan={(hockey ? 8 : 7) + (H.isCoach ? 1 : 0)}>Former players</td></tr><Rows ps={gone} /></>}</tbody>
         </table></div>
       </>}
     </section>
@@ -118,7 +151,7 @@ function PlayerDialog({ p, photoUrl, sport, close, onSave, onDelete, onMove }) {
 
 async function readPdf(file) { return pdfItemsToPlayers(await pdfTextItems(file)); }
 
-function ImportDialog({ current, close, onSave }) {
+function ImportDialog({ current, paste, close, onSave }) {
   const H = useHub();
   const [res, setRes] = useState(null); // { players, skipped, plan, file }
   const [retire, setRetire] = useState(false);
@@ -152,7 +185,7 @@ function ImportDialog({ current, close, onSave }) {
     close(); onSave(list, `Roster updated: ${adds.length} added, ${updates.length} updated${retire && missing.length ? `, ${missing.length} moved to former players` : ''}`);
   };
   const p = res && res.plan;
-  return <Modal title="Import roster" wide onClose={close}
+  return <Modal title={paste ? 'Add players' : 'Import roster'} wide onClose={close}
     actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" disabled={!p || (!p.adds.length && !p.updates.length && !(retire && p.missing.length))} onClick={go}>Import</button></>}>
     <p className="muted small" style={{ margin: 0 }}>Only the roster columns are kept (number, name, position, shoots, year, height, weight, hometown); anything else is dropped and a date of birth is reduced to its year. Players already on the roster are matched by name and updated. Nothing is saved until you press Import.</p>
     <div className="ro-src">
@@ -163,7 +196,7 @@ function ImportDialog({ current, close, onSave }) {
         </form>
         <span className="muted small">A team or league page that lists the roster in a table (school athletics sites like gaiters.ca). EliteProspects and CSSHL pages can't be read this way: save them as a PDF and use the file option.</span></div>
       <div className="field"><span>From a file or spreadsheet</span>
-        <ImportSource onFile={onFile} onRows={(rows, label) => take(rowsToPlayers(rows, 'csv'), label)} template={ROSTER_TEMPLATE} templateName="roster-template.csv"
+        <ImportSource mode0={paste ? 'paste' : 'file'} onFile={onFile} onRows={(rows, label) => take(rowsToPlayers(rows, 'csv'), label)} template={ROSTER_TEMPLATE} templateName="roster-template.csv"
           fileHint="CSV with headings like Number, Name, Position, Shoots, Year, Height, Weight, Hometown, or a PDF with selectable text (not a scan). Read in your browser." /></div>
     </div>
     {p && <>

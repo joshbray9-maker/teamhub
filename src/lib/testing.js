@@ -112,3 +112,27 @@ export function rowsToTests(rows, roster) {
   }
   return { values, metrics: [...new Set(met.filter(Boolean))], unmatched };
 }
+
+/* ---------- leaderboard ---------- */
+// rows: [{player_id, name, num, metric, value, tested_on}], each player's best per test.
+// Per test: ranked best first (ties share a rank). Overall: each player's average "standing" across
+// the tests they've done, where standing on a test = share of teammates they beat (best = 100,
+// last = 0). Only players with at least MIN_TESTS tests (or every test, if fewer exist) count.
+export const MIN_TESTS = 3;
+export function leaderboards(rows) {
+  const byMetric = {};
+  for (const r of rows) { const v = num(r.value); if (v === null || !METRICS[r.metric]) continue; (byMetric[r.metric] = byMetric[r.metric] || []).push({ ...r, value: v }); }
+  const standing = {};
+  for (const [k, list] of Object.entries(byMetric)) {
+    list.sort((a, b) => (METRICS[k].lower ? a.value - b.value : b.value - a.value) || a.name.localeCompare(b.name));
+    list.forEach((r, i) => { r.rank = i && list[i - 1].value === r.value ? list[i - 1].rank : i + 1; });
+    if (list.length < 2) continue;
+    list.forEach((r) => { const beat = list.filter((x) => (METRICS[k].lower ? x.value > r.value : x.value < r.value)).length;
+      (standing[r.player_id] = standing[r.player_id] || { player_id: r.player_id, name: r.name, num: r.num, parts: {} }).parts[k] = (beat / (list.length - 1)) * 100; });
+  }
+  const tests = Object.values(byMetric).filter((l) => l.length >= 2).length, need = Math.min(MIN_TESTS, tests);
+  const overall = Object.values(standing).map((s) => { const v = Object.values(s.parts); return { ...s, tests: v.length, score: v.reduce((a, b) => a + b, 0) / v.length }; })
+    .filter((s) => s.tests >= need && need > 0).sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+  overall.forEach((s, i) => { s.rank = i && Math.abs(overall[i - 1].score - s.score) < 1e-9 ? overall[i - 1].rank : i + 1; });
+  return { byMetric, overall, need };
+}

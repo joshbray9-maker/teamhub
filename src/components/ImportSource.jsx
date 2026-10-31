@@ -9,9 +9,9 @@ import { downloadCsv } from '../lib/imports.js';
 import Icon from './Icon.jsx';
 import PasteGrid from './PasteGrid.jsx';
 
-export default function ImportSource({ onRows, onFile, isHeading, template, templateName, fileHint }) {
+export default function ImportSource({ onRows, onFile, isHeading, template, templateName, fileHint, mode0 = 'file' }) {
   const H = useHub();
-  const [mode, setMode] = useState('file'), [busy, setBusy] = useState(false);
+  const [mode, setMode] = useState(mode0), [busy, setBusy] = useState(false);
   const run = async (fn) => { setBusy(true); try { await fn(); } catch (e) { H.toast(e.message); } finally { setBusy(false); } };
   const pick = (e) => {
     const file = e.target.files[0]; e.target.value = ''; if (!file) return;

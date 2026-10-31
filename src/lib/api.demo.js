@@ -82,8 +82,18 @@ export const api = {
     const d = D(teamId); d.testResults = (d.testResults || []).filter((r) => !(r.session_id === sessionId && rows.some((x) => x.player_id === r.player_id)));
     rows.filter((r) => Object.keys(r.values).length).forEach((r) => d.testResults.push({ session_id: sessionId, player_id: r.player_id, values: clone(r.values) })); save();
   },
-  async getGymConfig(teamId) { await load(); return clone(D(teamId).gym || { targets: {}, overrides: {} }); },
-  async saveGymConfig(teamId, c) { D(teamId).gym = clone({ targets: c.targets || {}, overrides: c.overrides || {} }); save(); },
+  async getGymConfig(teamId) { await load(); return clone({ leaderboard: true, ...(D(teamId).gym || { targets: {}, overrides: {} }) }); },
+  async leaderboard(teamId) {
+    await load(); const d = D(teamId), best = {};
+    const players = Object.fromEntries((d.players || []).filter((p) => p.active !== false).map((p) => [p.id, p]));
+    const when = Object.fromEntries((d.testSessions || []).map((s) => [s.id, s.tested_on]));
+    for (const r of d.testResults || []) { const p = players[r.player_id]; if (!p) continue;
+      for (const [k, v] of Object.entries(r.values || {})) { const key = p.id + k, b = best[key];
+        if (!b || (k === 'fly10' ? v < b.value : v > b.value)) best[key] = { player_id: p.id, name: p.name, num: p.num, metric: k, value: v, tested_on: when[r.session_id] }; } }
+    return Object.values(best);
+  },
+  async setLeaderboardShared(teamId, on) { const d = D(teamId); d.gym = { targets: {}, overrides: {}, ...(d.gym || {}), leaderboard: on }; save(); },
+  async saveGymConfig(teamId, c) { D(teamId).gym = clone({ ...(D(teamId).gym || {}), targets: c.targets || {}, overrides: c.overrides || {} }); save(); },
   async listDatasets(teamId) { await load(); return clone(D(teamId).datasets || []); },
   async saveDataset(teamId, d) { const l = (D(teamId).datasets = D(teamId).datasets || []); const [r] = upsert(l, [{ team_id: teamId, created_at: new Date().toISOString(), ...clone(d) }], 'ds'); save(); return clone(r); },
   async deleteDataset(id) { Object.values(db.data).forEach((d) => { d.datasets = (d.datasets || []).filter((x) => x.id !== id); }); save(); },

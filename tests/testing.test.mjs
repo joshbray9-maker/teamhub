@@ -45,3 +45,16 @@ test('test sheets: headings with units, names or numbers, pasted cells', () => {
   assert.deepEqual(r.unmatched, ['Nobody']);
   assert.throws(() => rowsToTests([['Name', 'Height'], ['x', '1']], roster), /No test columns/);
 });
+
+test('leaderboard: per-test ranks (ties, fly lowest wins) and overall standing', async () => {
+  const { leaderboards } = await import('../src/lib/testing.js');
+  const row = (p, metric, value) => ({ player_id: p, name: 'Player ' + p, num: '', metric, value: String(value), tested_on: '2026-11-01' });
+  const rows = [row('a', 'cmj_jh', 45), row('b', 'cmj_jh', 40), row('c', 'cmj_jh', 40), row('a', 'fly10', 1.20), row('b', 'fly10', 1.05), row('c', 'fly10', 1.10),
+    row('a', 'rsimod', 0.6), row('b', 'rsimod', 0.5), row('c', 'rsimod', 0.4), row('d', 'cmj_jh', 30)];
+  const L = leaderboards(rows);
+  assert.deepEqual(L.byMetric.cmj_jh.map((r) => [r.player_id, r.rank]), [['a', 1], ['b', 2], ['c', 2], ['d', 4]]);
+  assert.deepEqual(L.byMetric.fly10.map((r) => r.player_id), ['b', 'c', 'a']);
+  // a: cmj 100, fly 0, rsi 100 → 66.7; b: cmj 1/3*100=33.3, fly 100, rsi 50 → 61.1; d has 1 test → left out
+  assert.deepEqual(L.overall.map((s) => [s.player_id, Math.round(s.score)]), [['a', 67], ['b', 61], ['c', 28]]);
+  assert.equal(L.need, 3);
+});

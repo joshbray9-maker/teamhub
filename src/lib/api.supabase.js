@@ -200,7 +200,10 @@ export const api = {
     if (keep.length) ok(await supabase.from('test_results').upsert(keep.map((r) => ({ session_id: sessionId, player_id: r.player_id, team_id: teamId, values: r.values, updated_at: new Date().toISOString() }))));
     if (drop.length) ok(await supabase.from('test_results').delete().eq('session_id', sessionId).in('player_id', drop));
   },
-  async getGymConfig(teamId) { return ok(await supabase.from('gym_config').select('targets, overrides').eq('team_id', teamId).maybeSingle()) || { targets: {}, overrides: {} }; },
+  async getGymConfig(teamId) { return ok(await supabase.from('gym_config').select('targets, overrides, leaderboard').eq('team_id', teamId).maybeSingle()) || { targets: {}, overrides: {}, leaderboard: true }; },
+  /** Each active player's best result per test (see the leaderboard() function); members can call it. */
+  async leaderboard(teamId) { return ok(await supabase.rpc('leaderboard', { p_team: teamId })); },
+  async setLeaderboardShared(teamId, on) { ok(await supabase.from('gym_config').upsert({ team_id: teamId, leaderboard: on })); },
   async saveGymConfig(teamId, c) { ok(await supabase.from('gym_config').upsert({ team_id: teamId, targets: c.targets || {}, overrides: c.overrides || {}, updated_at: new Date().toISOString() })); },
 
   /* ---------- data center ---------- */

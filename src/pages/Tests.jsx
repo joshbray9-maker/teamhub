@@ -8,7 +8,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useHub } from '../lib/hub.jsx';
 import { fmtDate, todayISO } from '../lib/util.js';
-import { METRICS, BATTERIES, GROUPS, FORCE, EXPRESSION, num, fmt, ratio, gymGroup, metricSeries, changeSeries, metricField, rowsToTests } from '../lib/testing.js';
+import { METRICS, BATTERIES, GROUPS, FORCE, EXPRESSION, num, fmt, ratio, gymGroup, metricSeries, changeSeries, metricField, rowsToTests, leaderboards } from '../lib/testing.js';
 import { parseTsv } from '../lib/imports.js';
 import { byNumber } from './Roster.jsx';
 import Modal from '../components/Modal.jsx';
@@ -260,4 +260,42 @@ function Targets({ targets, close, onSave }) {
       <input className="input tnum" inputMode="decimal" value={t[k]} onChange={(e) => setT({ ...t, [k]: e.target.value })} placeholder="No target" /></label>)}</div>
     <div className="hint">Force deficient: force below target. Otherwise expression efficient when expression and RSImod meet target, else expression deficient.</div>
   </Modal>;
+}
+
+/* ================= Leaderboard (everyone on the team) ================= */
+// Players and parents see each active player's best result per test, unless a coach hides it.
+export function Leaderboard() {
+  const H = useHub();
+  const [rows, setRows] = useState(null), [shared, setShared] = useState(true), [tab, setTab] = useState('overall');
+  useEffect(() => {
+    H.api.leaderboard(H.teamId).then(setRows).catch((e) => { setRows([]); H.toast('Could not load the leaderboard: ' + e.message); });
+    if (H.isCoach) H.api.getGymConfig(H.teamId).then((c) => setShared(c.leaderboard !== false)).catch(() => {});
+  }, [H.teamId]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!rows) return <div className="loading">Loading…</div>;
+  const L = leaderboards(rows);
+  const keys = Object.keys(METRICS).filter((k) => L.byMetric[k]);
+  const toggle = async (on) => { setShared(on); try { await H.api.setLeaderboardShared(H.teamId, on); H.toast(on ? 'Players can see the leaderboard' : 'Leaderboard hidden from players'); } catch (e) { setShared(!on); H.toast(e.message); } };
+  const medal = (r) => <span className={`lb-rank r${r <= 3 ? r : ''}`}>{r}</span>;
+  const who = (r) => <span className="lb-who">{r.num && <span className="muted tnum">{r.num}</span>}<b>{r.name}</b></span>;
+  const cur = tab === 'overall' ? null : L.byMetric[tab];
+  return <>
+    <section className="card">
+      <div className="card-head"><div><h2>Leaderboard</h2><span className="muted small">Each player's best result per test{H.isCoach ? '. Players and parents on this team see this page.' : '.'}</span></div>
+        {H.isCoach && <label className="small" style={{ display: 'flex', gap: 6, alignItems: 'center' }}><input type="checkbox" className="cb" checked={shared} onChange={(e) => toggle(e.target.checked)} /> Visible to players</label>}</div>
+      {!keys.length ? <p className="muted small" style={{ margin: 0 }}>No results to show yet.</p> : <>
+        <div className="lb-tabs">
+          <button className={tab === 'overall' ? 'on' : ''} onClick={() => setTab('overall')}>Overall</button>
+          {keys.map((k) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{METRICS[k].label}</button>)}
+        </div>
+        {tab === 'overall' ? <>
+          <p className="muted small" style={{ margin: 0 }}>Average standing across the tests each player has done: 100 means best on the team in every test, 0 means last. Players need at least {L.need} test{L.need === 1 ? '' : 's'} to be ranked.</p>
+          {!L.overall.length ? <p className="muted small" style={{ margin: 0 }}>Not enough results yet for an overall ranking.</p>
+            : <table className="tbl lb-tbl"><thead><tr><th>#</th><th>Player</th><th className="num">Score</th><th className="num">Tests</th></tr></thead>
+              <tbody>{L.overall.map((s) => <tr key={s.player_id}><td>{medal(s.rank)}</td><td>{who(s)}</td><td className="num tnum"><b>{Math.round(s.score)}</b></td><td className="num tnum muted">{s.tests}</td></tr>)}</tbody></table>}
+        </> : <table className="tbl lb-tbl"><thead><tr><th>#</th><th>Player</th><th className="num">{METRICS[tab].long}{METRICS[tab].unit && ` (${METRICS[tab].unit})`}</th><th className="num">Date</th></tr></thead>
+          <tbody>{cur.map((r) => <tr key={r.player_id}><td>{medal(r.rank)}</td><td>{who(r)}</td><td className="num tnum"><b>{fmt(tab, r.value)}</b></td><td className="num muted">{r.tested_on ? fmtDate(r.tested_on) : ''}</td></tr>)}</tbody></table>}
+        {tab !== 'overall' && METRICS[tab].lower && <span className="muted small">Lowest time ranks first.</span>}
+      </>}
+    </section>
+  </>;
 }

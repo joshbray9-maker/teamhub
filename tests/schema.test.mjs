@@ -183,6 +183,17 @@ test('migration + seed load, and access follows memberships', async () => {
   await assert.rejects(as(db, U.viewer, `insert into test_sessions (team_id, tested_on, battery) values ($1, '2026-11-02', 'full')`, [bcsTeam]));
   await assert.rejects(as(db, U.coach, `insert into test_results (session_id, player_id, team_id) values ($1, $2, $3)`, [ts.id, uniPlayer, bcsTeam]));
   await assert.rejects(as(db, U.coach, `insert into test_sessions (team_id, tested_on, battery) values ($1, '2026-11-02', 'other')`, [bcsTeam]));
+  // leaderboard: viewers get only best results per test, until a coach hides it
+  const [ts2] = await as(db, U.coach, `insert into test_sessions (team_id, tested_on, battery) values ($1, '2026-11-09', 'readiness') returning id`, [bcsTeam]);
+  await as(db, U.coach, `insert into test_results (session_id, player_id, team_id, values) values ($1, $2, $3, '{"cmj_jh": 43, "fly10": 1.10, "note": "x"}')`, [ts2.id, pa.id, bcsTeam]);
+  await as(db, U.coach, `update test_results set values = '{"cmj_jh": 40, "fly10": 1.05}' where session_id = $1`, [ts.id]);
+  const lb = await as(db, U.viewer, 'select metric, value::float v, tested_on::text d from leaderboard($1) order by metric', [bcsTeam]);
+  assert.deepEqual(lb.map((r) => [r.metric, r.v, r.d]), [['cmj_jh', 43, '2026-11-09'], ['fly10', 1.05, '2026-11-02']]);
+  assert.equal((await as(db, U.other, 'select count(*)::int c from leaderboard($1)', [bcsTeam]))[0].c, 0);
+  await assert.rejects(as(db, null, 'select * from leaderboard($1)', [bcsTeam]));
+  await as(db, U.coach, `update gym_config set leaderboard = false where team_id = $1`, [bcsTeam]);
+  assert.equal((await as(db, U.viewer, 'select count(*)::int c from leaderboard($1)', [bcsTeam]))[0].c, 0);
+  assert.equal((await as(db, U.coach, 'select count(*)::int c from leaderboard($1)', [bcsTeam]))[0].c, 2);
 
   // moving a player: needs edit access to both teams; injuries follow, old lines are cleared
   const bcsU16 = (await db.query(`select id from teams where legacy_id='t_bcs_u16'`)).rows[0].id;

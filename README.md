@@ -26,7 +26,8 @@ organization can read them; coaches edit. Injuries live in their own staff-only 
 | `public/logos/` | Organization logos (BCS, Universel) used for teams without their own logo |
 | `supabase/migrations/…_org_logo.sql` | Organization logos, lineup opponent |
 | `supabase/migrations/…_testing.sql` | S&C testing sessions, results, gym-group targets (staff only) |
-| `src/lib/testing.js` | Test metrics, batteries, gym-group formula, team trends |
+| `src/lib/testing.js` | Test metrics, batteries, gym-group formula, team trends, leaderboard |
+| `supabase/migrations/…_leaderboard.sql` | Leaderboard function and its on/off switch |
 | `src/lib/imports.js` | S&C, Lines and Data Center imports, blank templates |
 | `src/lib/injury.js` | Injury statuses, return countdowns, body regions, injury CSV/PDF import |
 | `supabase/functions/league-sync/` | Edge Function for the daily league sync |
@@ -125,6 +126,16 @@ The formula is in `src/lib/testing.js`.
 **Data Center:** upload any CSV / PDF table as its own named table (Testing, Stats, Other) with
 a date. TeamHub doesn't calculate anything from it. Admins and coaches see every table;
 viewers only see tables marked **Shared**. Player names in a table link to the roster.
+
+**Working on several players at once:** tick players on the Roster (or the box in the heading
+row for all), then **Move to team…**, **Mark as former / active** or **Delete**. **Add several**
+opens a spreadsheet grid to type or paste a batch of new players.
+
+**S&C → Leaderboard (everyone on the team):** each active player's best result per test, and an
+overall ranking (average standing across the tests each player has done; 100 = best on the team
+in every test). Test results themselves stay coaches-only: players and parents see only these
+best results, through the `leaderboard()` database function, and a coach can untick **Visible
+to players** to hide it.
 
 **Moving a player to another team:** Roster → click the player → **Move to another team**. You
 need coach or admin access to both teams. Their injuries go with them; they come out of the
