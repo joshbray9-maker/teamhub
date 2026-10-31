@@ -1,0 +1,33 @@
+import { StrictMode, useEffect, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { getApi, backendMode } from './lib/api.js';
+import { HubProvider } from './lib/hub.jsx';
+import App from './App.jsx';
+import Login from './pages/Login.jsx';
+import PublicSchedule from './pages/PublicSchedule.jsx';
+import './styles.css';
+
+function NotConfigured() {
+  return <div className="auth"><div className="card"><div className="card-head"><h2>TeamHub isn't connected yet</h2></div>
+    <p className="muted" style={{ margin: 0 }}>Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY (see README) and redeploy.</p></div></div>;
+}
+
+function Root() {
+  const [api, setApi] = useState(null);
+  const [user, setUser] = useState(undefined);
+  useEffect(() => { getApi().then((a) => { setApi(a); if (!a) setUser(null); }); }, []);
+  useEffect(() => {
+    if (!api) return;
+    api.getUser().then(setUser);
+    return api.onAuthChange(setUser);
+  }, [api]);
+  return <Routes>
+    <Route path="/schedule/:org" element={api || backendMode === 'none' ? <PublicSchedule api={api} /> : null} />
+    <Route path="/reset" element={api ? <Login api={api} mode="reset" /> : null} />
+    <Route path="*" element={backendMode === 'none' ? <NotConfigured /> : user === undefined ? <div className="loading">Loading TeamHub…</div>
+      : !user ? <Login api={api} /> : <HubProvider key={user.id} api={api} user={user}><App /></HubProvider>} />
+  </Routes>;
+}
+
+createRoot(document.getElementById('root')).render(<StrictMode><BrowserRouter><Root /></BrowserRouter></StrictMode>);

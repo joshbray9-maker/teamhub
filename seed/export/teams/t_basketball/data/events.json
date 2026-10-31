@@ -1,0 +1,372 @@
+{
+  "items": [
+    {
+      "date": "2026-09-19",
+      "id": "ecd0ed97132",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "@ SSF Showcase (S&C sheet)"
+    },
+    {
+      "date": "2026-10-03",
+      "id": "eb6a66fdac3",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Slam Fall showdown (MTL) (day 1 of 2) (S&C sheet)"
+    },
+    {
+      "date": "2026-10-04",
+      "id": "e790b5460c4",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Slam Fall showdown (MTL) (day 2 of 2) (S&C sheet)"
+    },
+    {
+      "date": "2026-10-15",
+      "id": "ea7da74e25a",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "WNPA 1 (Toronto) (day 1 of 4) (S&C sheet)"
+    },
+    {
+      "date": "2026-10-16",
+      "id": "e6ec5bf5ff3",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "WNPA 1 (Toronto) (day 2 of 4) (S&C sheet)"
+    },
+    {
+      "date": "2026-10-17",
+      "id": "ee1208c0830",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "WNPA 1 (Toronto) (day 3 of 4) (S&C sheet)"
+    },
+    {
+      "date": "2026-10-18",
+      "id": "e9e38fcd957",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "WNPA 1 (Toronto) (day 4 of 4) (S&C sheet)"
+    },
+    {
+      "date": "2026-10-23",
+      "id": "e417c69396f",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "SSF Elite (S&C sheet)"
+    },
+    {
+      "date": "2026-10-30",
+      "id": "ed6e02a921c",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Chris Smalling Tournament (Oshawa, ON) (day 1 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2026-10-31",
+      "id": "e22e1397a07",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Chris Smalling Tournament (Oshawa, ON) (day 2 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2026-11-01",
+      "id": "e3aea26ba72",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Chris Smalling Tournament (Oshawa, ON) (day 3 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2026-11-06",
+      "id": "e0e54d77c40",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "ASL (S&C sheet)"
+    },
+    {
+      "date": "2026-11-10",
+      "id": "e610221cf73",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Sacred heart (S&C sheet)"
+    },
+    {
+      "date": "2026-11-20",
+      "id": "eaa15bf0e43",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Northfield, Mass (day 1 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2026-11-21",
+      "id": "e7bcb38673a",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Northfield, Mass (day 2 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2026-11-22",
+      "id": "e6c2d9f594f",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Northfield, Mass (day 3 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2026-11-26",
+      "id": "e7ef7eed87b",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "WNPA 2 (Toronto) (day 1 of 4) (S&C sheet)"
+    },
+    {
+      "date": "2026-11-27",
+      "id": "e75301bca12",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "WNPA 2 (Toronto) (day 2 of 4) (S&C sheet)"
+    },
+    {
+      "date": "2026-11-28",
+      "id": "e3e0107ef07",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "WNPA 2 (Toronto) (day 3 of 4) (S&C sheet)"
+    },
+    {
+      "date": "2026-11-29",
+      "id": "e0d46625519",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "WNPA 2 (Toronto) (day 4 of 4) (S&C sheet)"
+    },
+    {
+      "date": "2026-12-04",
+      "id": "ed7cf35f5ed",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Rose classic Super Jam (Massuchusetts) (day 1 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2026-12-05",
+      "id": "eed1188b2a2",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Rose classic Super Jam (Massuchusetts) (day 2 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2026-12-06",
+      "id": "eb29a427370",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Rose classic Super Jam (Massuchusetts) (day 3 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2026-12-12",
+      "id": "e4841cfaf26",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "ASL (S&C sheet)"
+    },
+    {
+      "date": "2027-01-08",
+      "id": "ea0a8757030",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Game – details TBC (day 1 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2027-01-09",
+      "id": "e11d4868952",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Game – details TBC (day 2 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2027-01-10",
+      "id": "edbe1657fdf",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Game – details TBC (day 3 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2027-01-15",
+      "id": "e87ddc360ad",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Rose classic - New York (day 1 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2027-01-16",
+      "id": "ee6d856806c",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Rose classic - New York (day 2 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2027-01-17",
+      "id": "e29fcde4049",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Rose classic - New York (day 3 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2027-01-22",
+      "id": "eb3e99003f5",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "More than a Game - New Jersey (day 1 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2027-01-23",
+      "id": "ed73a87fde2",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "More than a Game - New Jersey (day 2 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2027-01-24",
+      "id": "ed97d7e4174",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "More than a Game - New Jersey (day 3 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2027-01-29",
+      "id": "e900fe9857c",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "SSF Elite (S&C sheet)"
+    },
+    {
+      "date": "2027-02-11",
+      "id": "e609219e209",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "WNPA 3 (Toronto) (day 1 of 4) (S&C sheet)"
+    },
+    {
+      "date": "2027-02-12",
+      "id": "e8810897a1b",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "WNPA 3 (Toronto) (day 2 of 4) (S&C sheet)"
+    },
+    {
+      "date": "2027-02-13",
+      "id": "e4c766ae9f8",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "WNPA 3 (Toronto) (day 3 of 4) (S&C sheet)"
+    },
+    {
+      "date": "2027-02-14",
+      "id": "e588c736bcf",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "WNPA 3 (Toronto) (day 4 of 4) (S&C sheet)"
+    },
+    {
+      "date": "2027-02-19",
+      "id": "ec0c8d8a26e",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Final 4 (Qc) (day 1 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2027-02-20",
+      "id": "ebc80b06c6f",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Final 4 (Qc) (day 2 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2027-02-21",
+      "id": "ea141863123",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Final 4 (Qc) (day 3 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2027-03-03",
+      "id": "e80bc27c59e",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "WNPA Nationals (Toronto) (day 1 of 5) (S&C sheet)"
+    },
+    {
+      "date": "2027-03-04",
+      "id": "ecaaff07df1",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "WNPA Nationals (Toronto) (day 2 of 5) (S&C sheet)"
+    },
+    {
+      "date": "2027-03-05",
+      "id": "e714d9d8f67",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "WNPA Nationals (Toronto) (day 3 of 5) (S&C sheet)"
+    },
+    {
+      "date": "2027-03-06",
+      "id": "e80944a0a25",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "WNPA Nationals (Toronto) (day 4 of 5) (S&C sheet)"
+    },
+    {
+      "date": "2027-03-07",
+      "id": "e27d84b0ecd",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "WNPA Nationals (Toronto) (day 5 of 5) (S&C sheet)"
+    }
+  ]
+}

@@ -1,0 +1,404 @@
+{
+  "games": [
+    {
+      "as": 25,
+      "away": "Bishop's",
+      "date": "2026-09-12",
+      "home": "Montréal",
+      "hs": 55,
+      "id": "gbh7y9p0nw0n",
+      "round": "",
+      "source": "paste",
+      "time": "15:15",
+      "venue": "Terrain Vincent-d'Indy"
+    },
+    {
+      "as": 10,
+      "away": "McGill",
+      "date": "2026-09-13",
+      "home": "ETS",
+      "hs": 40,
+      "id": "gg0l6qdwnw0n",
+      "round": "",
+      "source": "paste",
+      "time": "13:00",
+      "venue": "Complexe sportif Claude-Robilla…"
+    },
+    {
+      "as": 31,
+      "away": "Ottawa",
+      "date": "2026-09-13",
+      "home": "Concordia",
+      "hs": 10,
+      "id": "genvanotnw0n",
+      "round": "",
+      "source": "paste",
+      "time": "15:00",
+      "venue": "Concordia Stadium"
+    },
+    {
+      "as": 13,
+      "away": "Bishop's",
+      "date": "2026-09-19",
+      "home": "Ottawa",
+      "hs": 26,
+      "id": "gly7c61jnw0n",
+      "round": "",
+      "source": "paste",
+      "time": "18:00",
+      "venue": "Terrain Matt Anthony"
+    },
+    {
+      "as": 52,
+      "away": "Montréal",
+      "date": "2026-09-20",
+      "home": "Carleton",
+      "hs": 10,
+      "id": "g0ozkbaenw0n",
+      "round": "",
+      "source": "paste",
+      "time": "15:00",
+      "venue": "Ravens Field"
+    },
+    {
+      "as": 48,
+      "away": "ETS",
+      "date": "2026-09-20",
+      "home": "Concordia",
+      "hs": 14,
+      "id": "ghmt5p61nw0n",
+      "round": "",
+      "source": "paste",
+      "time": "15:15",
+      "venue": "Concordia Stadium"
+    },
+    {
+      "as": 70,
+      "away": "ETS",
+      "date": "2026-09-25",
+      "home": "Bishop's",
+      "hs": 0,
+      "id": "gi36m1qnnw0n",
+      "round": "",
+      "source": "paste",
+      "time": "20:15",
+      "venue": "Coulter Field"
+    },
+    {
+      "as": 27,
+      "away": "Concordia",
+      "date": "2026-09-26",
+      "home": "McGill",
+      "hs": 29,
+      "id": "g04aqvpsnw0n",
+      "round": "",
+      "source": "paste",
+      "time": "13:00",
+      "venue": "Stade Percival-Molson"
+    },
+    {
+      "as": 3,
+      "away": "Carleton",
+      "date": "2026-09-26",
+      "home": "Ottawa",
+      "hs": 59,
+      "id": "gtf4q84rnw0n",
+      "round": "",
+      "source": "paste",
+      "time": "18:30",
+      "venue": "Terrain Matt Anthony"
+    },
+    {
+      "as": 28,
+      "away": "Montréal",
+      "date": "2026-10-03",
+      "home": "ETS",
+      "hs": 24,
+      "id": "gg80de3inw0n",
+      "round": "",
+      "source": "paste",
+      "time": "13:00",
+      "venue": "Complexe sportif Claude-Robilla…"
+    },
+    {
+      "as": 73,
+      "away": "McGill",
+      "date": "2026-10-03",
+      "home": "Carleton",
+      "hs": 0,
+      "id": "gyvb1zgfnw0n",
+      "round": "",
+      "source": "paste",
+      "time": "15:00",
+      "venue": "Ravens Field"
+    },
+    {
+      "as": 5,
+      "away": "Bishop's",
+      "date": "2026-10-04",
+      "home": "Concordia",
+      "hs": 20,
+      "id": "g4qskkzgnw0n",
+      "round": "",
+      "source": "paste",
+      "time": "13:00",
+      "venue": "Concordia Stadium"
+    },
+    {
+      "as": 21,
+      "away": "Carleton",
+      "date": "2026-10-09",
+      "home": "Bishop's",
+      "hs": 40,
+      "id": "govmpndhnw0n",
+      "round": "",
+      "source": "paste",
+      "time": "20:00",
+      "venue": "Coulter Field"
+    },
+    {
+      "as": 49,
+      "away": "Ottawa",
+      "date": "2026-10-10",
+      "home": "McGill",
+      "hs": 24,
+      "id": "gqlgb65pnw0n",
+      "round": "",
+      "source": "paste",
+      "time": "13:00",
+      "venue": "Stade Percival-Molson"
+    },
+    {
+      "as": 31,
+      "away": "Concordia",
+      "date": "2026-10-11",
+      "home": "Montréal",
+      "hs": 43,
+      "id": "g76jbyk5nw0n",
+      "round": "",
+      "source": "paste",
+      "time": "15:00",
+      "venue": "Terrain Vincent-d'Indy"
+    },
+    {
+      "as": 8,
+      "away": "Carleton",
+      "date": "2026-10-17",
+      "home": "ETS",
+      "hs": 91,
+      "id": "ga0o85v8nw0n",
+      "round": "",
+      "source": "paste",
+      "time": "13:00",
+      "venue": "Complexe sportif Claude-Robilla…"
+    },
+    {
+      "as": 22,
+      "away": "Ottawa",
+      "date": "2026-10-18",
+      "home": "Montréal",
+      "hs": 25,
+      "id": "gf3eq52snw0n",
+      "round": "",
+      "source": "paste",
+      "time": "15:00",
+      "venue": "Terrain Vincent-d'Indy"
+    },
+    {
+      "as": 40,
+      "away": "McGill",
+      "date": "2026-10-18",
+      "home": "Bishop's",
+      "hs": 33,
+      "id": "gwawsm8inw0n",
+      "round": "",
+      "source": "paste",
+      "time": "15:15",
+      "venue": "Coulter Field"
+    },
+    {
+      "as": 24,
+      "away": "Montréal",
+      "date": "2026-10-23",
+      "home": "McGill",
+      "hs": 22,
+      "id": "gs9wqyoznw0n",
+      "round": "",
+      "source": "paste",
+      "time": "19:30",
+      "venue": "Stade Percival-Molson"
+    },
+    {
+      "as": 80,
+      "away": "ETS",
+      "date": "2026-10-24",
+      "home": "Ottawa",
+      "hs": 5,
+      "id": "grab0nfunw0n",
+      "round": "",
+      "source": "paste",
+      "time": "17:00",
+      "venue": "Terrain Matt Anthony"
+    },
+    {
+      "as": 94,
+      "away": "Concordia",
+      "date": "2026-10-25",
+      "home": "Carleton",
+      "hs": 31,
+      "id": "gnrzrk1cnw0n",
+      "round": "",
+      "source": "paste",
+      "time": "15:00",
+      "venue": "Ravens Field"
+    },
+    {
+      "as": null,
+      "away": "McGill",
+      "date": "2026-11-01",
+      "home": "Montréal",
+      "hs": null,
+      "id": "getezpmenw0n",
+      "round": "Demi-finale",
+      "source": "paste",
+      "time": "14:00",
+      "venue": "CEPSUM"
+    },
+    {
+      "as": null,
+      "away": "Ottawa",
+      "date": "2026-10-31",
+      "home": "ETS",
+      "hs": null,
+      "id": "gwwgrlldnw0n",
+      "round": "Demi-finale",
+      "source": "paste",
+      "time": "20:30",
+      "venue": "Complexe sportif Claude-Robilla…"
+    }
+  ],
+  "groups": [
+    {
+      "cols": [
+        "MJ",
+        "V",
+        "D",
+        "N",
+        "PP",
+        "PC",
+        "PTS",
+        "Bonis",
+        "PTS tot"
+      ],
+      "name": "Rugby U M (2026-2027) • Classement de la saison régulière",
+      "rows": [
+        {
+          "rank": 1,
+          "team": "Montréal",
+          "v": {
+            "Bonis": "4",
+            "D": "0",
+            "MJ": "6",
+            "N": "0",
+            "PC": "134",
+            "PP": "227",
+            "PTS": "24",
+            "PTS tot": "28",
+            "V": "6"
+          }
+        },
+        {
+          "rank": 2,
+          "team": "ETS",
+          "v": {
+            "Bonis": "6",
+            "D": "1",
+            "MJ": "6",
+            "N": "0",
+            "PC": "65",
+            "PP": "353",
+            "PTS": "20",
+            "PTS tot": "26",
+            "V": "5"
+          }
+        },
+        {
+          "rank": 3,
+          "team": "Ottawa",
+          "v": {
+            "Bonis": "6",
+            "D": "2",
+            "MJ": "6",
+            "N": "0",
+            "PC": "155",
+            "PP": "192",
+            "PTS": "16",
+            "PTS tot": "22",
+            "V": "4"
+          }
+        },
+        {
+          "rank": 4,
+          "team": "McGill",
+          "v": {
+            "Bonis": "5",
+            "D": "3",
+            "MJ": "6",
+            "N": "0",
+            "PC": "173",
+            "PP": "198",
+            "PTS": "12",
+            "PTS tot": "17",
+            "V": "3"
+          }
+        },
+        {
+          "rank": 5,
+          "team": "Concordia",
+          "v": {
+            "Bonis": "3",
+            "D": "4",
+            "MJ": "6",
+            "N": "0",
+            "PC": "187",
+            "PP": "196",
+            "PTS": "8",
+            "PTS tot": "11",
+            "V": "2"
+          }
+        },
+        {
+          "rank": 6,
+          "team": "Bishop's",
+          "v": {
+            "Bonis": "4",
+            "D": "5",
+            "MJ": "6",
+            "N": "0",
+            "PC": "232",
+            "PP": "116",
+            "PTS": "4",
+            "PTS tot": "8",
+            "V": "1"
+          }
+        },
+        {
+          "rank": 7,
+          "team": "Carleton",
+          "v": {
+            "Bonis": "1",
+            "D": "6",
+            "MJ": "6",
+            "N": "0",
+            "PC": "409",
+            "PP": "73",
+            "PTS": "0",
+            "PTS tot": "1",
+            "V": "0"
+          }
+        }
+      ]
+    }
+  ],
+  "updatedAt": 1793406059735
+}

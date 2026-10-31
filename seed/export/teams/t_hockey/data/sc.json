@@ -1,0 +1,715 @@
+{
+  "days": {
+    "2026-08-31": {
+      "intensity": "",
+      "theme": "New Students"
+    },
+    "2026-09-01": {
+      "intensity": "",
+      "theme": "NOTHING"
+    },
+    "2026-09-02": {
+      "intensity": "",
+      "theme": "NOTHING"
+    },
+    "2026-09-03": {
+      "intensity": "",
+      "theme": "Mountain day?"
+    },
+    "2026-09-04": {
+      "intensity": "",
+      "theme": "NOTHING"
+    },
+    "2026-09-06": {
+      "intensity": "",
+      "theme": "PLAN"
+    },
+    "2026-09-07": {
+      "intensity": "",
+      "theme": "Meet"
+    },
+    "2026-09-08": {
+      "intensity": "",
+      "theme": "CMJ + SJ + Grip"
+    },
+    "2026-09-09": {
+      "intensity": "",
+      "theme": "ISO + Sprint"
+    },
+    "2026-09-10": {
+      "intensity": "",
+      "theme": "Team practice"
+    },
+    "2026-09-11": {
+      "intensity": "",
+      "theme": "Fun + stretch"
+    },
+    "2026-09-12": {
+      "intensity": "game",
+      "theme": "3v3"
+    },
+    "2026-09-14": {
+      "intensity": "heavy",
+      "theme": "Brick 1"
+    },
+    "2026-09-15": {
+      "intensity": "moderate",
+      "theme": "MTW"
+    },
+    "2026-09-16": {
+      "intensity": "heavy",
+      "theme": "Brick 2"
+    },
+    "2026-09-17": {
+      "intensity": "",
+      "theme": "CADETS"
+    },
+    "2026-09-18": {
+      "intensity": "light",
+      "pdfColor": "cyan",
+      "theme": "Supercharge"
+    },
+    "2026-09-19": {
+      "intensity": "game",
+      "theme": "Ottawa Jr 67's"
+    },
+    "2026-09-20": {
+      "intensity": "off",
+      "theme": "OFF"
+    },
+    "2026-09-21": {
+      "intensity": "heavy",
+      "theme": "Brick 1 or 2"
+    },
+    "2026-09-22": {
+      "intensity": "light",
+      "pdfColor": "cyan",
+      "theme": "Supercharge"
+    },
+    "2026-09-23": {
+      "intensity": "game",
+      "theme": "Vs. Standstead"
+    },
+    "2026-09-24": {
+      "intensity": "",
+      "theme": "CADETS"
+    },
+    "2026-09-25": {
+      "intensity": "game",
+      "theme": "CPSHA - Standstead"
+    },
+    "2026-09-26": {
+      "intensity": "game",
+      "theme": "CPSHA - Standstead"
+    },
+    "2026-09-27": {
+      "intensity": "game",
+      "theme": "CPSHA - Standstead"
+    },
+    "2026-09-28": {
+      "intensity": "off",
+      "theme": "OFF"
+    },
+    "2026-09-29": {
+      "intensity": "heavy",
+      "theme": "Brick 1"
+    },
+    "2026-09-30": {
+      "intensity": "light",
+      "pdfColor": "cyan",
+      "theme": "Supercharge"
+    },
+    "2026-10-01": {
+      "intensity": "",
+      "theme": "CADETS"
+    },
+    "2026-10-02": {
+      "intensity": "game",
+      "theme": "CSSHL"
+    },
+    "2026-10-03": {
+      "intensity": "game",
+      "theme": "CSSHL"
+    },
+    "2026-10-04": {
+      "intensity": "game",
+      "theme": "CSSHL"
+    },
+    "2026-10-05": {
+      "intensity": "light",
+      "theme": "Regen"
+    },
+    "2026-10-06": {
+      "intensity": "light",
+      "pdfColor": "cyan",
+      "theme": "Supercharge"
+    },
+    "2026-10-07": {
+      "intensity": "game",
+      "theme": "SAC - TBD"
+    },
+    "2026-10-08": {
+      "intensity": "game",
+      "theme": "SAC - TBD"
+    },
+    "2026-10-09": {
+      "intensity": "light",
+      "theme": "Thanksgiving"
+    },
+    "2026-10-10": {
+      "intensity": "light",
+      "theme": "Thanksgiving"
+    },
+    "2026-10-11": {
+      "intensity": "light",
+      "theme": "Thanksgiving"
+    },
+    "2026-10-13": {
+      "intensity": "heavy",
+      "theme": ""
+    },
+    "2026-10-14": {
+      "intensity": "heavy",
+      "theme": "Brick 2"
+    },
+    "2026-10-15": {
+      "intensity": "",
+      "theme": "Cadets"
+    },
+    "2026-10-16": {
+      "intensity": "game",
+      "theme": "RNS"
+    },
+    "2026-10-17": {
+      "intensity": "game",
+      "theme": "RNS"
+    },
+    "2026-10-18": {
+      "intensity": "game",
+      "theme": "RNS"
+    },
+    "2026-10-19": {
+      "intensity": "light",
+      "theme": "Regen"
+    },
+    "2026-10-20": {
+      "intensity": "heavy",
+      "theme": "Brick 2"
+    },
+    "2026-10-21": {
+      "intensity": "light",
+      "pdfColor": "cyan",
+      "theme": "Supercharge"
+    },
+    "2026-10-22": {
+      "intensity": "",
+      "theme": "CADETS"
+    },
+    "2026-10-23": {
+      "intensity": "game",
+      "theme": "Bishop's Kearney New york"
+    },
+    "2026-10-24": {
+      "intensity": "game",
+      "theme": "Bishop's Kearney New york"
+    },
+    "2026-10-25": {
+      "intensity": "game",
+      "theme": "Bishop's Kearney New york"
+    },
+    "2026-10-26": {
+      "intensity": "off",
+      "theme": "OFF"
+    },
+    "2026-10-27": {
+      "intensity": "heavy",
+      "theme": "Brick 1/2"
+    },
+    "2026-10-28": {
+      "intensity": "light",
+      "pdfColor": "cyan",
+      "theme": ""
+    },
+    "2026-10-29": {
+      "intensity": "",
+      "theme": "CADETS"
+    },
+    "2026-10-30": {
+      "intensity": "game",
+      "theme": "BEANTOWN"
+    },
+    "2026-10-31": {
+      "intensity": "game",
+      "theme": "BEANTOWN"
+    },
+    "2026-11-01": {
+      "intensity": "game",
+      "theme": "BEANTOWN"
+    },
+    "2026-11-04": {
+      "intensity": "light",
+      "pdfColor": "cyan",
+      "theme": "Supercharge"
+    },
+    "2026-11-05": {
+      "intensity": "",
+      "theme": "CADETS"
+    },
+    "2026-11-06": {
+      "intensity": "game",
+      "theme": "CSSHL"
+    },
+    "2026-11-07": {
+      "intensity": "game",
+      "theme": "CSSHL"
+    },
+    "2026-11-08": {
+      "intensity": "game",
+      "theme": "CSSHL"
+    },
+    "2026-11-11": {
+      "intensity": "light",
+      "theme": "November Break"
+    },
+    "2026-11-12": {
+      "intensity": "light",
+      "theme": "November Break"
+    },
+    "2026-11-13": {
+      "intensity": "light",
+      "theme": "November Break"
+    },
+    "2026-11-14": {
+      "intensity": "light",
+      "theme": "November Break"
+    },
+    "2026-11-15": {
+      "intensity": "light",
+      "theme": "November Break"
+    },
+    "2026-11-16": {
+      "intensity": "light",
+      "theme": "Nov. Break"
+    },
+    "2026-11-17": {
+      "intensity": "",
+      "theme": "Recoop"
+    },
+    "2026-11-18": {
+      "intensity": "game",
+      "theme": "Holderness"
+    },
+    "2026-11-19": {
+      "intensity": "",
+      "theme": "CADETS"
+    },
+    "2026-11-20": {
+      "intensity": "game",
+      "theme": "Bourget and standstead"
+    },
+    "2026-11-21": {
+      "intensity": "game",
+      "theme": "Bourget and standstead"
+    },
+    "2026-11-22": {
+      "intensity": "game",
+      "theme": "Bourget and standstead"
+    },
+    "2026-11-25": {
+      "intensity": "light",
+      "pdfColor": "cyan",
+      "theme": "Supercharge"
+    },
+    "2026-11-26": {
+      "intensity": "",
+      "theme": "Cadets"
+    },
+    "2026-11-27": {
+      "intensity": "game",
+      "theme": "OHA"
+    },
+    "2026-11-28": {
+      "intensity": "game",
+      "theme": "OHA"
+    },
+    "2026-11-29": {
+      "intensity": "game",
+      "theme": "OHA"
+    },
+    "2026-12-03": {
+      "intensity": "game",
+      "theme": "Ulysse"
+    },
+    "2026-12-04": {
+      "intensity": "",
+      "theme": "-"
+    },
+    "2026-12-06": {
+      "intensity": "game",
+      "theme": "Standstead"
+    },
+    "2026-12-09": {
+      "intensity": "game",
+      "theme": "Nepsac + CSSHL"
+    },
+    "2026-12-10": {
+      "intensity": "game",
+      "theme": "Nepsac + CSSHL"
+    },
+    "2026-12-11": {
+      "intensity": "game",
+      "theme": "Nepsac + CSSHL"
+    },
+    "2026-12-12": {
+      "intensity": "game",
+      "theme": "Nepsac + CSSHL"
+    },
+    "2026-12-13": {
+      "intensity": "game",
+      "theme": "Nepsac + CSSHL"
+    },
+    "2026-12-17": {
+      "intensity": "light",
+      "theme": "Christmas Break"
+    },
+    "2026-12-18": {
+      "intensity": "light",
+      "theme": "Christmas Break"
+    },
+    "2026-12-19": {
+      "intensity": "light",
+      "theme": "Christmas Break"
+    },
+    "2026-12-20": {
+      "intensity": "light",
+      "theme": "Christmas Break"
+    },
+    "2027-01-09": {
+      "intensity": "game",
+      "theme": "Standstead"
+    },
+    "2027-01-10": {
+      "intensity": "game",
+      "theme": "Standstead"
+    },
+    "2027-01-14": {
+      "intensity": "",
+      "theme": "Cadets"
+    },
+    "2027-01-21": {
+      "intensity": "game",
+      "theme": "UCC - ON"
+    },
+    "2027-01-22": {
+      "intensity": "game",
+      "theme": "UCC - ON"
+    },
+    "2027-01-23": {
+      "intensity": "game",
+      "theme": "UCC - ON"
+    },
+    "2027-01-24": {
+      "intensity": "game",
+      "theme": "UCC - ON"
+    },
+    "2027-01-28": {
+      "intensity": "",
+      "theme": "Cadets"
+    },
+    "2027-01-29": {
+      "intensity": "game",
+      "theme": "New hampshire + Mass"
+    },
+    "2027-01-30": {
+      "intensity": "game",
+      "theme": "New hampshire + Mass"
+    },
+    "2027-01-31": {
+      "intensity": "game",
+      "theme": "New hampshire + Mass"
+    },
+    "2027-02-04": {
+      "intensity": "light",
+      "theme": "Feb Break"
+    },
+    "2027-02-05": {
+      "intensity": "light",
+      "theme": "Feb Break"
+    },
+    "2027-02-06": {
+      "intensity": "light",
+      "theme": "Feb Break"
+    },
+    "2027-02-07": {
+      "intensity": "light",
+      "theme": "Feb Break"
+    },
+    "2027-02-08": {
+      "intensity": "light",
+      "theme": "Feb Break"
+    },
+    "2027-02-11": {
+      "intensity": "",
+      "theme": "Cadets"
+    },
+    "2027-02-12": {
+      "intensity": "game",
+      "theme": "St. Hyacinthe"
+    },
+    "2027-02-13": {
+      "intensity": "game",
+      "theme": "St. Hyacinthe"
+    },
+    "2027-02-14": {
+      "intensity": "game",
+      "theme": "St. Hyacinthe"
+    },
+    "2027-02-18": {
+      "intensity": "",
+      "theme": "Cadets"
+    },
+    "2027-02-19": {
+      "intensity": "game",
+      "theme": "College Bourget"
+    },
+    "2027-02-25": {
+      "intensity": "game",
+      "theme": "Ridley"
+    },
+    "2027-02-26": {
+      "intensity": "game",
+      "theme": "Ridley"
+    },
+    "2027-02-27": {
+      "intensity": "game",
+      "theme": "Ridley"
+    },
+    "2027-02-28": {
+      "intensity": "game",
+      "theme": "Ridley"
+    },
+    "2027-03-04": {
+      "intensity": "",
+      "theme": "Cadets"
+    },
+    "2027-03-05": {
+      "intensity": "game",
+      "theme": "CSSHL"
+    },
+    "2027-03-06": {
+      "intensity": "game",
+      "theme": "CSSHL"
+    },
+    "2027-03-11": {
+      "intensity": "",
+      "theme": "Cadets"
+    },
+    "2027-03-13": {
+      "intensity": "game",
+      "theme": "Standstead"
+    },
+    "2027-03-17": {
+      "intensity": "game",
+      "theme": "CSSHL PLAYOFFS"
+    },
+    "2027-03-18": {
+      "intensity": "game",
+      "theme": "CSSHL PLAYOFFS"
+    },
+    "2027-03-19": {
+      "intensity": "game",
+      "theme": "CSSHL PLAYOFFS"
+    },
+    "2027-03-20": {
+      "intensity": "game",
+      "theme": "CSSHL PLAYOFFS"
+    },
+    "2027-03-21": {
+      "intensity": "game",
+      "theme": "CSSHL PLAYOFFS"
+    },
+    "2027-03-22": {
+      "intensity": "light",
+      "theme": "March Break"
+    },
+    "2027-03-23": {
+      "intensity": "light",
+      "theme": "March Break"
+    },
+    "2027-03-24": {
+      "intensity": "light",
+      "theme": "March Break"
+    },
+    "2027-03-25": {
+      "intensity": "light",
+      "theme": "March Break"
+    },
+    "2027-03-26": {
+      "intensity": "light",
+      "theme": "March Break"
+    },
+    "2027-03-27": {
+      "intensity": "light",
+      "theme": "March Break"
+    },
+    "2027-03-28": {
+      "intensity": "light",
+      "theme": "March Break"
+    },
+    "2027-03-31": {
+      "intensity": "game",
+      "theme": "CSSHL NATIONALS"
+    },
+    "2027-04-01": {
+      "intensity": "game",
+      "theme": "CSSHL NATIONALS"
+    },
+    "2027-04-02": {
+      "intensity": "game",
+      "theme": "CSSHL NATIONALS"
+    },
+    "2027-04-03": {
+      "intensity": "game",
+      "theme": "CSSHL NATIONALS"
+    },
+    "2027-04-04": {
+      "intensity": "game",
+      "theme": "CSSHL NATIONALS"
+    },
+    "2027-04-05": {
+      "intensity": "",
+      "theme": "Kids Return"
+    }
+  },
+  "source": "S&C Master Schedule PDF",
+  "weeks": {
+    "2026-08-31": {
+      "phase": "9:30-11:00am 8-9:15pm 8-9:15pm 10-12/2:30-5pm  - -",
+      "week": ""
+    },
+    "2026-09-07": {
+      "phase": "Testing / Intro / TesBtuincgk e/ tItnintrgo /",
+      "week": ""
+    },
+    "2026-09-14": {
+      "phase": "GPP week 1 GPP week 1",
+      "week": "1 1"
+    },
+    "2026-09-21": {
+      "phase": "GPP week 2 GPP week 2",
+      "week": "2 2"
+    },
+    "2026-09-28": {
+      "phase": "Accumulation week 1",
+      "week": "3 3"
+    },
+    "2026-10-05": {
+      "phase": "Accumulation week 2",
+      "week": "4 4"
+    },
+    "2026-10-12": {
+      "phase": "Accumulation week 3",
+      "week": "5 5"
+    },
+    "2026-10-19": {
+      "phase": "Accumulation 2 week 1",
+      "week": "6 6"
+    },
+    "2026-10-26": {
+      "phase": "Accumulation 2 week 2 week 2 De-load",
+      "week": "7 7"
+    },
+    "2026-11-02": {
+      "phase": "Accumulation 2 week 3 week 3",
+      "week": "8 8"
+    },
+    "2026-11-09": {
+      "phase": "Accumulation 2 week 4 week 4",
+      "week": "9 9"
+    },
+    "2026-11-16": {
+      "phase": "IN-SZN A Week 1",
+      "week": "10 10"
+    },
+    "2026-11-23": {
+      "phase": "IN-SZN A Week 2",
+      "week": "11 11"
+    },
+    "2026-11-30": {
+      "phase": "IN-SZN A Week 2 Week 2 Testing",
+      "week": "12 12"
+    },
+    "2026-12-07": {
+      "phase": "IN-SZN A INW-SeeZkN 3 A",
+      "week": "13"
+    },
+    "2026-12-14": {
+      "phase": "Holiday Holiday Maintenance Maintenance",
+      "week": "14"
+    },
+    "2026-12-21": {
+      "phase": "Holiday Holiday maintenance maintenance",
+      "week": "15"
+    },
+    "2026-12-28": {
+      "phase": "Holiday Holiday maintenance maintenance",
+      "week": "16"
+    },
+    "2027-01-04": {
+      "phase": "Transition Transition 1 week 1 week",
+      "week": "17"
+    },
+    "2027-01-11": {
+      "phase": "IN-SZN B IN-SZN B Week 1 Week 1",
+      "week": "18"
+    },
+    "2027-01-18": {
+      "phase": "IN-SZN B IN-SZN B Week 2 Week 2",
+      "week": "19"
+    },
+    "2027-01-25": {
+      "phase": "IN-SZN B IN-SZN B Week 3 Week 3",
+      "week": "20"
+    },
+    "2027-02-01": {
+      "phase": "",
+      "week": "21"
+    },
+    "2027-02-08": {
+      "phase": "IN-SZN B IN-SZN B Week 4 Week 4",
+      "week": "22"
+    },
+    "2027-02-15": {
+      "phase": "IN-SZN C IN-SZN C Week 1 Week 1",
+      "week": "23"
+    },
+    "2027-02-22": {
+      "phase": "IN-SZN C IN-SZN C Week 2 Week 2",
+      "week": "24"
+    },
+    "2027-03-01": {
+      "phase": "IN-SZN C IN-SZN C Week 3 Week 3",
+      "week": "25"
+    },
+    "2027-03-08": {
+      "phase": "IN-SZN C IN-SZN C Week 4 Week 4",
+      "week": "26"
+    },
+    "2027-03-15": {
+      "phase": "DE-LOAD",
+      "week": "27"
+    },
+    "2027-03-22": {
+      "phase": "Transition Transition Playoffs Playoffs",
+      "week": "28"
+    },
+    "2027-03-29": {
+      "phase": "",
+      "week": "29"
+    },
+    "2027-04-05": {
+      "phase": "",
+      "week": "-"
+    }
+  }
+}

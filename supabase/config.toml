@@ -1,0 +1,6 @@
+# Minimal Supabase CLI config for deploying the edge function.
+# project_id is set by `supabase link`.
+[functions.league-sync]
+# pg_cron calls with an x-cron-secret header instead of a user JWT; the function checks
+# the secret itself, and checks can_edit_team() for signed-in "Sync now" calls.
+verify_jwt = false

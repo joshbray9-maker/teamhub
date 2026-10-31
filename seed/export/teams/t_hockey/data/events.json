@@ -1,0 +1,356 @@
+{
+  "items": [
+    {
+      "date": "2026-09-12",
+      "id": "e5e7704ff1a",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "3v3 (S&C sheet)"
+    },
+    {
+      "date": "2026-09-19",
+      "id": "e9d570e70c3",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Ottawa Jr 67's (S&C sheet)"
+    },
+    {
+      "date": "2026-09-26",
+      "id": "ea0e54cc978",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "CPSHA - Standstead (day 2 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2026-09-27",
+      "id": "e2ee80ec795",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "CPSHA - Standstead (day 3 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2026-10-07",
+      "id": "ea611985e78",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "SAC - TBD (day 1 of 2) (S&C sheet)"
+    },
+    {
+      "date": "2026-10-08",
+      "id": "eb172ba71ca",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "SAC - TBD (day 2 of 2) (S&C sheet)"
+    },
+    {
+      "date": "2026-10-16",
+      "id": "e6e2b5f6bbf",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "RNS (day 1 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2026-10-18",
+      "id": "e3ae5c2f0fc",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "RNS (day 3 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2026-10-23",
+      "id": "e818f61ff3a",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Bishop's Kearney New york (day 1 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2026-10-24",
+      "id": "e9fbdef4702",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Bishop's Kearney New york (day 2 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2026-10-25",
+      "id": "e118e599480",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Bishop's Kearney New york (day 3 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2026-10-30",
+      "id": "e2c1dec5928",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "BEANTOWN (day 1 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2026-10-31",
+      "id": "e1b7c66337b",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "BEANTOWN (day 2 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2026-11-01",
+      "id": "efee6cfa831",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "BEANTOWN (day 3 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2026-11-06",
+      "id": "e69ffb11966",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "CSSHL (day 1 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2026-11-07",
+      "id": "ea464172ec9",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "CSSHL (day 2 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2026-11-08",
+      "id": "e515a9b0508",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "CSSHL (day 3 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2026-11-18",
+      "id": "e7d4fc5e628",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Holderness (S&C sheet)"
+    },
+    {
+      "date": "2026-11-21",
+      "id": "ee0250b3b8c",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Bourget and standstead (day 2 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2026-11-22",
+      "id": "e857941be60",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Bourget and standstead (day 3 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2026-11-27",
+      "id": "eba227f2d6d",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "OHA (day 1 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2026-12-09",
+      "id": "e7c6ae0c9a5",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Nepsac + CSSHL (day 1 of 5) (S&C sheet)"
+    },
+    {
+      "date": "2026-12-12",
+      "id": "ea906857ed6",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Nepsac + CSSHL (day 4 of 5) (S&C sheet)"
+    },
+    {
+      "date": "2026-12-13",
+      "id": "e57e7810fb0",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Nepsac + CSSHL (day 5 of 5) (S&C sheet)"
+    },
+    {
+      "date": "2027-01-10",
+      "id": "e81fbdc5696",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Standstead (day 2 of 2) (S&C sheet)"
+    },
+    {
+      "date": "2027-01-29",
+      "id": "e153cd8869e",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "New hampshire + Mass (day 1 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2027-01-31",
+      "id": "e6160fed8ed",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "New hampshire + Mass (day 3 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2027-02-12",
+      "id": "eb8756eb970",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "St. Hyacinthe (day 1 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2027-02-13",
+      "id": "e2fb2cc8c50",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "St. Hyacinthe (day 2 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2027-02-14",
+      "id": "ecc3802c2de",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "St. Hyacinthe (day 3 of 3) (S&C sheet)"
+    },
+    {
+      "date": "2027-02-25",
+      "id": "e0dd9bae879",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Ridley (day 1 of 4) (S&C sheet)"
+    },
+    {
+      "date": "2027-02-26",
+      "id": "e036bb78a23",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Ridley (day 2 of 4) (S&C sheet)"
+    },
+    {
+      "date": "2027-02-27",
+      "id": "ea698a54517",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Ridley (day 3 of 4) (S&C sheet)"
+    },
+    {
+      "date": "2027-02-28",
+      "id": "e7ddc1fad0f",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "Ridley (day 4 of 4) (S&C sheet)"
+    },
+    {
+      "date": "2027-03-17",
+      "id": "e7a6bef7698",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "CSSHL PLAYOFFS (day 1 of 5) (S&C sheet)"
+    },
+    {
+      "date": "2027-03-18",
+      "id": "e087d126af7",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "CSSHL PLAYOFFS (day 2 of 5) (S&C sheet)"
+    },
+    {
+      "date": "2027-03-19",
+      "id": "e38139abd8c",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "CSSHL PLAYOFFS (day 3 of 5) (S&C sheet)"
+    },
+    {
+      "date": "2027-03-20",
+      "id": "e27f83106fa",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "CSSHL PLAYOFFS (day 4 of 5) (S&C sheet)"
+    },
+    {
+      "date": "2027-03-21",
+      "id": "ef841aa31b0",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "CSSHL PLAYOFFS (day 5 of 5) (S&C sheet)"
+    },
+    {
+      "date": "2027-03-31",
+      "id": "eaeb701944c",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "CSSHL NATIONALS (day 1 of 5) (S&C sheet)"
+    },
+    {
+      "date": "2027-04-01",
+      "id": "e09b80a46e8",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "CSSHL NATIONALS (day 2 of 5) (S&C sheet)"
+    },
+    {
+      "date": "2027-04-02",
+      "id": "e3c1abaa089",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "CSSHL NATIONALS (day 3 of 5) (S&C sheet)"
+    },
+    {
+      "date": "2027-04-03",
+      "id": "ef6c8c7bc46",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "CSSHL NATIONALS (day 4 of 5) (S&C sheet)"
+    },
+    {
+      "date": "2027-04-04",
+      "id": "efc4bc8df6a",
+      "kind": "event",
+      "location": "",
+      "time": "",
+      "title": "CSSHL NATIONALS (day 5 of 5) (S&C sheet)"
+    }
+  ]
+}

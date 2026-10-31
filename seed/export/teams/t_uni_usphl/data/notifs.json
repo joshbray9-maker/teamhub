@@ -1,0 +1,16 @@
+{
+  "items": [
+    {
+      "id": "n5ef31d90",
+      "read": true,
+      "text": "Cleaned team names from the calendar import and added 12 results from the USPHL league site. 4 S&C-only game days added as events.",
+      "ts": 1793407612192
+    },
+    {
+      "id": "oxdyqidtcrw",
+      "read": false,
+      "text": "Calendar imported: 44 games, 0 events",
+      "ts": 1793406314732
+    }
+  ]
+}

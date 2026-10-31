@@ -1,0 +1,520 @@
+{
+  "days": {
+    "2026-09-01": {
+      "intensity": "",
+      "theme": "Lift 2"
+    },
+    "2026-09-02": {
+      "intensity": "",
+      "theme": "Cooper"
+    },
+    "2026-09-03": {
+      "intensity": "",
+      "theme": "Lift 3"
+    },
+    "2026-09-06": {
+      "intensity": "",
+      "theme": "PRESENTATIONS"
+    },
+    "2026-09-07": {
+      "intensity": "",
+      "theme": "CMJ + SJ"
+    },
+    "2026-09-09": {
+      "intensity": "",
+      "theme": "IMTP"
+    },
+    "2026-09-14": {
+      "intensity": "heavy",
+      "theme": "Brick 1"
+    },
+    "2026-09-15": {
+      "intensity": "moderate",
+      "theme": "Cond. (cooper?)"
+    },
+    "2026-09-16": {
+      "intensity": "heavy",
+      "theme": "Brick 2"
+    },
+    "2026-09-17": {
+      "intensity": "light",
+      "pdfColor": "cyan",
+      "theme": "Supercharge"
+    },
+    "2026-09-24": {
+      "intensity": "light",
+      "pdfColor": "cyan",
+      "theme": "Supercharge"
+    },
+    "2026-09-25": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2026-09-26": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2026-09-27": {
+      "intensity": "off",
+      "theme": "OFF"
+    },
+    "2026-09-28": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2026-09-29": {
+      "intensity": "light",
+      "theme": "Regen / Opt/"
+    },
+    "2026-09-30": {
+      "intensity": "heavy",
+      "theme": "Brick 1"
+    },
+    "2026-10-01": {
+      "intensity": "light",
+      "pdfColor": "cyan",
+      "theme": "Supercharge"
+    },
+    "2026-10-02": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2026-10-03": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2026-10-04": {
+      "intensity": "off",
+      "theme": "OFF"
+    },
+    "2026-10-05": {
+      "intensity": "heavy",
+      "theme": "Brick 1"
+    },
+    "2026-10-06": {
+      "intensity": "heavy",
+      "theme": "Brick 2"
+    },
+    "2026-10-07": {
+      "intensity": "moderate",
+      "theme": "Engine/pump"
+    },
+    "2026-10-08": {
+      "intensity": "light",
+      "pdfColor": "cyan",
+      "theme": "Supercharge"
+    },
+    "2026-10-09": {
+      "intensity": "light",
+      "pdfColor": "cyan",
+      "theme": "TBD"
+    },
+    "2026-10-10": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2026-10-11": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2026-10-13": {
+      "intensity": "heavy",
+      "theme": ""
+    },
+    "2026-10-14": {
+      "intensity": "heavy",
+      "theme": "Brick 2"
+    },
+    "2026-10-15": {
+      "intensity": "light",
+      "pdfColor": "cyan",
+      "theme": "Supercharge"
+    },
+    "2026-10-16": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2026-10-19": {
+      "intensity": "heavy",
+      "theme": "Brick 1"
+    },
+    "2026-10-20": {
+      "intensity": "heavy",
+      "theme": "Brick 2"
+    },
+    "2026-10-21": {
+      "intensity": "moderate",
+      "theme": "Engine EMOM"
+    },
+    "2026-10-22": {
+      "intensity": "light",
+      "pdfColor": "cyan",
+      "theme": "Supercharge"
+    },
+    "2026-10-23": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2026-10-24": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2026-10-25": {
+      "intensity": "off",
+      "theme": "OFF"
+    },
+    "2026-10-28": {
+      "intensity": "light",
+      "pdfColor": "cyan",
+      "theme": "Supercharge"
+    },
+    "2026-10-29": {
+      "intensity": "game",
+      "theme": "QC vs Vt"
+    },
+    "2026-10-30": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2026-11-01": {
+      "intensity": "game",
+      "theme": "Game 4:30pm VT"
+    },
+    "2026-11-05": {
+      "intensity": "light",
+      "pdfColor": "cyan",
+      "theme": "Supercharge"
+    },
+    "2026-11-06": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2026-11-10": {
+      "intensity": "light",
+      "pdfColor": "cyan",
+      "theme": "Supercharge"
+    },
+    "2026-11-11": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2026-11-13": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2026-11-14": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2026-11-15": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2026-11-19": {
+      "intensity": "light",
+      "pdfColor": "cyan",
+      "theme": "Supercharge"
+    },
+    "2026-11-20": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2026-11-21": {
+      "intensity": "off",
+      "theme": "OFF"
+    },
+    "2026-11-22": {
+      "intensity": "off",
+      "theme": "OFF"
+    },
+    "2026-11-26": {
+      "intensity": "light",
+      "pdfColor": "cyan",
+      "theme": "Supercharge"
+    },
+    "2026-11-27": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2026-11-28": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2026-11-29": {
+      "intensity": "off",
+      "theme": "OFF"
+    },
+    "2026-12-02": {
+      "intensity": "light",
+      "pdfColor": "cyan",
+      "theme": "Supercharge"
+    },
+    "2026-12-03": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2026-12-04": {
+      "intensity": "",
+      "theme": "Regen?"
+    },
+    "2026-12-05": {
+      "intensity": "off",
+      "theme": "OFF"
+    },
+    "2026-12-06": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2026-12-12": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2026-12-13": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2026-12-16": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2026-12-17": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2026-12-18": {
+      "intensity": "off",
+      "theme": "OFF"
+    },
+    "2026-12-19": {
+      "intensity": "off",
+      "theme": "OFF"
+    },
+    "2026-12-20": {
+      "intensity": "off",
+      "theme": "OFF"
+    },
+    "2027-01-08": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2027-01-09": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2027-01-10": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2027-01-14": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2027-01-15": {
+      "intensity": "off",
+      "theme": "OFF"
+    },
+    "2027-01-16": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2027-01-17": {
+      "intensity": "off",
+      "theme": "OFF"
+    },
+    "2027-01-23": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2027-01-24": {
+      "intensity": "off",
+      "theme": "OFF"
+    },
+    "2027-01-28": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2027-01-29": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2027-01-30": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2027-02-05": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2027-02-06": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2027-02-07": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2027-02-12": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2027-02-13": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2027-02-14": {
+      "intensity": "off",
+      "theme": "OFF"
+    },
+    "2027-02-17": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2027-02-20": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2027-02-21": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2027-02-24": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2027-02-25": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2027-02-27": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2027-03-02": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2027-03-04": {
+      "intensity": "",
+      "theme": "Cadets"
+    },
+    "2027-03-05": {
+      "intensity": "game",
+      "theme": "Game"
+    },
+    "2027-03-07": {
+      "intensity": "game",
+      "theme": "Game"
+    }
+  },
+  "source": "S&C Master Schedule PDF",
+  "weeks": {
+    "2026-08-31": {
+      "phase": "9:30-11:00am 8-9:15pm 8-9:15pm 10-12/2:30-5pm  - -",
+      "week": ""
+    },
+    "2026-09-07": {
+      "phase": "Testing / Intro / TesBtuincgk e/ tItnintrgo /",
+      "week": ""
+    },
+    "2026-09-14": {
+      "phase": "GPP week 1 GPP week 1",
+      "week": "1 1"
+    },
+    "2026-09-21": {
+      "phase": "GPP week 2 GPP week 2",
+      "week": "2 2"
+    },
+    "2026-09-28": {
+      "phase": "Accumulation week 1",
+      "week": "3 3"
+    },
+    "2026-10-05": {
+      "phase": "Accumulation week 2",
+      "week": "4 4"
+    },
+    "2026-10-12": {
+      "phase": "Accumulation week 3",
+      "week": "5 5"
+    },
+    "2026-10-19": {
+      "phase": "Accumulation 2 week 1",
+      "week": "6 6"
+    },
+    "2026-10-26": {
+      "phase": "Accumulation 2 week 2 week 2 De-load",
+      "week": "7 7"
+    },
+    "2026-11-02": {
+      "phase": "Accumulation 2 week 3 week 3",
+      "week": "8 8"
+    },
+    "2026-11-09": {
+      "phase": "Accumulation 2 week 4 week 4",
+      "week": "9 9"
+    },
+    "2026-11-16": {
+      "phase": "IN-SZN A Week 1",
+      "week": "10 10"
+    },
+    "2026-11-23": {
+      "phase": "IN-SZN A Week 2",
+      "week": "11 11"
+    },
+    "2026-11-30": {
+      "phase": "IN-SZN A Week 2 Week 2 Testing",
+      "week": "12 12"
+    },
+    "2026-12-07": {
+      "phase": "IN-SZN A INW-SeeZkN 3 A",
+      "week": "13"
+    },
+    "2026-12-14": {
+      "phase": "Holiday Holiday Maintenance Maintenance",
+      "week": "14"
+    },
+    "2026-12-21": {
+      "phase": "Holiday Holiday maintenance maintenance",
+      "week": "15"
+    },
+    "2026-12-28": {
+      "phase": "Holiday Holiday maintenance maintenance",
+      "week": "16"
+    },
+    "2027-01-04": {
+      "phase": "Transition Transition 1 week 1 week",
+      "week": "17"
+    },
+    "2027-01-11": {
+      "phase": "IN-SZN B IN-SZN B Week 1 Week 1",
+      "week": "18"
+    },
+    "2027-01-18": {
+      "phase": "IN-SZN B IN-SZN B Week 2 Week 2",
+      "week": "19"
+    },
+    "2027-01-25": {
+      "phase": "IN-SZN B IN-SZN B Week 3 Week 3",
+      "week": "20"
+    },
+    "2027-02-01": {
+      "phase": "",
+      "week": "21"
+    },
+    "2027-02-08": {
+      "phase": "IN-SZN B IN-SZN B Week 4 Week 4",
+      "week": "22"
+    },
+    "2027-02-15": {
+      "phase": "IN-SZN C IN-SZN C Week 1 Week 1",
+      "week": "23"
+    },
+    "2027-02-22": {
+      "phase": "IN-SZN C IN-SZN C Week 2 Week 2",
+      "week": "24"
+    },
+    "2027-03-01": {
+      "phase": "IN-SZN C IN-SZN C Week 3 Week 3",
+      "week": "25"
+    }
+  }
+}

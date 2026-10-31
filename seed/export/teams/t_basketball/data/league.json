@@ -1,0 +1,30 @@
+{
+  "games": [
+    {
+      "as": null,
+      "away": "Cégep de Sherbrooke",
+      "date": "2026-09-12",
+      "home": "Bishop's College School",
+      "hs": null,
+      "id": "g8e430348f2",
+      "round": "From S&C sheet",
+      "source": "s&c",
+      "time": "",
+      "venue": ""
+    },
+    {
+      "as": null,
+      "away": "Champlain",
+      "date": "2026-09-26",
+      "home": "Bishop's College School",
+      "hs": null,
+      "id": "g7e142ce004",
+      "round": "From S&C sheet",
+      "source": "s&c",
+      "time": "",
+      "venue": ""
+    }
+  ],
+  "groups": [],
+  "updatedAt": 1793408372459
+}

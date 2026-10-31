@@ -1,0 +1,217 @@
+{
+  "days": {
+    "2026-08-31": {
+      "intensity": "",
+      "theme": "photo @11 , kickers at 1:45 TP at 2:30pm"
+    },
+    "2026-09-01": {
+      "intensity": "",
+      "theme": "Lift 12:30-2:30 2 groups TP 2:30-4:30"
+    },
+    "2026-09-02": {
+      "intensity": "",
+      "theme": "10-12 skills TP 2:30-4:30"
+    },
+    "2026-09-03": {
+      "intensity": "",
+      "theme": "12:30-2:30 Lift 2 groups"
+    },
+    "2026-09-04": {
+      "intensity": "",
+      "theme": "Skillz + cond. for non-dressing cap run 2-3pm Pre-game 3:30-4:30pm"
+    },
+    "2026-09-06": {
+      "intensity": "",
+      "theme": "PRE-SZN VS. CON-U"
+    },
+    "2026-09-07": {
+      "intensity": "",
+      "theme": "Aerobic engine"
+    },
+    "2026-09-08": {
+      "intensity": "",
+      "theme": "Brick 1"
+    },
+    "2026-09-09": {
+      "intensity": "",
+      "theme": "SAQ - curve"
+    },
+    "2026-09-10": {
+      "intensity": "",
+      "theme": "Brick 2"
+    },
+    "2026-09-11": {
+      "intensity": "light",
+      "pdfColor": "cyan",
+      "theme": "Supercharge"
+    },
+    "2026-09-12": {
+      "intensity": "game",
+      "theme": "Away vs. UDM"
+    },
+    "2026-09-13": {
+      "intensity": "light",
+      "theme": "Regen"
+    },
+    "2026-09-14": {
+      "intensity": "heavy",
+      "theme": "Brick 1"
+    },
+    "2026-09-15": {
+      "intensity": "heavy",
+      "theme": "Brick 2 + Engine"
+    },
+    "2026-09-16": {
+      "intensity": "heavy",
+      "theme": "Brake + Pump"
+    },
+    "2026-09-17": {
+      "intensity": "light",
+      "theme": "Aerobic engine"
+    },
+    "2026-09-18": {
+      "intensity": "light",
+      "pdfColor": "cyan",
+      "theme": "Supercharge"
+    },
+    "2026-09-19": {
+      "intensity": "game",
+      "theme": "Away vs. Ott."
+    },
+    "2026-09-20": {
+      "intensity": "light",
+      "theme": "Regen"
+    },
+    "2026-09-24": {
+      "intensity": "light",
+      "pdfColor": "cyan",
+      "theme": "Supercharge"
+    },
+    "2026-09-25": {
+      "intensity": "game",
+      "theme": "Home vs. ETS"
+    },
+    "2026-09-26": {
+      "intensity": "light",
+      "theme": "Regen"
+    },
+    "2026-09-27": {
+      "intensity": "off",
+      "theme": "OFF"
+    },
+    "2026-09-29": {
+      "intensity": "heavy",
+      "theme": "Brick 1"
+    },
+    "2026-10-01": {
+      "intensity": "heavy",
+      "theme": "Brick 2"
+    },
+    "2026-10-03": {
+      "intensity": "light",
+      "pdfColor": "cyan",
+      "theme": "Supercharge"
+    },
+    "2026-10-04": {
+      "intensity": "game",
+      "theme": "Away vs. Conc U"
+    },
+    "2026-10-05": {
+      "intensity": "off",
+      "theme": "OFF"
+    },
+    "2026-10-06": {
+      "intensity": "heavy",
+      "theme": "Brick 1"
+    },
+    "2026-10-08": {
+      "intensity": "light",
+      "pdfColor": "cyan",
+      "theme": "Supercharge"
+    },
+    "2026-10-09": {
+      "intensity": "game",
+      "theme": "Home vs. Carelton"
+    },
+    "2026-10-10": {
+      "intensity": "off",
+      "theme": "OFF"
+    },
+    "2026-10-11": {
+      "intensity": "off",
+      "theme": "OFF"
+    },
+    "2026-10-12": {
+      "intensity": "",
+      "theme": "Thanksgiving monday"
+    },
+    "2026-10-13": {
+      "intensity": "heavy",
+      "theme": "Brick 1"
+    },
+    "2026-10-15": {
+      "intensity": "heavy",
+      "theme": "Brick 2"
+    },
+    "2026-10-17": {
+      "intensity": "light",
+      "pdfColor": "cyan",
+      "theme": "Supercharge"
+    },
+    "2026-10-18": {
+      "intensity": "game",
+      "theme": "Home vs. Mcgill"
+    },
+    "2026-10-20": {
+      "intensity": "heavy",
+      "theme": "Brick 1"
+    },
+    "2026-10-22": {
+      "intensity": "heavy",
+      "theme": "Brick 2"
+    },
+    "2026-10-30": {
+      "intensity": "game",
+      "theme": "Semi finals"
+    }
+  },
+  "source": "S&C Master Schedule PDF",
+  "weeks": {
+    "2026-08-31": {
+      "phase": "9:30-11:00am 8-9:15pm 8-9:15pm 10-12/2:30-5pm  - -",
+      "week": ""
+    },
+    "2026-09-07": {
+      "phase": "Testing / Intro / TesBtuincgk e/ tItnintrgo /",
+      "week": ""
+    },
+    "2026-09-14": {
+      "phase": "GPP week 1 GPP week 1",
+      "week": "1 1"
+    },
+    "2026-09-21": {
+      "phase": "GPP week 2 GPP week 2",
+      "week": "2 2"
+    },
+    "2026-09-28": {
+      "phase": "Accumulation week 1",
+      "week": "3 3"
+    },
+    "2026-10-05": {
+      "phase": "Accumulation week 2",
+      "week": "4 4"
+    },
+    "2026-10-12": {
+      "phase": "Accumulation week 3",
+      "week": "5 5"
+    },
+    "2026-10-19": {
+      "phase": "Accumulation 2 week 1",
+      "week": "6 6"
+    },
+    "2026-10-26": {
+      "phase": "Accumulation 2 week 2 week 2 De-load",
+      "week": "7 7"
+    }
+  }
+}

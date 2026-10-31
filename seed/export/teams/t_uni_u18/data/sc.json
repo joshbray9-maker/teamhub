@@ -1,0 +1,27 @@
+{
+  "days": {
+    "2026-09-01": {
+      "intensity": "",
+      "theme": "intro session"
+    },
+    "2026-09-02": {
+      "intensity": "",
+      "theme": "Conditioning"
+    },
+    "2026-09-03": {
+      "intensity": "",
+      "theme": "Intro session"
+    },
+    "2026-09-06": {
+      "intensity": "",
+      "theme": "PLAN"
+    }
+  },
+  "source": "S&C Master Schedule PDF",
+  "weeks": {
+    "2026-08-31": {
+      "phase": "9:30-11:00am 8-9:15pm 8-9:15pm 10-12/2:30-5pm  - -",
+      "week": ""
+    }
+  }
+}
