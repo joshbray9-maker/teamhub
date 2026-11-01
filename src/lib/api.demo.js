@@ -89,7 +89,8 @@ export const api = {
     const when = Object.fromEntries((d.testSessions || []).map((s) => [s.id, s.tested_on]));
     for (const r of d.testResults || []) { const p = players[r.player_id]; if (!p) continue;
       for (const [k, v] of Object.entries(r.values || {})) { const key = p.id + k, b = best[key];
-        if (!b || (k === 'fly10' ? v < b.value : v > b.value)) best[key] = { player_id: p.id, name: p.name, num: p.num, metric: k, value: v, tested_on: when[r.session_id] }; } }
+        if (['bw', 'eur'].includes(k)) continue;
+        if (!b || (['fly10', 't505', 'cassivi', 'sprint20'].includes(k) ? v < b.value : v > b.value)) best[key] = { player_id: p.id, name: p.name, num: p.num, metric: k, value: v, tested_on: when[r.session_id] }; } }
     return Object.values(best);
   },
   async setLeaderboardShared(teamId, on) { const d = D(teamId); d.gym = { targets: {}, overrides: {}, ...(d.gym || {}), leaderboard: on }; save(); },

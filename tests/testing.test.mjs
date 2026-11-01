@@ -58,3 +58,25 @@ test('leaderboard: per-test ranks (ties, fly lowest wins) and overall standing',
   assert.deepEqual(L.overall.map((s) => [s.player_id, Math.round(s.score)]), [['a', 67], ['b', 61], ['c', 28]]);
   assert.equal(L.need, 3);
 });
+
+test('bulk import: a season sheet in the basketball heading order', async () => {
+  const { rowsToTestDays, testDate, batteryCols, leaderboards } = await import('../src/lib/testing.js');
+  const { parseTsv } = await import('../src/lib/imports.js');
+  assert.equal(testDate('15/9/2026'), '2026-09-15'); assert.equal(testDate('9/15/26'), '2026-09-15'); assert.equal(testDate('soon'), '');
+  const roster = [{ id: 'a', name: 'Athlete HV01', num: '4' }, { id: 'b', name: 'Athlete HV02', num: '7' }];
+  const head = 'Athlete Name\tDate\tTeam\tPosition\tType of Training\tBodyweight\tCMJ\tRSImod\tAbal.\tSJ\tEUR\t5-0-5 Drill\t"Cassivi Shuttle\n(3pt,1/2,Fullx4)"\t20m Sprint';
+  const rows = parseTsv([head,
+    'Athlete HV01\t9/15/2026\tPrep\tG\tTesting\t78.2\t45.1\t0.52\t52.3\t41.0\t1.10\t2.41\t31.8\t3.12',
+    'Athlete HV02\t\tPrep\tF\tTesting\t84,5\t40\t0.47\t47\t38.5\t1.04\t2.55\t33.2\t3.25',
+    '#4\t10/1/2026\tPrep\tG\tReadiness\t\t46.0\t0.55\t\t\t\t\t\t',
+    'Nobody Here\t10/1/2026\tPrep\tG\tReadiness\t\t30\t0.3\t\t\t\t\t\t'].join('\n'));
+  const r = rowsToTestDays(rows, roster, 'basketball');
+  assert.deepEqual(r.days.map((d) => [d.date, d.battery, Object.keys(d.values).length]), [['2026-09-15', 'full', 2], ['2026-10-01', 'readiness', 1]]);
+  assert.deepEqual(r.days[0].values.a, { bw: 78.2, cmj_jh: 45.1, rsimod: 0.52, abalakov: 52.3, sj_jh: 41, eur: 1.1, t505: 2.41, cassivi: 31.8, sprint20: 3.12 });
+  assert.equal(r.days[0].values.b.bw, 84.5); assert.deepEqual(r.unmatched, ['Nobody Here']);
+  assert.deepEqual(batteryCols('full', 'basketball'), ['bw', 'cmj_jh', 'rsimod', 'abalakov', 'sj_jh', 'eur', 't505', 'cassivi', 'sprint20']);
+  assert.deepEqual(batteryCols('full', 'hockey'), ['cmj_jh', 'rsimod', 'sj_jh', 'imtp_pf', 'rel_pf', 'fly10', 'cooper']);
+  // timed drills rank fastest first; bodyweight and EUR are never ranked
+  const L = leaderboards([{ player_id: 'a', name: 'A', metric: 't505', value: 2.41 }, { player_id: 'b', name: 'B', metric: 't505', value: 2.55 }, { player_id: 'a', name: 'A', metric: 'bw', value: 78 }, { player_id: 'b', name: 'B', metric: 'bw', value: 84 }]);
+  assert.equal(L.byMetric.t505[0].player_id, 'a'); assert.equal(L.byMetric.bw, undefined);
+});

@@ -122,7 +122,10 @@ column from the roster with empty test columns; type straight into the grid, pas
 cells, or **Import** a file / pasted sheet (matched by name or number). **Bulk import** takes a
 whole season in one sheet (Date, Name and test columns, one row per player per day): each date
 becomes its own session (or merges into the one already on that date), with the battery picked
-from the tests that day and changeable before saving. **Coaches view**: a
+from the tests that day and changeable before saving. Basketball teams have their own full
+battery, in the order of Josh's sheet: bodyweight, CMJ, RSImod, Abalakov, SJ, EUR, 5-0-5,
+Cassivi shuttle, 20 m sprint (bodyweight and EUR are recorded but never ranked; timed drills rank
+fastest first). **Coaches view**: a
 trend chart of the team's median % change per test since its first session (a faster 10 m fly
 counts as an improvement), then one box per test with the team median over time and the middle
 half of the team.

@@ -20,11 +20,25 @@ export const METRICS = {
   rel_pf: { label: 'Rel. PF', unit: 'N/kg', long: 'Relative peak force (BW/kg)', dp: 1 },
   fly10: { label: '10 m fly', unit: 's', long: '10 m fly time', dp: 2, lower: true },
   cooper: { label: 'Cooper', unit: 'm', long: 'Cooper test distance', dp: 0 },
+  // basketball battery (Josh's sheet headings, 2026-11-01). bw and eur are recorded and charted but
+  // never ranked or counted as "better/worse" (neutral); the timed drills rank fastest first.
+  bw: { label: 'BW', unit: 'kg', long: 'Bodyweight', dp: 1, neutral: true },
+  abalakov: { label: 'Abalakov', unit: 'cm', long: 'Abalakov jump height', dp: 1 },
+  eur: { label: 'EUR', unit: '', long: 'Eccentric utilization ratio (CMJ / SJ)', dp: 2, neutral: true },
+  t505: { label: '5-0-5', unit: 's', long: '5-0-5 drill', dp: 2, lower: true },
+  cassivi: { label: 'Cassivi', unit: 's', long: 'Cassivi shuttle (3 pt, ½, full ×4)', dp: 2, lower: true },
+  sprint20: { label: '20 m', unit: 's', long: '20 m sprint', dp: 2, lower: true },
 };
 export const BATTERIES = {
   readiness: { label: 'Weekly readiness', metrics: ['cmj_jh', 'rsimod', 'fly10'] },
   full: { label: 'Full team testing', metrics: ['cmj_jh', 'rsimod', 'sj_jh', 'imtp_pf', 'rel_pf', 'fly10', 'cooper'] },
 };
+// sports with their own test columns (in the order of the coach's sheet); others use BATTERIES
+const SPORT_BATTERIES = {
+  basketball: { readiness: ['cmj_jh', 'rsimod'], full: ['bw', 'cmj_jh', 'rsimod', 'abalakov', 'sj_jh', 'eur', 't505', 'cassivi', 'sprint20'] },
+};
+/** The test columns of a battery for a team's sport. */
+export const batteryCols = (battery, sport) => (SPORT_BATTERIES[sport] && SPORT_BATTERIES[sport][battery]) || BATTERIES[battery].metrics;
 export const FORCE = ['imtp_pf', 'rel_pf'], EXPRESSION = ['cmj_jh', 'sj_jh', 'rsimod'];
 export const GROUPS = {
   efficient: { label: 'Expression efficient', focus: 'Preserve qualities and keep getting stronger and more explosive.', color: 'green' },
@@ -88,6 +102,8 @@ const SYN = [ // checked in order; a heading matches when it equals or starts wi
   ['rsimod', ['rsimod', 'rsimodified', 'rsim', 'rsi']], ['rel_pf', ['relpf', 'relativepeakforce', 'relativeforce', 'relativepower', 'bwkg', 'nkg', 'pfbw', 'pfkg', 'imtprel', 'relimtp']],
   ['imtp_pf', ['imtp', 'peakforce', 'pf', 'isometricmidthigh']], ['cmj_jh', ['cmj', 'countermovement']], ['sj_jh', ['sj', 'squatjump']],
   ['fly10', ['10mfly', 'fly10', '10fly', 'flying10', 'fly']], ['cooper', ['cooper', '12min']],
+  ['abalakov', ['abalakov', 'abal', 'aba']], ['eur', ['eur', 'eccentricutil']], ['t505', ['505', 'fivezerofive']], ['cassivi', ['cassivi']],
+  ['sprint20', ['20msprint', '20m', 'sprint20', '20sprint']], ['bw', ['bodyweight', 'bw', 'bodymass', 'weight', 'mass', 'poids']],
 ];
 export function metricField(h) { const k = hkey(h); if (!k) return null; for (const [m, l] of SYN) if (l.some((s) => k === s || k.startsWith(s))) return m; return null; }
 /** rows[0] = headings (a Name or # column plus metric columns). Matches players to the roster by
@@ -122,12 +138,12 @@ export function testDate(v) {
   if (!/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/i.test(s) || !/\d/.test(s)) return '';
   const d = new Date(s); return isNaN(d) ? '' : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
-const READINESS = new Set(BATTERIES.readiness.metrics);
 /** Bulk import: one sheet with a Date column, a Name (or #) column and test columns, one row per
  *  player per testing day (a blank date repeats the one above). Rows are grouped by date; a day
  *  with any test outside weekly readiness counts as full team testing.
  *  → { days: [{date, battery, values: {player_id: {metric: number}}}], metrics, unmatched, badDates } */
-export function rowsToTestDays(rows, roster) {
+export function rowsToTestDays(rows, roster, sport) {
+  const READINESS = new Set(batteryCols('readiness', sport));
   const head = rows[0] || [];
   const di = head.findIndex((h) => ['date', 'testdate', 'dateoftest', 'testedon', 'day', 'session', 'sessiondate'].includes(hkey(h)));
   if (di < 0) throw new Error('No Date column found. The first row should be headings like Date, Name, CMJ JH, RSImod.');
@@ -160,6 +176,7 @@ export function leaderboards(rows) {
   for (const r of rows) { const v = num(r.value); if (v === null || !METRICS[r.metric]) continue; (byMetric[r.metric] = byMetric[r.metric] || []).push({ ...r, value: v }); }
   const standing = {};
   for (const [k, list] of Object.entries(byMetric)) {
+    if (METRICS[k].neutral) { delete byMetric[k]; continue; }
     list.sort((a, b) => (METRICS[k].lower ? a.value - b.value : b.value - a.value) || a.name.localeCompare(b.name));
     list.forEach((r, i) => { r.rank = i && list[i - 1].value === r.value ? list[i - 1].rank : i + 1; });
     if (list.length < 2) continue;

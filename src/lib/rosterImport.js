@@ -5,7 +5,7 @@
 
 const SYN = {
   num: ['no', 'num', 'number', 'jersey', 'jerseyno', 'jerseynumber', 'numero', 'nº', 'n'],
-  name: ['name', 'player', 'playername', 'fullname', 'nom', 'joueur', 'athlete'],
+  name: ['name', 'player', 'playername', 'fullname', 'nom', 'joueur', 'athlete', 'athletename', 'athletes', 'nomathlete'],
   first: ['first', 'firstname', 'givenname', 'prenom'],
   last: ['last', 'lastname', 'surname', 'familyname', 'nomdefamille'],
   position: ['pos', 'position', 'positions', 'poste'],

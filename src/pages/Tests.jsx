@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useHub } from '../lib/hub.jsx';
 import { fmtDate, todayISO } from '../lib/util.js';
-import { METRICS, BATTERIES, GROUPS, FORCE, EXPRESSION, num, fmt, ratio, gymGroup, metricSeries, changeSeries, metricField, rowsToTests, rowsToTestDays, leaderboards } from '../lib/testing.js';
+import { METRICS, BATTERIES, batteryCols, GROUPS, FORCE, EXPRESSION, num, fmt, ratio, gymGroup, metricSeries, changeSeries, metricField, rowsToTests, rowsToTestDays, leaderboards } from '../lib/testing.js';
 import { parseTsv } from '../lib/imports.js';
 import { byNumber } from './Roster.jsx';
 import Modal from '../components/Modal.jsx';
@@ -17,7 +17,8 @@ import Icon from '../components/Icon.jsx';
 import InjuryFlag from '../components/InjuryFlag.jsx';
 import ImportSource from '../components/ImportSource.jsx';
 
-const COLORS = { cmj_jh: '#2563eb', rsimod: '#d97706', sj_jh: '#7c3aed', imtp_pf: '#dc2626', rel_pf: '#db2777', fly10: '#059669', cooper: '#0891b2' };
+const COLORS = { cmj_jh: '#2563eb', rsimod: '#d97706', sj_jh: '#7c3aed', imtp_pf: '#dc2626', rel_pf: '#db2777', fly10: '#059669', cooper: '#0891b2',
+  bw: '#64748b', abalakov: '#4f46e5', eur: '#a16207', t505: '#0d9488', cassivi: '#c026d3', sprint20: '#ea580c' };
 const sessLabel = (s) => `${fmtDate(s.tested_on)} · ${BATTERIES[s.battery].label}`;
 const StaffOnly = ({ what }) => <section className="card"><p className="muted" style={{ margin: 0 }}>{what} are only visible to coaches and admins.</p></section>;
 
@@ -72,20 +73,23 @@ export default function Tests() {
 }
 
 function NewSession({ close, onSave }) {
+  const H = useHub();
   const [date, setDate] = useState(todayISO()), [battery, setBattery] = useState('readiness');
   return <Modal title="New testing session" onClose={close} actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" disabled={!date} onClick={() => { close(); onSave(date, battery); }}>Create</button></>}>
     <label className="field"><span>Date</span><input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
     <div className="field"><span>Battery</span>
       {Object.entries(BATTERIES).map(([k, b]) => <label key={k} className="ts-bat"><input type="radio" name="bat" checked={battery === k} onChange={() => setBattery(k)} />
-        <span><b>{b.label}</b><span className="muted small">{b.metrics.map((m) => METRICS[m].label).join(', ')}</span></span></label>)}</div>
+        <span><b>{b.label}</b><span className="muted small">{batteryCols(k, H.team.sport).map((m) => METRICS[m].label).join(', ')}</span></span></label>)}</div>
   </Modal>;
 }
 
 /* Spreadsheet-style entry: one row per player, one column per test in the battery. */
 function EntryGrid({ d, session, onSaved }) {
   const H = useHub();
-  const cols = BATTERIES[session.battery].metrics;
   const saved = useMemo(() => Object.fromEntries(d.results.filter((r) => r.session_id === session.id).map((r) => [r.player_id, r.values || {}])), [d, session.id]);
+  // the battery's tests for this sport, plus any other test already saved in this session (e.g. from a bulk import)
+  const cols = useMemo(() => { const base = batteryCols(session.battery, H.team.sport), extra = new Set(Object.values(saved).flatMap(Object.keys));
+    return [...base, ...Object.keys(METRICS).filter((k) => extra.has(k) && !base.includes(k))]; }, [session.battery, saved, H.team.sport]);
   // active roster, plus anyone with results here who has since left
   const rows = useMemo(() => d.players.filter((p) => p.active !== false || saved[p.id]), [d.players, saved]);
   const toText = (v) => Object.fromEntries(cols.map((k) => [k, v && v[k] !== undefined && v[k] !== null ? String(v[k]) : '']));
@@ -165,7 +169,7 @@ function BulkImport({ d, close, onDone }) {
   const H = useHub();
   const [res, setRes] = useState(null), [bat, setBat] = useState({}), [busy, setBusy] = useState(false);
   const take = (rows, label) => {
-    const r = rowsToTestDays(rows, d.players);
+    const r = rowsToTestDays(rows, d.players, H.team.sport);
     if (!r.days.length) throw new Error(r.unmatched.length ? `None of the ${r.unmatched.length} names matched the roster.` : r.badDates.length ? `No dates could be read (e.g. "${r.badDates[0]}").` : 'No results found.');
     setRes({ ...r, file: label }); setBat(Object.fromEntries(r.days.map((x) => [x.date, x.battery])));
   };
@@ -186,8 +190,8 @@ function BulkImport({ d, close, onDone }) {
   };
   return <Modal title="Bulk import test results" wide onClose={close}
     actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" disabled={!res || busy} onClick={save}>{busy ? 'Importing…' : res ? `Import ${res.days.length} day${res.days.length === 1 ? '' : 's'}` : 'Import'}</button></>}>
-    <p className="muted small" style={{ margin: 0 }}>Paste your whole sheet: one row per player per testing day, with a <b>Date</b> column, a <b>Name</b> (or <b>#</b>) column and test columns such as <b>CMJ JH</b>, <b>RSImod</b>, <b>SJ JH</b>, <b>IMTP</b>, <b>Rel PF</b>, <b>10m fly</b>, <b>Cooper</b>. A blank date repeats the date above. Each date becomes its own testing session (or adds to the one already there); you can check everything before it's saved.</p>
-    <ImportSource mode0="paste" onRows={take} isHeading={(h) => !!metricField(h)} template={[['Date', 'Name', ...BATTERIES.full.metrics.map((k) => `${METRICS[k].label}${METRICS[k].unit ? ` (${METRICS[k].unit})` : ''}`)]]} templateName="test-results-season-template.csv" />
+    <p className="muted small" style={{ margin: 0 }}>Paste your whole sheet: one row per player per testing day, with a <b>Date</b> column, a <b>Name</b> (or <b>#</b>) column and test columns such as <b>{batteryCols('full', H.team.sport).map((k) => METRICS[k].label).join(', ')}</b>. Other columns (team, position, notes) are ignored. A blank date repeats the date above. Each date becomes its own testing session (or adds to the one already there); you can check everything before it's saved.</p>
+    <ImportSource mode0="paste" onRows={take} isHeading={(h) => !!metricField(h)} template={[['Date', 'Name', ...batteryCols('full', H.team.sport).map((k) => `${METRICS[k].label}${METRICS[k].unit ? ` (${METRICS[k].unit})` : ''}`)]]} templateName="test-results-season-template.csv" />
     {res && <>
       <div className="small"><b>{res.file}</b>: {plural(total, 'result')} for {plural(new Set(res.days.flatMap((x) => Object.keys(x.values))).size, 'player')} over {plural(res.days.length, 'testing day')} ({Object.keys(METRICS).filter((k) => res.metrics.includes(k)).map((k) => METRICS[k].label).join(', ')}).
         {res.unmatched.length > 0 && <> <b>Not on the roster (skipped):</b> {res.unmatched.join(', ')}.</>}
@@ -210,14 +214,15 @@ function Trends({ d }) {
   const series = useMemo(() => metricSeries(d.sessions, d.results), [d]);
   const change = useMemo(() => changeSeries(series), [series]);
   const keys = Object.keys(METRICS).filter((k) => series[k].length);
+  const trend = keys.filter((k) => !METRICS[k].neutral); // bodyweight and EUR have no better direction
   const [hide, setHide] = useState({});
   if (!keys.length) return <section className="card"><p className="muted" style={{ margin: 0 }}>Trends appear once a testing session has results.</p></section>;
   const dates = [...new Set(keys.flatMap((k) => series[k].map((p) => p.date)))].sort();
   return <>
     <section className="card">
       <div className="card-head"><div><h2>Team trend</h2><span className="muted small">Median change since each test's first session. Up is better (a faster 10 m fly counts as up).</span></div></div>
-      <div className="tr-legend">{keys.map((k) => <button key={k} className={hide[k] ? 'off' : ''} onClick={() => setHide({ ...hide, [k]: !hide[k] })}><i style={{ background: COLORS[k] }} />{METRICS[k].label}</button>)}</div>
-      <ChangeChart dates={dates} change={change} keys={keys.filter((k) => !hide[k] && change[k])} />
+      <div className="tr-legend">{trend.map((k) => <button key={k} className={hide[k] ? 'off' : ''} onClick={() => setHide({ ...hide, [k]: !hide[k] })}><i style={{ background: COLORS[k] }} />{METRICS[k].label}</button>)}</div>
+      <ChangeChart dates={dates} change={change} keys={trend.filter((k) => !hide[k] && change[k])} />
     </section>
     <div className="tr-grid">{keys.map((k) => <MetricBox key={k} k={k} pts={series[k]} />)}</div>
   </>;
@@ -242,7 +247,7 @@ function MetricBox({ k, pts }) {
   const lo = Math.min(...pts.map((p) => p.q1)), hi = Math.max(...pts.map((p) => p.q3)); const pad = (hi - lo) * 0.15 || Math.abs(hi) * 0.05 || 1;
   const y = (v) => T + ((hi + pad - v) / (hi - lo + 2 * pad)) * (H - T - B), x = (i) => (pts.length < 2 ? W / 2 : L + (i / (pts.length - 1)) * (W - L - R));
   const delta = (a, b) => { if (!b) return null; const c = (a.median - b.median) / b.median * (m.lower ? -1 : 1); return c; };
-  const ch = (c, label) => c === null ? null : <span className={c > 0.0005 ? 'up' : c < -0.0005 ? 'down' : ''}>{c > 0 ? '▲' : c < 0 ? '▼' : '•'} {Math.abs(c * 100).toFixed(1)}% {label}</span>;
+  const ch = (c, label) => c === null ? null : <span className={m.neutral ? '' : c > 0.0005 ? 'up' : c < -0.0005 ? 'down' : ''}>{c > 0 ? '▲' : c < 0 ? '▼' : '•'} {Math.abs(c * 100).toFixed(1)}% {label}</span>;
   return <section className="card tr-box">
     <div className="tr-h"><b style={{ color: COLORS[k] }}>{m.long}</b><span className="muted small">{m.lower ? 'lower is better' : ''}</span></div>
     <div className="tr-v tnum">{fmt(k, last.median)}<span className="muted"> {m.unit}</span></div>
