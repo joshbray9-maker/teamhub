@@ -244,6 +244,24 @@ export const api = {
   /** Public (no sign-in): what a spectator link shows, or null. */
   async spectatorView(token) { return ok(await supabase.rpc('spectator_view', { p_token: token })); },
 
+  /* ---------- my profile ---------- */
+  async getMyProfile(user) { return ok(await supabase.from('profiles').select('id, email, display_name, title, phone, bio, photo').eq('id', user.id).maybeSingle()) || { id: user.id, email: user.email }; },
+  async saveMyProfile(user, p) { ok(await supabase.from('profiles').update({ display_name: p.display_name || '', title: p.title || '', phone: p.phone || '', bio: p.bio || '', photo: p.photo || null }).eq('id', user.id)); },
+  async uploadAvatar(user, blob) { const path = `${user.id}/a-${Date.now()}.jpg`; ok(await supabase.storage.from('avatars').upload(path, blob, { contentType: 'image/jpeg' })); return path; },
+  async avatarUrls(paths) {
+    const list = [...new Set(paths.filter(Boolean))]; if (!list.length) return {};
+    const r = ok(await supabase.storage.from('avatars').createSignedUrls(list, 3600));
+    return Object.fromEntries(r.filter((x) => x.signedUrl).map((x) => [x.path, x.signedUrl]));
+  },
+  /** An organization's admins and coaches with their profiles (visible to its members). */
+  async listStaff(orgId) {
+    const mem = ok(await supabase.from('memberships').select('user_id, role').eq('org_id', orgId).in('role', ['admin', 'coach']));
+    if (!mem.length) return [];
+    const prof = ok(await supabase.from('profiles').select('id, email, display_name, title, phone, bio, photo').in('id', mem.map((m) => m.user_id)));
+    const by = Object.fromEntries(prof.map((p) => [p.id, p]));
+    return mem.map((m) => ({ ...(by[m.user_id] || { id: m.user_id, email: '' }), role: m.role }));
+  },
+
   /* ---------- data center ---------- */
   async listDatasets(teamId) { return ok(await supabase.from('datasets').select('*').eq('team_id', teamId).order('recorded_on', { ascending: false, nullsFirst: false }).order('created_at', { ascending: false })); },
   async saveDataset(teamId, d) {

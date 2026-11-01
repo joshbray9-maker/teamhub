@@ -794,6 +794,23 @@ span.gd-row{cursor:default}
 .spx-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:14px;align-items:start}
 .spx-foot{text-align:center}
 @media (max-width:900px){.spx-grid{grid-template-columns:minmax(0,1fr)}}
+/* ---------- my profile ---------- */
+.mp-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:16px;align-items:start}
+.mp-side{display:flex;flex-direction:column;gap:16px;min-width:0}
+.mp-photo{display:flex;gap:14px;align-items:center}
+.mp-photo>div{display:flex;gap:6px;flex-wrap:wrap}
+.mp-kv{display:flex;flex-direction:column;gap:2px}
+.mp-k{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.mp-access,.mp-staff{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.mp-access li{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.mp-access li .muted{flex-basis:100%}
+.mp-staff li{display:flex;gap:10px;align-items:flex-start}
+.mp-staff li>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.mp-staff .pill{align-self:flex-start}
+.mp-contact{display:flex;gap:10px;flex-wrap:wrap}
+.mp-contact a{color:var(--accent-text);overflow-wrap:anywhere}
+.mp-bio{white-space:pre-wrap;color:var(--muted)}
+@media (max-width:900px){.mp-grid{grid-template-columns:minmax(0,1fr)}}
 /* ---------- weekly snapshot ---------- */
 .ws{display:flex;flex-direction:column;gap:16px}
 .ws-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}

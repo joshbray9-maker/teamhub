@@ -13,6 +13,7 @@ import Practice from './pages/Practice.jsx';
 import Playbook from './pages/Playbook.jsx';
 import Stats from './pages/Stats.jsx';
 import Spectators from './pages/Spectators.jsx';
+import MyProfile from './pages/MyProfile.jsx';
 import InjuredCard from './components/InjuredCard.jsx';
 import OrgSchedule from './pages/OrgSchedule.jsx';
 import PageHead from './components/PageHead.jsx';
@@ -58,6 +59,7 @@ function Page() {
   if (H.page === 'playbook') return <Playbook key={t.id} />;
   if (H.page === 'stats') return <Stats key={t.id} />;
   if (H.page === 'spectators') return <Spectators key={t.id} />;
+  if (H.page === 'profile') return <MyProfile key={t.id} />;
   const m = MENUS.find((x) => x.id === H.page) || MENUS[0];
   return <>
     <PageHead title={menuLabel(m, t)} />

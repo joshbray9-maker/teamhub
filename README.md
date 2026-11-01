@@ -32,6 +32,7 @@ organization can read them; coaches edit. Injuries live in their own staff-only 
 | `supabase/migrations/…_playbook*.sql` | Plays (padlock = coaches only), court / rink surface |
 | `src/components/PlayDiagram.jsx`, `src/lib/playbook.js` | Court, play diagrams, steps |
 | `supabase/migrations/…_stats_spectators.sql` | Game stats, spectator links, `spectator_view()` |
+| `supabase/migrations/…_my_profile.sql` | Profile fields, private profile photos, chat names |
 | `src/lib/stats.js` | Stat columns per sport, season totals |
 | `src/lib/practice.js` | Block types per sport, clock times, practice CSV |
 | `src/lib/imports.js` | S&C, Lines and Data Center imports, blank templates |
@@ -148,6 +149,11 @@ plays it. Categories (sets, quick hitters, BLOB/SLOB, press break, zone, defense
 and notes. Everyone on the team sees unlocked plays; the **padlock** keeps a play to coaches and
 admins (enforced in the database). **Playcalling sheet** prints every play by category with its
 diagram and call.
+
+**My Profile:** your name, staff title, phone, bio and photo (people in your organizations see
+it; chat shows your name), your email and access per organization, a password change and sign
+out, and the coaching staff of the current team's organization with their contact details.
+You can only edit your own profile, never your email.
 
 **Stats:** player game stats. Coaches enter them per game in a spreadsheet grid (type or paste);
 everyone on the team sees the season leaderboard (sortable; hockey adds points and save %, rugby
@@ -328,5 +334,5 @@ check the access rules (coach vs viewer vs outsider vs public link).
 ## Not built yet
 
 Same placeholders as the artifact: League, Opponents, Game day (non-hockey), Playbook for
-football, Recruitment, My Profile. Workload load units and the acute:chronic band are **placeholder values**, editable
+football, Recruitment. Workload load units and the acute:chronic band are **placeholder values**, editable
 per team. They're not a validated scale.

@@ -117,6 +117,11 @@ export const api = {
       standings: ts.map((t) => ({ team_id: t.id, groups: D(t.id).groups || [] })),
       stats: l.show_stats ? ts.flatMap((t) => (D(t.id).gameStats || []).filter((r) => players[r.player_id]).map((r) => ({ team_id: t.id, game_id: r.game_id, player_id: r.player_id, name: players[r.player_id].name, num: players[r.player_id].num, position: players[r.player_id].position, stats: r.stats }))) : null });
   },
+  async getMyProfile() { await load(); return clone({ id: USER.id, email: USER.email, display_name: '', title: '', phone: '', bio: '', photo: null, ...(db.profile || {}) }); },
+  async saveMyProfile(_u, p) { db.profile = clone(p); save(); },
+  async uploadAvatar(_u, blob) { return new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(blob); }); },
+  async avatarUrls(paths) { return Object.fromEntries(paths.filter(Boolean).map((p) => [p, p])); },
+  async listStaff() { await load(); return [{ id: USER.id, email: USER.email, display_name: '', title: '', phone: '', bio: '', photo: null, ...(db.profile || {}), role: 'admin' }]; },
   async listDatasets(teamId) { await load(); return clone(D(teamId).datasets || []); },
   async saveDataset(teamId, d) { const l = (D(teamId).datasets = D(teamId).datasets || []); const [r] = upsert(l, [{ team_id: teamId, created_at: new Date().toISOString(), ...clone(d) }], 'ds'); save(); return clone(r); },
   async deleteDataset(id) { Object.values(db.data).forEach((d) => { d.datasets = (d.datasets || []).filter((x) => x.id !== id); }); save(); },

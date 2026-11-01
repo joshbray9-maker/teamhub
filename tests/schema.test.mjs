@@ -30,6 +30,8 @@ async function setup() {
   await db.exec(STUBS);
   for (const f of readdirSync('supabase/migrations').sort()) await db.exec(readFileSync('supabase/migrations/' + f, 'utf8'));
   await db.exec(GRANTS);
+  // what the profiles migration sets up in Supabase: people may only update their own non-email fields
+  await db.exec(`revoke update on public.profiles from authenticated, anon; grant update (display_name, title, phone, bio, photo) on public.profiles to authenticated;`);
   // Josh signs up before the seed is run
   await db.exec(`insert into auth.users values ('${U.josh}', 'Josh@Example.test')`);
   const seed = execFileSync('node', ['scripts/build-seed-sql.mjs'], { env: { ...process.env, ADMIN_EMAIL: 'josh@example.test' }, stdio: ['ignore', 'pipe', 'ignore'] }).toString();
@@ -277,6 +279,20 @@ test('migration + seed load, and access follows memberships', async () => {
   assert.equal((await as(db, null, 'select spectator_view($1) v', [sl.token]))[0].v, null);
   assert.equal((await as(db, null, `select spectator_view('nope') v`))[0].v, null);
   assert.equal((await as(db, U.viewer, 'select count(*)::int c from spectator_links'))[0].c, 0);
+
+  // my profile: edit your own (not your email); org co-members read it; chat uses the name
+  await as(db, U.coach, `update profiles set display_name = 'Coach Test', title = 'Head coach' where id = $1`, [U.coach]);
+  await assert.rejects(as(db, U.coach, `update profiles set email = 'x@x.test' where id = $1`, [U.coach]));
+  await as(db, U.coach, `update profiles set display_name = 'Hacked' where id = $1`, [U.viewer]);
+  assert.equal((await db.query('select display_name from profiles where id = $1', [U.viewer])).rows[0].display_name, '');
+  assert.equal((await as(db, U.viewer, 'select title from profiles where id = $1', [U.coach]))[0].title, 'Head coach');
+  assert.equal((await as(db, U.other, 'select count(*)::int c from profiles where id = $1', [U.coach]))[0].c, 0);
+  const [cm2] = await as(db, U.coach, `insert into chat_messages (team_id, body) values ($1, 'hello') returning author`, [bcsTeam]);
+  assert.equal(cm2.author, 'Coach Test');
+  await as(db, U.coach, `insert into storage.objects (bucket_id, name) values ('avatars', $1)`, [`${U.coach}/a.jpg`]);
+  await assert.rejects(as(db, U.coach, `insert into storage.objects (bucket_id, name) values ('avatars', $1)`, [`${U.viewer}/a.jpg`]));
+  assert.equal((await as(db, U.viewer, `select count(*)::int c from storage.objects where bucket_id='avatars'`))[0].c, 1);
+  assert.equal((await as(db, U.other, `select count(*)::int c from storage.objects where bucket_id='avatars'`))[0].c, 0);
 
   // game day lines: coaches write (default + their own team's games), viewers read only
   const bcsGame = (await db.query('select id from games where team_id=$1 limit 1', [bcsTeam])).rows[0].id;
