@@ -90,9 +90,9 @@ function PlayerReport({ p, photo, close }) {
             <tbody>{tests.map(({ k, pts, last, best, median, rank, n }) => <tr key={k}>
               <td><b>{METRICS[k].long}</b>{METRICS[k].lower && <span className="muted small"> (lower is better)</span>}</td>
               <td className="num tnum"><b>{fmt(k, last.value)}</b> {METRICS[k].unit}<div className="muted small">{fmtDate(last.date)}</div></td>
-              <td className="num tnum">{fmt(k, best.value)}<div className="muted small">{fmtDate(best.date)}</div></td>
+              <td className="num tnum">{METRICS[k].neutral ? '—' : <>{fmt(k, best.value)}<div className="muted small">{fmtDate(best.date)}</div></>}</td>
               <td className="num tnum">{median === null ? '—' : fmt(k, median)}</td>
-              <td className="num tnum">{n > 1 ? `${rank} of ${n}` : '—'}</td>
+              <td className="num tnum">{n > 1 && !METRICS[k].neutral ? `${rank} of ${n}` : '—'}</td>
               <td><Spark k={k} pts={pts} /></td>
             </tr>)}</tbody></table>}
         {group && <div className="muted small">{group.group ? `Gym group: ${group.reason}.` : `Gym group: ${group.reason}.`}</div>}

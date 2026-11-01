@@ -87,8 +87,8 @@ export default function WeeklySnapshot() {
         {!testRows.length ? <p className="muted small" style={{ margin: 0 }}>No testing this week.</p>
           : <table className="tbl ws-tests"><thead><tr><th>Test</th><th className="num">Team median</th><th className="num">Previous</th><th className="num">Change</th><th className="num">n</th></tr></thead>
             <tbody>{testRows.map(({ k, p, q, ch }) => <tr key={k}><td>{METRICS[k].long}</td><td className="num tnum"><b>{fmt(k, p.median)}</b> {METRICS[k].unit}</td><td className="num tnum muted">{q ? fmt(k, q.median) : '—'}</td>
-              <td className={`num tnum ${ch === null ? '' : ch > 0.0005 ? 'ws-up' : ch < -0.0005 ? 'ws-down' : ''}`}>{ch === null ? '—' : `${ch > 0 ? '▲' : ch < 0 ? '▼' : ''} ${Math.abs(ch * 100).toFixed(1)}%`}</td><td className="num tnum muted">{p.n}</td></tr>)}</tbody></table>}
-        {testRows.length > 0 && <div className="muted small">Change: up is better (a faster 10 m fly counts as up).</div>}
+              <td className={`num tnum ${ch === null || METRICS[k].neutral ? '' : ch > 0.0005 ? 'ws-up' : ch < -0.0005 ? 'ws-down' : ''}`}>{ch === null ? '—' : `${ch > 0 ? '▲' : ch < 0 ? '▼' : ''} ${Math.abs(ch * 100).toFixed(1)}%`}</td><td className="num tnum muted">{p.n}</td></tr>)}</tbody></table>}
+        {testRows.length > 0 && <div className="muted small">Change: up is better (a faster time counts as up). Bodyweight and EUR changes aren't better or worse.</div>}
       </section>
     </div>
   </div>;

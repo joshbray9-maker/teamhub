@@ -193,6 +193,7 @@ export const api = {
     return { sessions: ok(s), results: ok(r) };
   },
   async createTestSession(teamId, tested_on, battery) { return ok(await supabase.from('test_sessions').insert({ team_id: teamId, tested_on, battery }).select().single()); },
+  async setTestBattery(id, battery) { ok(await supabase.from('test_sessions').update({ battery }).eq('id', id)); },
   async deleteTestSession(id) { ok(await supabase.from('test_sessions').delete().eq('id', id)); },
   /** rows: [{player_id, values}]; a row with no values removes that player's results for the session. */
   async saveTestResults(teamId, sessionId, rows) {

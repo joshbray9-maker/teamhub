@@ -161,9 +161,11 @@ function ImportTests({ roster, cols, close, onUse }) {
   </Modal>;
 }
 
-/* Bulk import: every testing day in one sheet. Each date goes into the session on that date with
-   the same battery (made if missing); results merge per player, so tests already entered for a
-   player that day are kept unless the sheet has a new number for them. */
+/* Bulk import: every testing day in one sheet. Each date goes into the session already on that
+   date (one with the same battery first; made if there's none), so a day is never split in two.
+   A readiness session that gets full-testing results becomes full team testing (gym groups read
+   those); a full session is never turned back into readiness. Results merge per player, so tests
+   already entered for a player that day are kept unless the sheet has a new number for them. */
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 function BulkImport({ d, close, onDone }) {
   const H = useHub();
@@ -173,7 +175,7 @@ function BulkImport({ d, close, onDone }) {
     if (!r.days.length) throw new Error(r.unmatched.length ? `None of the ${r.unmatched.length} names matched the roster.` : r.badDates.length ? `No dates could be read (e.g. "${r.badDates[0]}").` : 'No results found.');
     setRes({ ...r, file: label }); setBat(Object.fromEntries(r.days.map((x) => [x.date, x.battery])));
   };
-  const existing = (date, b) => d.sessions.find((s) => s.tested_on === date && s.battery === b);
+  const existing = (date, b) => d.sessions.find((s) => s.tested_on === date && s.battery === b) || d.sessions.find((s) => s.tested_on === date);
   const total = res ? res.days.reduce((n, x) => n + Object.keys(x.values).length, 0) : 0;
   const save = async () => {
     setBusy(true);
@@ -181,6 +183,7 @@ function BulkImport({ d, close, onDone }) {
       for (const day of res.days) {
         const b = bat[day.date]; let s = existing(day.date, b);
         if (!s) s = await H.api.createTestSession(H.teamId, day.date, b);
+        else if (s.battery !== b && b === 'full') await H.api.setTestBattery(s.id, 'full');
         const before = Object.fromEntries(d.results.filter((r) => r.session_id === s.id).map((r) => [r.player_id, r.values || {}]));
         await H.api.saveTestResults(H.teamId, s.id, Object.entries(day.values).map(([pid, v]) => ({ player_id: pid, values: { ...(before[pid] || {}), ...v } })));
       }
@@ -202,7 +205,7 @@ function BulkImport({ d, close, onDone }) {
           return <tr key={x.date}><td>{fmtDate(x.date, true)}</td>
             <td><select className="select" value={bat[x.date]} onChange={(e) => setBat({ ...bat, [x.date]: e.target.value })} aria-label={`Battery for ${x.date}`}>{Object.entries(BATTERIES).map(([k, b]) => <option key={k} value={k}>{b.label}</option>)}</select></td>
             <td className="num tnum">{Object.keys(x.values).length}</td><td className="small">{metricOrder(H.team.sport).filter((k) => used.includes(k)).map((k) => METRICS[k].label).join(', ')}</td>
-            <td className="small">{s ? 'Existing session (merged)' : <span className="muted">New session</span>}</td></tr>; })}</tbody>
+            <td className="small">{!s ? <span className="muted">New session</span> : s.battery !== bat[x.date] && bat[x.date] === 'full' ? 'Existing session (merged, becomes full team testing)' : 'Existing session (merged)'}</td></tr>; })}</tbody>
       </table></div>
     </>}
   </Modal>;
@@ -221,7 +224,7 @@ function Trends({ d }) {
   const dates = [...new Set(keys.flatMap((k) => series[k].map((p) => p.date)))].sort();
   return <>
     <section className="card">
-      <div className="card-head"><div><h2>Team trend</h2><span className="muted small">Median change since each test's first session. Up is better (a faster 10 m fly counts as up).</span></div></div>
+      <div className="card-head"><div><h2>Team trend</h2><span className="muted small">Median change since each test's first session. Up is better (a faster time counts as up). Bodyweight and EUR aren't charted here.</span></div></div>
       <div className="tr-legend">{trend.map((k) => <button key={k} className={hide[k] ? 'off' : ''} onClick={() => setHide({ ...hide, [k]: !hide[k] })}><i style={{ background: COLORS[k] }} />{METRICS[k].label}</button>)}</div>
       <ChangeChart dates={dates} change={change} keys={trend.filter((k) => !hide[k] && change[k])} />
     </section>
