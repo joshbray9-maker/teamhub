@@ -178,12 +178,16 @@ function BulkImport({ d, close, onDone }) {
   const M = useMetrics();
   const H = useHub();
   const [res, setRes] = useState(null), [bat, setBat] = useState({}), [ind, setInd] = useState({}), [busy, setBusy] = useState(false);
-  const take = (rows, label) => {
-    const r = rowsToTestDays(rows, d.players, tp(H));
-    if (!r.days.length) throw new Error(r.unmatched.length ? `None of the ${r.unmatched.length} names matched the roster.` : r.badDates.length ? `No dates could be read (e.g. "${r.badDates[0]}").` : 'No results found.');
-    setRes({ ...r, file: label }); setBat(Object.fromEntries(r.days.map((x) => [x.date, x.battery])));
-    setInd(Object.fromEntries(r.days.map((x) => { const s = d.sessions.find((y) => y.tested_on === x.date); return [x.date, !!(s && s.individual)]; })));
+  // the pasted sheet, and how to read it: date order (null = from the sheet) and the days to keep
+  const [src, setSrc] = useState(null), [opt, setOpt] = useState({ order: null, from: '', to: todayISO() });
+  const run = (s, o) => {
+    const r = rowsToTestDays(s.rows, d.players, tp(H), o);
+    if (!r.days.length) throw new Error(r.unmatched.length ? `None of the ${r.unmatched.length} names matched the roster.` : r.badDates.length ? `No dates could be read (e.g. "${r.badDates[0]}").` : r.outside.length ? 'No testing days inside the dates you chose.' : 'No results found.');
+    setRes({ ...r, file: s.label }); setBat(Object.fromEntries(r.days.map((x) => [x.date, x.battery])));
+    setInd(Object.fromEntries(r.days.map((x) => { const y = d.sessions.find((z) => z.tested_on === x.date); return [x.date, !!(y && y.individual)]; })));
   };
+  const take = (rows, label) => { const s = { rows, label }; run(s, opt); setSrc(s); };
+  const change = (patch) => { const o = { ...opt, ...patch }; setOpt(o); try { run(src, o); } catch (e) { setRes(null); H.toast(e.message); } };
   const existing = (date, b) => d.sessions.find((s) => s.tested_on === date && s.battery === b) || d.sessions.find((s) => s.tested_on === date);
   const total = res ? res.days.reduce((n, x) => n + Object.keys(x.values).length, 0) : 0;
   const save = async () => {
@@ -205,11 +209,19 @@ function BulkImport({ d, close, onDone }) {
     actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" disabled={!res || busy} onClick={save}>{busy ? 'Importing…' : res ? `${res.textCols.length ? 'Import anyway: ' : 'Import '}${plural(res.days.length, 'day')}` : 'Import'}</button></>}>
     <p className="muted small" style={{ margin: 0 }}><b>Copy your heading row with the data</b> and paste it into the top-left cell: columns are then matched by name, whatever their order. Paste your whole sheet: one row per player per testing day, with a <b>Date</b> column, a <b>Name</b> (or <b>#</b>) column and test columns such as <b>{batteryCols('full', tp(H)).map((k) => M[k].label).join(', ')}</b>. Other columns (team, position, notes) are ignored. A blank date repeats the date above. Each date becomes its own testing session (or adds to the one already there); you can check everything before it's saved.</p>
     <ImportSource mode0="paste" onRows={take} isHeading={(h) => !!metricField(h)} template={[seasonSheet(tp(H))]} templateName="test-results-season-template.csv" />
+    {src && <div className="bi-opts">
+      <label className="small">Dates are <select className="select" value={opt.order || (res && res.order) || 'dmy'} onChange={(e) => change({ order: e.target.value })}>
+        <option value="dmy">day/month (08/09/2025 = 8 Sep 2025)</option><option value="mdy">month/day (09/08/2025 = 8 Sep 2025)</option></select></label>
+      {res && !res.detected && !opt.order && <span className="small hint warn">Every date in the sheet could be read either way: check this is right.</span>}
+      <label className="small">From <input type="date" className="input" value={opt.from} onChange={(e) => change({ from: e.target.value })} /></label>
+      <label className="small">to <input type="date" className="input" value={opt.to} onChange={(e) => change({ to: e.target.value })} /></label>
+    </div>}
     {res && <>
       <div className="small"><b>{res.file}</b>: {plural(total, 'result')} for {plural(new Set(res.days.flatMap((x) => Object.keys(x.values))).size, 'player')} over {plural(res.days.length, 'testing day')} ({metricOrder(tp(H)).filter((k) => res.metrics.includes(k)).map((k) => M[k].label).join(', ')}).
         {res.unmatched.length > 0 && <> <b>Not on the roster (skipped):</b> {res.unmatched.join(', ')}.</>}
         {res.badDates.length > 0 && <> <b>Dates not understood (rows skipped):</b> {res.badDates.join(', ')}.</>}
-        {res.bwRead === 'kg' && <> Bodyweight is in kg (it matches IMTP ÷ N/kg), so it's saved in pounds.</>}</div>
+        {res.bwRead === 'kg' && <> Bodyweight is in kg (it matches IMTP ÷ N/kg), so it's saved in pounds.</>}
+        {res.outside.length > 0 && <> <b>Outside the dates (left out):</b> {plural(res.outside.length, 'day')}, {fmtDate(res.outside[0], true)}{res.outside.length > 1 ? ` to ${fmtDate(res.outside[res.outside.length - 1], true)}` : ''}.</>}</div>
       {res.textCols.length > 0 && <div className="hint warn"><b>Check your columns before importing.</b> These test columns contain words, so your data probably doesn't line up with the headings:{' '}
         {res.textCols.map((c) => `${c.heading} ("${c.examples.join('", "')}")`).join('; ')}. Clear the grid and paste again with your heading row included, starting in the top-left cell.</div>}
       <div className="tbl-wrap" style={{ maxHeight: 320, overflow: 'auto' }}><table className="tbl">

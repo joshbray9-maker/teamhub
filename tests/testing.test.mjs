@@ -174,3 +174,18 @@ test('BCS hockey: its own test columns in the sheet order, text columns, bodywei
   const L = leaderboards([['a', 'sprint10', 1.85], ['b', 'sprint10', 1.80], ['a', 'ttpf', 0.2], ['b', 'ttpf', 0.3], ['a', 'archetype', 'X'], ['b', 'archetype', 'Y']].map(([player_id, metric, value]) => ({ player_id, name: player_id, metric, value })));
   assert.equal(L.byMetric.sprint10[0].player_id, 'b'); assert.equal(L.byMetric.ttpf, undefined); assert.equal(L.byMetric.archetype, undefined);
 });
+
+test('bulk import reads day/month dates and keeps only the chosen date range', async () => {
+  const { rowsToTestDays, dateOrder, testDate } = await import('../src/lib/testing.js');
+  assert.equal(dateOrder(['08/09/2025', '23/09/2025']), 'dmy'); assert.equal(dateOrder(['9/15/2026']), 'mdy'); assert.equal(dateOrder(['08/09/2025']), null);
+  assert.equal(testDate('08/09/2025', 'dmy'), '2025-09-08'); assert.equal(testDate('08/09/2025', 'mdy'), '2025-08-09'); assert.equal(testDate('23/09/2025', 'mdy'), '2025-09-23');
+  const roster = [{ id: 'a', name: 'Athlete HK01' }];
+  const rows = [['Athlete Name', 'Date', 'CMJ'], ['Athlete HK01', '01/09/2025', '40'], ['Athlete HK01', '08/09/2025', '41'], ['Athlete HK01', '23/09/2025', '42'], ['Athlete HK01', '05/12/2026', '43']];
+  const r = rowsToTestDays(rows, roster, 'bcs:hockey', { from: '2025-09-08', to: '2026-11-01' });
+  assert.equal(r.order, 'dmy'); assert.equal(r.detected, 'dmy');
+  assert.deepEqual(r.days.map((d) => d.date), ['2025-09-08', '2025-09-23']); assert.deepEqual(r.outside, ['2025-09-01', '2026-12-05']);
+  // a sheet whose dates all read either way defaults to day/month, and can be switched
+  const amb = [['Name', 'Date', 'CMJ'], ['Athlete HK01', '08/09/2025', '41']];
+  assert.equal(rowsToTestDays(amb, roster, 'bcs:hockey').days[0].date, '2025-09-08');
+  assert.equal(rowsToTestDays(amb, roster, 'bcs:hockey', { order: 'mdy' }).days[0].date, '2025-08-09');
+});

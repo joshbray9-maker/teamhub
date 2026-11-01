@@ -327,3 +327,12 @@ test('team averages: the basketball data fix marks individual testing days and t
     ['2025-10-06 true', '2025-12-08 true', '2026-07-10 true', '2026-09-08 false']);
   assert.equal((await db.query(`select team_from::text f from gym_config where team_id = $1`, [t])).rows[0].f, '2026-01-01');
 });
+
+test('BCS team overviews count testing from Sept 2026', async () => {
+  const db = await setup();
+  const fix = readFileSync('supabase/data-fixes/2026-11-01-bcs-team-averages-from-sept-2026.sql', 'utf8');
+  const want = (await db.query(`select count(*)::int c from teams t join organizations o on o.id = t.org_id where o.slug = 'bcs' and t.sport in ('hockey', 'basketball')`)).rows[0].c;
+  assert.ok(want >= 3);
+  assert.equal((await db.query(fix)).rows[0].teams_set, want); assert.equal((await db.query(fix)).rows[0].teams_set, want);
+  assert.deepEqual((await db.query(`select distinct team_from::text f from gym_config`)).rows.map((r) => r.f), ['2026-09-01']);
+});

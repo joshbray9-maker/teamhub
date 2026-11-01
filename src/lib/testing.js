@@ -221,11 +221,12 @@ export function rowsToTests(rows, roster) {
   return { values, metrics: [...new Set(met.filter(Boolean))], unmatched };
 }
 
-/** A test date from a sheet cell: 2026-09-15, 9/15/2026, 15/9/2026 (day first when the first
- *  number can't be a month), 9/15/26, or "Sep 15 2026". '' when it isn't a date. */
-export function testDate(v) {
+/** A test date from a sheet cell: 2026-09-15, "Sep 15 2026", or a/b/yyyy (or yy) read as
+ *  day/month when order is 'dmy', month/day when 'mdy' (either way, a first number over 12 can
+ *  only be a day). '' when it isn't a date. */
+export function testDate(v, order = 'mdy') {
   const s = String(v || '').trim(); let m = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
-  if (!m) { m = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2}|\d{4})\b/); if (m) { let [a, b] = [+m[1], +m[2]]; if (a > 12) [a, b] = [b, a]; m = [0, m[3].length === 2 ? '20' + m[3] : m[3], a, b]; } }
+  if (!m) { m = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2}|\d{4})\b/); if (m) { let [a, b] = order === 'dmy' ? [+m[2], +m[1]] : [+m[1], +m[2]]; if (a > 12) [a, b] = [b, a]; m = [0, m[3].length === 2 ? '20' + m[3] : m[3], a, b]; } }
   if (m) { const [y, mo, d] = [+m[1], +m[2], +m[3]]; return mo >= 1 && mo <= 12 && d >= 1 && d <= 31 ? `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}` : ''; }
   if (!/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/i.test(s) || !/\d/.test(s)) return '';
   const d = new Date(s); return isNaN(d) ? '' : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -236,15 +237,24 @@ export function testDate(v) {
  *  Words in a test column (e.g. a position under Bodyweight) mean the columns don't line up with
  *  the headings, and are reported in `textCols` so the coach can fix the paste before saving.
  *  → { days: [{date, battery, values: {player_id: {metric: number}}}], metrics, unmatched, badDates, textCols } */
-export function rowsToTestDays(rows, roster, sport) {
+/** How a sheet writes a/b/yyyy dates: 'dmy' when some first number is over 12 (23/09/2025),
+ *  'mdy' when some second number is, null when every date could be read either way. */
+export function dateOrder(cells) {
+  const ab = cells.map((c) => String(c || '').trim().match(/^(\d{1,2})[-/.](\d{1,2})[-/.]\d{2,4}\b/)).filter(Boolean);
+  if (ab.some((m) => +m[1] > 12)) return 'dmy'; if (ab.some((m) => +m[2] > 12)) return 'mdy'; return null;
+}
+/** opts: { order: 'dmy' | 'mdy' (default: from the sheet, else day/month), from, to: 'YYYY-MM-DD'
+ *  (days outside are left out and listed in `outside`) } */
+export function rowsToTestDays(rows, roster, sport, opts = {}) {
   const READINESS = new Set(batteryCols('readiness', sport));
   const head = rows[0] || [];
   const di = head.findIndex((h) => ['date', 'testdate', 'dateoftest', 'testedon', 'day', 'session', 'sessiondate'].includes(hkey(h)));
   if (di < 0) throw new Error('No Date column found. The first row should be headings like Date, Name, CMJ JH, RSImod.');
+  const detected = dateOrder(rows.slice(1).map((r) => r[di])), order = opts.order || detected || 'dmy';
   const byDate = new Map(), badDates = []; let cur = '';
   for (const r of rows.slice(1)) {
     const raw = String(r[di] || '').trim();
-    if (raw) { cur = testDate(raw); if (!cur && !badDates.includes(raw)) badDates.push(raw); }
+    if (raw) { cur = testDate(raw, order); if (!cur && !badDates.includes(raw)) badDates.push(raw); }
     if (!cur || !r.some((x, i) => i !== di && String(x || '').trim())) continue;
     if (!byDate.has(cur)) byDate.set(cur, []); byDate.get(cur).push(r);
   }
@@ -252,7 +262,9 @@ export function rowsToTestDays(rows, roster, sport) {
   const textCols = head.map((h, i) => { if (i === di || !metricField(h) || METRICS[metricField(h)].text || ['name', 'num', 'first', 'last'].includes(fieldFor(h))) return null;
     const words = [...new Set([...byDate.values()].flat().map((r) => String(r[i] || '').trim()).filter((v) => v && num(v) === null))];
     return words.length ? { heading: String(h).trim(), examples: words.slice(0, 3) } : null; }).filter(Boolean);
+  const outside = [];
   for (const [date, list] of [...byDate].sort((a, b) => a[0].localeCompare(b[0]))) {
+    if ((opts.from && date < opts.from) || (opts.to && date > opts.to)) { outside.push(date); continue; }
     const t = rowsToTests([h2, ...list], roster);
     t.unmatched.forEach((n) => unmatched.add(n));
     if (!Object.keys(t.values).length) continue;
@@ -268,7 +280,7 @@ export function rowsToTestDays(rows, roster, sport) {
     if (m !== null && m > 0.85 && m < 1.15) { bwRead = 'kg'; days.forEach((d) => Object.values(d.values).forEach((v) => { if (typeof v.bw === 'number') v.bw = Math.round(v.bw * 2.20462 * 10) / 10; })); }
     else if (m !== null && m > 0.39 && m < 0.52) bwRead = 'lb';
   }
-  return { days, metrics: [...metrics], unmatched: [...unmatched], badDates, textCols, bwRead };
+  return { days, metrics: [...metrics], unmatched: [...unmatched], badDates, textCols, bwRead, order, detected, outside };
 }
 
 /* ---------- leaderboard ---------- */
