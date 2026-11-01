@@ -22,7 +22,7 @@ export const METRICS = {
   cooper: { label: 'Cooper', unit: 'm', long: 'Cooper test distance', dp: 0 },
   // basketball battery (Josh's sheet headings, 2026-11-01). bw and eur are recorded and charted but
   // never ranked or counted as "better/worse" (neutral); the timed drills rank fastest first.
-  bw: { label: 'BW', unit: 'kg', long: 'Bodyweight', dp: 1, neutral: true },
+  bw: { label: 'BW', unit: 'lb', long: 'Bodyweight', dp: 1, neutral: true },   // pounds, as on Josh's sheet; a heading saying kg is converted
   abalakov: { label: 'Abalakov', unit: 'cm', long: 'Abalakov jump height', dp: 1 },
   eur: { label: 'EUR', unit: '', long: 'Eccentric utilization ratio (CMJ / SJ)', dp: 2, neutral: true },
   t505: { label: '5-0-5', unit: 's', long: '5-0-5 drill', dp: 2, lower: true },
@@ -102,7 +102,7 @@ const SYN = [ // checked in order; a heading matches when it equals or starts wi
   ['rsimod', ['rsimod', 'rsimodified', 'rsim', 'rsi']], ['rel_pf', ['relpf', 'relativepeakforce', 'relativeforce', 'relativepower', 'bwkg', 'nkg', 'pfbw', 'pfkg', 'imtprel', 'relimtp']],
   ['imtp_pf', ['imtp', 'peakforce', 'pf', 'isometricmidthigh']], ['cmj_jh', ['cmj', 'countermovement']], ['sj_jh', ['sj', 'squatjump']],
   ['fly10', ['10mfly', 'fly10', '10fly', 'flying10', 'fly']], ['cooper', ['cooper', '12min']],
-  ['abalakov', ['abalakov', 'abal', 'aba']], ['eur', ['eur', 'eccentricutil']], ['t505', ['505', 'fivezerofive']], ['cassivi', ['cassivi']],
+  ['abalakov', ['abalakov', 'abal', 'aba']], ['eur', ['eur', 'eccentricutil']], ['t505', ['505', 'fivezerofive']], ['cassivi', ['cassivi', 'cassici', 'cassivy']],
   ['sprint20', ['20msprint', '20m', 'sprint20', '20sprint']], ['bw', ['bodyweight', 'bw', 'bodymass', 'weight', 'mass', 'poids']],
 ];
 export function metricField(h) { const k = hkey(h); if (!k) return null; for (const [m, l] of SYN) if (l.some((s) => k === s || k.startsWith(s))) return m; return null; }
@@ -112,6 +112,7 @@ export function rowsToTests(rows, roster) {
   const head = rows[0] || [];
   const who = head.map((h) => { const f = fieldFor(h); return f === 'name' || f === 'num' || f === 'first' || f === 'last' ? f : null; });
   const met = head.map((h, i) => (who[i] ? null : metricField(h)));
+  const scale = head.map((h, i) => (met[i] === 'bw' && /\bkgs?\b|kilo/i.test(String(h)) ? 2.20462 : 1)); // bodyweight is kept in pounds
   if (!who.some(Boolean)) throw new Error('No Name or # column found. The first row should be headings like Name, CMJ JH, RSImod.');
   if (!met.some(Boolean)) throw new Error('No test columns recognised. Use headings like CMJ JH, RSImod, SJ JH, IMTP, Rel PF, 10m fly, Cooper.');
   const byName = new Map(roster.map((p) => [nameKey(p.name), p])), byNum = new Map(roster.filter((p) => p.num).map((p) => [p.num, p]));
@@ -121,7 +122,7 @@ export function rowsToTests(rows, roster) {
     let name = g('name') || [g('first'), g('last')].filter(Boolean).join(' '); const m = name.match(/^([^,]+),\s*([^,]+)$/); if (m) name = `${m[2]} ${m[1]}`;
     const n = g('num').replace(/^#/, '');
     const p = (name && byName.get(nameKey(name))) || (n && byNum.get(n)) || (/^#?\d+$/.test(name) && byNum.get(name.replace(/^#/, '')));
-    const v = {}; met.forEach((k, i) => { if (k) { const x = num(r[i]); if (x !== null) v[k] = x; } });
+    const v = {}; met.forEach((k, i) => { if (k) { const x = num(r[i]); if (x !== null) v[k] = scale[i] === 1 ? x : Math.round(x * scale[i] * 10) / 10; } });
     if (!Object.keys(v).length) continue;
     if (!p) { unmatched.push(name || '#' + n); continue; }
     values[p.id] = { ...(values[p.id] || {}), ...v };

@@ -80,3 +80,15 @@ test('bulk import: a season sheet in the basketball heading order', async () => 
   const L = leaderboards([{ player_id: 'a', name: 'A', metric: 't505', value: 2.41 }, { player_id: 'b', name: 'B', metric: 't505', value: 2.55 }, { player_id: 'a', name: 'A', metric: 'bw', value: 78 }, { player_id: 'b', name: 'B', metric: 'bw', value: 84 }]);
   assert.equal(L.byMetric.t505[0].player_id, 'a'); assert.equal(L.byMetric.bw, undefined);
 });
+
+test('bulk import: full team testing headings (bodyweight in pounds, "Cassici shuffle")', async () => {
+  const { rowsToTestDays } = await import('../src/lib/testing.js');
+  const roster = [{ id: 'a', name: 'Athlete HV01', num: '4' }];
+  const r = rowsToTestDays([['Name', 'Date', 'team', 'Bodyweight (pounds)', 'CMJ', 'RSImod', 'Abalakov jump', 'SJ', 'EUR', '5-0-5 drill', 'Cassici shuffle', '20m sprint'],
+    ['Athlete HV01', '2026-09-15', 'Prep', '172.4', '45.1', '0.52', '52.3', '41', '1.1', '2.41', '31.8', '3.12']], roster, 'basketball');
+  assert.deepEqual(r.days[0].values.a, { bw: 172.4, cmj_jh: 45.1, rsimod: 0.52, abalakov: 52.3, sj_jh: 41, eur: 1.1, t505: 2.41, cassivi: 31.8, sprint20: 3.12 });
+  assert.equal(r.days[0].battery, 'full');
+  // a sheet that gives bodyweight in kg is converted to pounds
+  const k = rowsToTestDays([['Name', 'Date', 'Bodyweight (kg)', 'CMJ'], ['Athlete HV01', '2026-09-15', '80', '40']], roster, 'basketball');
+  assert.equal(k.days[0].values.a.bw, 176.4);
+});
