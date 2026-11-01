@@ -97,8 +97,23 @@ test('basketball lists tests and the season sheet in the coach\'s order', async 
   const { metricOrder, seasonSheet, rowsToTestDays } = await import('../src/lib/testing.js');
   assert.deepEqual(metricOrder('basketball').slice(0, 9), ['bw', 'cmj_jh', 'rsimod', 'abalakov', 'sj_jh', 'eur', 't505', 'cassivi', 'sprint20']);
   const head = seasonSheet('basketball');
-  assert.deepEqual(head, ['Name', 'Date', 'Team', 'Bodyweight (pounds)', 'CMJ', 'RSImod', 'Abalakov jump', 'SJ', 'EUR', '5-0-5 drill', 'Cassivi shuttle', '20m sprint']);
+  assert.deepEqual(head, ['Name', 'Date', 'Team', 'Position', 'Type of Training', 'Bodyweight (pounds)', 'CMJ', 'RSImod', 'Abalakov jump', 'SJ', 'EUR', '5-0-5 drill', 'Cassivi shuttle', '20m sprint']);
   // data rows pasted under the pre-filled headings land in the right tests
-  const r = rowsToTestDays([head, ['Athlete HV01', '9/15/2026', 'Prep', '172', '45', '0.5', '52', '41', '1.1', '2.4', '31.8', '3.1']], [{ id: 'a', name: 'Athlete HV01' }], 'basketball');
+  const r = rowsToTestDays([head, ['Athlete HV01', '9/15/2026', 'Prep', 'G', 'Testing', '172', '45', '0.5', '52', '41', '1.1', '2.4', '31.8', '3.1']], [{ id: 'a', name: 'Athlete HV01' }], 'basketball');
   assert.deepEqual(r.days[0].values.a, { bw: 172, cmj_jh: 45, rsimod: 0.5, abalakov: 52, sj_jh: 41, eur: 1.1, t505: 2.4, cassivi: 31.8, sprint20: 3.1 });
+});
+
+test('bulk import warns when the pasted columns are shifted off the headings', async () => {
+  const { rowsToTestDays, seasonSheet } = await import('../src/lib/testing.js');
+  const roster = [{ id: 'a', name: 'Athlete HV01' }];
+  const head = seasonSheet('basketball');
+  assert.equal(head.length, 14); assert.deepEqual(head.slice(3, 6), ['Position', 'Type of Training', 'Bodyweight (pounds)']);
+  // a 14-column sheet pasted under 12 headings (the old grid): words land under Bodyweight and CMJ
+  const old = ['Name', 'Date', 'Team', 'Bodyweight (pounds)', 'CMJ', 'RSImod', 'Abalakov jump', 'SJ', 'EUR', '5-0-5 drill', 'Cassivi shuttle', '20m sprint'];
+  const r = rowsToTestDays([old, ['Athlete HV01', '9/15/2026', 'Prep', 'G', 'Testing', '172.4', '45.1', '0.52', '52.3', '41', '1.1', '2.41', '31.8', '3.12']], roster, 'basketball');
+  assert.deepEqual(r.textCols.map((c) => [c.heading, c.examples]), [['Bodyweight (pounds)', ['G']], ['CMJ', ['Testing']]]);
+  // the same row under the right headings: no warning, every test in place
+  const ok = rowsToTestDays([head, ['Athlete HV01', '9/15/2026', 'Prep', 'G', 'Testing', '172.4', '45.1', '0.52', '52.3', '41', '1.1', '2.41', '31.8', '3.12']], roster, 'basketball');
+  assert.deepEqual(ok.textCols, []);
+  assert.deepEqual(ok.days[0].values.a, { bw: 172.4, cmj_jh: 45.1, rsimod: 0.52, abalakov: 52.3, sj_jh: 41, eur: 1.1, t505: 2.41, cassivi: 31.8, sprint20: 3.12 });
 });

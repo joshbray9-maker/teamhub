@@ -192,13 +192,15 @@ function BulkImport({ d, close, onDone }) {
     finally { setBusy(false); }
   };
   return <Modal title="Bulk import test results" wide onClose={close}
-    actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" disabled={!res || busy} onClick={save}>{busy ? 'Importing…' : res ? `Import ${res.days.length} day${res.days.length === 1 ? '' : 's'}` : 'Import'}</button></>}>
-    <p className="muted small" style={{ margin: 0 }}>Paste your whole sheet: one row per player per testing day, with a <b>Date</b> column, a <b>Name</b> (or <b>#</b>) column and test columns such as <b>{batteryCols('full', H.team.sport).map((k) => METRICS[k].label).join(', ')}</b>. Other columns (team, position, notes) are ignored. A blank date repeats the date above. Each date becomes its own testing session (or adds to the one already there); you can check everything before it's saved.</p>
+    actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" disabled={!res || busy} onClick={save}>{busy ? 'Importing…' : res ? `${res.textCols.length ? 'Import anyway: ' : 'Import '}${plural(res.days.length, 'day')}` : 'Import'}</button></>}>
+    <p className="muted small" style={{ margin: 0 }}><b>Copy your heading row with the data</b> and paste it into the top-left cell: columns are then matched by name, whatever their order. Paste your whole sheet: one row per player per testing day, with a <b>Date</b> column, a <b>Name</b> (or <b>#</b>) column and test columns such as <b>{batteryCols('full', H.team.sport).map((k) => METRICS[k].label).join(', ')}</b>. Other columns (team, position, notes) are ignored. A blank date repeats the date above. Each date becomes its own testing session (or adds to the one already there); you can check everything before it's saved.</p>
     <ImportSource mode0="paste" onRows={take} isHeading={(h) => !!metricField(h)} template={[seasonSheet(H.team.sport)]} templateName="test-results-season-template.csv" />
     {res && <>
       <div className="small"><b>{res.file}</b>: {plural(total, 'result')} for {plural(new Set(res.days.flatMap((x) => Object.keys(x.values))).size, 'player')} over {plural(res.days.length, 'testing day')} ({metricOrder(H.team.sport).filter((k) => res.metrics.includes(k)).map((k) => METRICS[k].label).join(', ')}).
         {res.unmatched.length > 0 && <> <b>Not on the roster (skipped):</b> {res.unmatched.join(', ')}.</>}
         {res.badDates.length > 0 && <> <b>Dates not understood (rows skipped):</b> {res.badDates.join(', ')}.</>}</div>
+      {res.textCols.length > 0 && <div className="hint warn"><b>Check your columns before importing.</b> These test columns contain words, so your data probably doesn't line up with the headings:{' '}
+        {res.textCols.map((c) => `${c.heading} ("${c.examples.join('", "')}")`).join('; ')}. Clear the grid and paste again with your heading row included, starting in the top-left cell.</div>}
       <div className="tbl-wrap" style={{ maxHeight: 320, overflow: 'auto' }}><table className="tbl">
         <thead><tr><th>Date</th><th>Battery</th><th className="num">Players</th><th>Tests</th><th>Goes into</th></tr></thead>
         <tbody>{res.days.map((x) => { const used = [...new Set(Object.values(x.values).flatMap(Object.keys))]; const s = existing(x.date, bat[x.date]);

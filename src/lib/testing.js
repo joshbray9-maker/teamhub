@@ -43,7 +43,7 @@ export const batteryCols = (battery, sport) => (SPORT_BATTERIES[sport] && SPORT_
 export const metricOrder = (sport) => [...new Set([...batteryCols('full', sport), ...Object.keys(METRICS)])];
 // the heading row of the coach's season sheet, column for column (bulk import's paste grid)
 const SPORT_SHEETS = {
-  basketball: ['Name', 'Date', 'Team', 'Bodyweight (pounds)', 'CMJ', 'RSImod', 'Abalakov jump', 'SJ', 'EUR', '5-0-5 drill', 'Cassivi shuttle', '20m sprint'],
+  basketball: ['Name', 'Date', 'Team', 'Position', 'Type of Training', 'Bodyweight (pounds)', 'CMJ', 'RSImod', 'Abalakov jump', 'SJ', 'EUR', '5-0-5 drill', 'Cassivi shuttle', '20m sprint'],
 };
 export const seasonSheet = (sport) => SPORT_SHEETS[sport] || ['Name', 'Date', ...batteryCols('full', sport).map((k) => `${METRICS[k].label}${METRICS[k].unit ? ` (${METRICS[k].unit})` : ''}`)];
 export const FORCE = ['imtp_pf', 'rel_pf'], EXPRESSION = ['cmj_jh', 'sj_jh', 'rsimod'];
@@ -149,7 +149,9 @@ export function testDate(v) {
 /** Bulk import: one sheet with a Date column, a Name (or #) column and test columns, one row per
  *  player per testing day (a blank date repeats the one above). Rows are grouped by date; a day
  *  with any test outside weekly readiness counts as full team testing.
- *  → { days: [{date, battery, values: {player_id: {metric: number}}}], metrics, unmatched, badDates } */
+ *  Words in a test column (e.g. a position under Bodyweight) mean the columns don't line up with
+ *  the headings, and are reported in `textCols` so the coach can fix the paste before saving.
+ *  → { days: [{date, battery, values: {player_id: {metric: number}}}], metrics, unmatched, badDates, textCols } */
 export function rowsToTestDays(rows, roster, sport) {
   const READINESS = new Set(batteryCols('readiness', sport));
   const head = rows[0] || [];
@@ -163,6 +165,9 @@ export function rowsToTestDays(rows, roster, sport) {
     if (!byDate.has(cur)) byDate.set(cur, []); byDate.get(cur).push(r);
   }
   const h2 = head.map((h, i) => (i === di ? '' : h)), unmatched = new Set(), metrics = new Set(); const days = [];
+  const textCols = head.map((h, i) => { if (i === di || !metricField(h) || ['name', 'num', 'first', 'last'].includes(fieldFor(h))) return null;
+    const words = [...new Set([...byDate.values()].flat().map((r) => String(r[i] || '').trim()).filter((v) => v && num(v) === null))];
+    return words.length ? { heading: String(h).trim(), examples: words.slice(0, 3) } : null; }).filter(Boolean);
   for (const [date, list] of [...byDate].sort((a, b) => a[0].localeCompare(b[0]))) {
     const t = rowsToTests([h2, ...list], roster);
     t.unmatched.forEach((n) => unmatched.add(n));
@@ -170,7 +175,7 @@ export function rowsToTestDays(rows, roster, sport) {
     const used = new Set(Object.values(t.values).flatMap(Object.keys)); used.forEach((k) => metrics.add(k));
     days.push({ date, battery: [...used].some((k) => !READINESS.has(k)) ? 'full' : 'readiness', values: t.values });
   }
-  return { days, metrics: [...metrics], unmatched: [...unmatched], badDates };
+  return { days, metrics: [...metrics], unmatched: [...unmatched], badDates, textCols };
 }
 
 /* ---------- leaderboard ---------- */
