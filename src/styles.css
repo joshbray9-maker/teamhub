@@ -635,6 +635,10 @@ span.gd-row{cursor:default}
 .pg-bar .btn.primary{margin-left:auto}
 /* ---------- S&C tests + gym groups ---------- */
 .ts-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ts-ind{display:flex;gap:6px;align-items:center;margin-top:4px}
+.ts-from{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.ts-from label{display:flex;gap:8px;align-items:center}
+.ts-from .input{width:auto}
 .ts-pick{width:auto;max-width:min(320px,100%)}
 .ts-bat{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line);border-radius:10px;cursor:pointer}
 .ts-bat>span{display:flex;flex-direction:column}

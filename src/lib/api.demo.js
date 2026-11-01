@@ -75,9 +75,10 @@ export const api = {
   async saveScWeek(teamId, mk, w) { const s = D(teamId).sc; s.weeks = s.weeks || {}; s.weeks[mk] = w; save(); },
   async removeScWeek(teamId, mk, last) { const s = D(teamId).sc; delete (s.weeks || {})[mk]; Object.keys(s.days || {}).forEach((d) => { if (d >= mk && d <= last) delete s.days[d]; }); save(); },
   async saveScBulk(teamId, days, weeks) { const s = D(teamId).sc; s.days = { ...(s.days || {}), ...clone(days) }; s.weeks = { ...(s.weeks || {}), ...clone(weeks) }; save(); },
-  async listTests(teamId) { await load(); const d = D(teamId); return clone({ sessions: [...(d.testSessions || [])].sort((a, b) => a.tested_on.localeCompare(b.tested_on)), results: d.testResults || [] }); },
+  async listTests(teamId) { await load(); const d = D(teamId); return clone({ sessions: [...(d.testSessions || [])].sort((a, b) => a.tested_on.localeCompare(b.tested_on)), results: d.testResults || [], teamFrom: (d.gym || {}).team_from || null }); },
   async createTestSession(teamId, tested_on, battery) { const s = { id: 'ts' + uid(), team_id: teamId, tested_on, battery, notes: '' }; (D(teamId).testSessions = D(teamId).testSessions || []).push(s); save(); return clone(s); },
-  async setTestBattery(id, battery) { Object.values(db.data).forEach((d) => (d.testSessions || []).forEach((s) => { if (s.id === id) s.battery = battery; })); save(); },
+  async updateTestSession(id, patch) { Object.values(db.data).forEach((d) => (d.testSessions || []).forEach((s) => { if (s.id === id) Object.assign(s, patch); })); save(); },
+  async setTeamAveragesFrom(teamId, date) { const d = D(teamId); d.gym = { targets: {}, overrides: {}, ...(d.gym || {}), team_from: date || null }; save(); },
   async deleteTestSession(id) { Object.values(db.data).forEach((d) => { d.testSessions = (d.testSessions || []).filter((s) => s.id !== id); d.testResults = (d.testResults || []).filter((r) => r.session_id !== id); }); save(); },
   async saveTestResults(teamId, sessionId, rows) {
     const d = D(teamId); d.testResults = (d.testResults || []).filter((r) => !(r.session_id === sessionId && rows.some((x) => x.player_id === r.player_id)));

@@ -79,6 +79,9 @@ export function gymGroup(values, targets, override) {
 const pct = (x) => `${Math.round(x * 100)}%`;
 
 /* ---------- trends ---------- */
+/** The sessions that count for the team: not an individual testing day, and on or after the
+ *  team's "team averages from" date. Individual days still count for the athletes who did them. */
+export const teamSessions = (sessions, from) => sessions.filter((s) => !s.individual && (!from || s.tested_on >= from));
 export function quantile(sorted, q) { if (!sorted.length) return null; const i = (sorted.length - 1) * q, lo = Math.floor(i), hi = Math.ceil(i); return sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo); }
 /** sessions: [{id, tested_on, battery}], results: [{session_id, values}] →
  *  per metric: [{date, median, q1, q3, n}] in date order (sessions without that metric skipped) */

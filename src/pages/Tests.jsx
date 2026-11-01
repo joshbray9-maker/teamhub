@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useHub } from '../lib/hub.jsx';
 import { fmtDate, todayISO } from '../lib/util.js';
-import { METRICS, BATTERIES, batteryCols, metricOrder, seasonSheet, GROUPS, FORCE, EXPRESSION, num, fmt, ratio, gymGroup, metricSeries, changeSeries, metricField, rowsToTests, rowsToTestDays, leaderboards } from '../lib/testing.js';
+import { METRICS, BATTERIES, batteryCols, metricOrder, seasonSheet, GROUPS, FORCE, EXPRESSION, num, fmt, ratio, gymGroup, metricSeries, changeSeries, teamSessions, metricField, rowsToTests, rowsToTestDays, leaderboards } from '../lib/testing.js';
 import { parseTsv } from '../lib/imports.js';
 import { byNumber } from './Roster.jsx';
 import Modal from '../components/Modal.jsx';
@@ -19,7 +19,7 @@ import ImportSource from '../components/ImportSource.jsx';
 
 const COLORS = { cmj_jh: '#2563eb', rsimod: '#d97706', sj_jh: '#7c3aed', imtp_pf: '#dc2626', rel_pf: '#db2777', fly10: '#059669', cooper: '#0891b2',
   bw: '#64748b', abalakov: '#4f46e5', eur: '#a16207', t505: '#0d9488', cassivi: '#c026d3', sprint20: '#ea580c' };
-const sessLabel = (s) => `${fmtDate(s.tested_on)} · ${BATTERIES[s.battery].label}`;
+const sessLabel = (s) => `${fmtDate(s.tested_on, true)} · ${BATTERIES[s.battery].label}${s.individual ? ' · individual' : ''}`;
 const StaffOnly = ({ what }) => <section className="card"><p className="muted" style={{ margin: 0 }}>{what} are only visible to coaches and admins.</p></section>;
 
 function useTestData() {
@@ -66,7 +66,7 @@ export default function Tests() {
         {session && <button className="btn ghost danger" onClick={del}><Icon n="trash" /> Delete session</button>}
       </>}
     </div>
-    {view === 'trends' ? <Trends d={d} />
+    {view === 'trends' ? <Trends d={d} onReload={reload} />
       : !session ? <section className="card"><div className="empty-state"><b>No testing sessions yet</b><span className="muted small">Start one with <b>New session</b>: pick the date and the battery (weekly readiness or full team testing). The roster fills in the names; enter or paste the results.</span></div></section>
         : <EntryGrid key={session.id} d={d} session={session} onSaved={reload} />}
   </>;
@@ -121,13 +121,15 @@ function EntryGrid({ d, session, onSaved }) {
     catch (e) { H.toast('Could not save. ' + e.message); }
     finally { setBusy(false); }
   };
+  const setIndividual = async (on) => { try { await H.api.updateTestSession(session.id, { individual: on }); H.toast(on ? 'Individual testing: left out of team averages' : 'Counts in team averages again'); await onSaved(); } catch (e) { H.toast('Could not save. ' + e.message); } };
   const importRows = () => H.openDialog((c) => <ImportTests roster={rows} cols={cols} close={c} onUse={(vals) => setCells((cur) => {
     const n = { ...cur }; Object.entries(vals).forEach(([pid, v]) => { n[pid] = { ...n[pid], ...Object.fromEntries(Object.entries(v).filter(([k]) => cols.includes(k)).map(([k, x]) => [k, String(x)])) }; }); return n;
   })} />);
   const filled = rows.filter((p) => cols.some((k) => num((cells[p.id] || {})[k]) !== null)).length;
   if (!rows.length) return <section className="card"><p className="muted" style={{ margin: 0 }}>Add players in the <a href="#" onClick={(e) => { e.preventDefault(); H.go('roster'); }}>Roster</a> tab first; they fill the Name column here.</p></section>;
   return <section className="card">
-    <div className="card-head"><div><h2>{BATTERIES[session.battery].label}</h2><span className="muted small">{fmtDate(session.tested_on, true)} · {filled} of {rows.length} players entered</span></div>
+    <div className="card-head"><div><h2>{BATTERIES[session.battery].label}</h2><span className="muted small">{fmtDate(session.tested_on, true)} · {filled} of {rows.length} players entered</span>
+      <label className="small ts-ind"><input type="checkbox" className="cb" checked={!!session.individual} onChange={(e) => setIndividual(e.target.checked)} /> Individual testing: only for these athletes, left out of team averages</label></div>
       <div className="acts"><button className="btn" onClick={importRows}><Icon n="refresh" /> Import: file or paste</button><button className="btn primary" disabled={!dirty || busy} onClick={save}>{busy ? 'Saving…' : dirty ? 'Save results' : 'Saved'}</button></div></div>
     <p className="muted small" style={{ margin: 0 }}>Type results, or copy a block of cells from a spreadsheet, click the first cell and paste (⌘V). Use the same column order as here. Leave a cell blank if the test wasn't done.</p>
     <div className="tbl-wrap ts-grid" ref={box}><table className="tbl">
@@ -169,11 +171,12 @@ function ImportTests({ roster, cols, close, onUse }) {
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 function BulkImport({ d, close, onDone }) {
   const H = useHub();
-  const [res, setRes] = useState(null), [bat, setBat] = useState({}), [busy, setBusy] = useState(false);
+  const [res, setRes] = useState(null), [bat, setBat] = useState({}), [ind, setInd] = useState({}), [busy, setBusy] = useState(false);
   const take = (rows, label) => {
     const r = rowsToTestDays(rows, d.players, H.team.sport);
     if (!r.days.length) throw new Error(r.unmatched.length ? `None of the ${r.unmatched.length} names matched the roster.` : r.badDates.length ? `No dates could be read (e.g. "${r.badDates[0]}").` : 'No results found.');
     setRes({ ...r, file: label }); setBat(Object.fromEntries(r.days.map((x) => [x.date, x.battery])));
+    setInd(Object.fromEntries(r.days.map((x) => { const s = d.sessions.find((y) => y.tested_on === x.date); return [x.date, !!(s && s.individual)]; })));
   };
   const existing = (date, b) => d.sessions.find((s) => s.tested_on === date && s.battery === b) || d.sessions.find((s) => s.tested_on === date);
   const total = res ? res.days.reduce((n, x) => n + Object.keys(x.values).length, 0) : 0;
@@ -183,7 +186,8 @@ function BulkImport({ d, close, onDone }) {
       for (const day of res.days) {
         const b = bat[day.date]; let s = existing(day.date, b);
         if (!s) s = await H.api.createTestSession(H.teamId, day.date, b);
-        else if (s.battery !== b && b === 'full') await H.api.setTestBattery(s.id, 'full');
+        const patch = { ...(s.battery !== b && b === 'full' ? { battery: 'full' } : {}), ...(!!s.individual !== !!ind[day.date] ? { individual: !!ind[day.date] } : {}) };
+        if (Object.keys(patch).length) await H.api.updateTestSession(s.id, patch);
         const before = Object.fromEntries(d.results.filter((r) => r.session_id === s.id).map((r) => [r.player_id, r.values || {}]));
         await H.api.saveTestResults(H.teamId, s.id, Object.entries(day.values).map(([pid, v]) => ({ player_id: pid, values: { ...(before[pid] || {}), ...v } })));
       }
@@ -202,10 +206,11 @@ function BulkImport({ d, close, onDone }) {
       {res.textCols.length > 0 && <div className="hint warn"><b>Check your columns before importing.</b> These test columns contain words, so your data probably doesn't line up with the headings:{' '}
         {res.textCols.map((c) => `${c.heading} ("${c.examples.join('", "')}")`).join('; ')}. Clear the grid and paste again with your heading row included, starting in the top-left cell.</div>}
       <div className="tbl-wrap" style={{ maxHeight: 320, overflow: 'auto' }}><table className="tbl">
-        <thead><tr><th>Date</th><th>Battery</th><th className="num">Players</th><th>Tests</th><th>Goes into</th></tr></thead>
+        <thead><tr><th>Date</th><th>Battery</th><th title="Only for these athletes: left out of team averages">Individual</th><th className="num">Players</th><th>Tests</th><th>Goes into</th></tr></thead>
         <tbody>{res.days.map((x) => { const used = [...new Set(Object.values(x.values).flatMap(Object.keys))]; const s = existing(x.date, bat[x.date]);
           return <tr key={x.date}><td>{fmtDate(x.date, true)}</td>
             <td><select className="select" value={bat[x.date]} onChange={(e) => setBat({ ...bat, [x.date]: e.target.value })} aria-label={`Battery for ${x.date}`}>{Object.entries(BATTERIES).map(([k, b]) => <option key={k} value={k}>{b.label}</option>)}</select></td>
+            <td><input type="checkbox" className="cb" checked={!!ind[x.date]} onChange={(e) => setInd({ ...ind, [x.date]: e.target.checked })} aria-label={`Individual testing on ${x.date}`} /></td>
             <td className="num tnum">{Object.keys(x.values).length}</td><td className="small">{metricOrder(H.team.sport).filter((k) => used.includes(k)).map((k) => METRICS[k].label).join(', ')}</td>
             <td className="small">{!s ? <span className="muted">New session</span> : s.battery !== bat[x.date] && bat[x.date] === 'full' ? 'Existing session (merged, becomes full team testing)' : 'Existing session (merged)'}</td></tr>; })}</tbody>
       </table></div>
@@ -215,16 +220,23 @@ function BulkImport({ d, close, onDone }) {
 
 /* ================= Coaches view: trends ================= */
 const CW = 720, CL = 46, CR = 14, CT = 12;
-function Trends({ d }) {
+function Trends({ d, onReload }) {
   const H = useHub();
-  const series = useMemo(() => metricSeries(d.sessions, d.results), [d]);
+  const counted = useMemo(() => teamSessions(d.sessions, d.teamFrom), [d]);
+  const series = useMemo(() => metricSeries(counted, d.results), [counted, d.results]);
+  const left = d.sessions.length - counted.length;
+  const setFrom = async (v) => { try { await H.api.setTeamAveragesFrom(H.teamId, v); H.toast(v ? `Team averages from ${fmtDate(v, true)}` : 'Team averages use all testing'); await onReload(); } catch (e) { H.toast('Could not save. ' + e.message); } };
+  const fromBar = <section className="card ts-from"><label className="small">Team averages from <input type="date" className="input" value={d.teamFrom || ''} onChange={(e) => setFrom(e.target.value)} /></label>
+    {d.teamFrom && <button className="btn sm ghost" onClick={() => setFrom('')}>Use all dates</button>}
+    <span className="muted small">{left ? `${plural(left, 'session')} left out: individual testing days${d.teamFrom ? ' and testing before that date' : ''}. They still show in each athlete's profile.` : 'Every testing session counts.'}</span></section>;
   const change = useMemo(() => changeSeries(series), [series]);
   const keys = metricOrder(H.team.sport).filter((k) => series[k].length);
   const trend = keys.filter((k) => !METRICS[k].neutral); // bodyweight and EUR have no better direction
   const [hide, setHide] = useState({});
-  if (!keys.length) return <section className="card"><p className="muted" style={{ margin: 0 }}>Trends appear once a testing session has results.</p></section>;
+  if (!keys.length) return <>{fromBar}<section className="card"><p className="muted" style={{ margin: 0 }}>Trends appear once a team testing session has results.</p></section></>;
   const dates = [...new Set(keys.flatMap((k) => series[k].map((p) => p.date)))].sort();
   return <>
+    {fromBar}
     <section className="card">
       <div className="card-head"><div><h2>Team trend</h2><span className="muted small">Median change since each test's first session. Up is better (a faster time counts as up). Bodyweight and EUR aren't charted here.</span></div></div>
       <div className="tr-legend">{trend.map((k) => <button key={k} className={hide[k] ? 'off' : ''} onClick={() => setHide({ ...hide, [k]: !hide[k] })}><i style={{ background: COLORS[k] }} />{METRICS[k].label}</button>)}</div>

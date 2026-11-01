@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { useHub } from '../lib/hub.jsx';
 import { fmtDate, todayISO } from '../lib/util.js';
 import { STATUS, isActive, currentInjury, nextStep, inDays, daysFrom } from '../lib/injury.js';
-import { METRICS, metricOrder, GROUPS, num, fmt, gymGroup, quantile } from '../lib/testing.js';
+import { METRICS, metricOrder, teamSessions, GROUPS, num, fmt, gymGroup, quantile } from '../lib/testing.js';
 import Modal from '../components/Modal.jsx';
 import Icon from '../components/Icon.jsx';
 import Logo from '../components/Logo.jsx';
@@ -37,8 +37,11 @@ function PlayerReport({ p, photo, close }) {
       const pts = mine.map((r) => ({ date: r.date, value: num(r.v[k]) })).filter((x) => x.value !== null);
       if (!pts.length) return null;
       const last = pts[pts.length - 1], best = pts.reduce((b, x) => (METRICS[k].lower ? (x.value < b.value ? x : b) : (x.value > b.value ? x : b)));
-      // the team on the session of this player's latest result: median and rank (active players)
-      const sid = d.sessions.find((s) => s.tested_on === last.date && d.results.some((r) => r.session_id === s.id && r.player_id === p.id && num((r.values || {})[k]) !== null));
+      // the team on the session of this player's latest result: median and rank (active players);
+      // none when that was an individual testing day or before the team's averages start
+      const counts = new Set(teamSessions(d.sessions, d.teamFrom).map((s) => s.id));
+      const sid0 = d.sessions.find((s) => s.tested_on === last.date && d.results.some((r) => r.session_id === s.id && r.player_id === p.id && num((r.values || {})[k]) !== null));
+      const sid = sid0 && counts.has(sid0.id) ? sid0 : null;
       const team = sid ? d.results.filter((r) => r.session_id === sid.id && d.active.has(r.player_id)).map((r) => num((r.values || {})[k])).filter((x) => x !== null).sort((a, b) => a - b) : [];
       const rank = 1 + team.filter((x) => (METRICS[k].lower ? x < last.value : x > last.value)).length;
       return { k, pts, last, best, median: quantile(team, 0.5), rank, n: team.length };

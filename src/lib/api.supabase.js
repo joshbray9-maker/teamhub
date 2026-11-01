@@ -189,11 +189,15 @@ export const api = {
 
   /* ---------- S&C testing (staff only) ---------- */
   async listTests(teamId) {
-    const [s, r] = await Promise.all([supabase.from('test_sessions').select('*').eq('team_id', teamId).order('tested_on'), supabase.from('test_results').select('session_id, player_id, values').eq('team_id', teamId)]);
-    return { sessions: ok(s), results: ok(r) };
+    const [s, r, g] = await Promise.all([supabase.from('test_sessions').select('*').eq('team_id', teamId).order('tested_on'), supabase.from('test_results').select('session_id, player_id, values').eq('team_id', teamId),
+      supabase.from('gym_config').select('team_from').eq('team_id', teamId).maybeSingle()]);
+    return { sessions: ok(s), results: ok(r), teamFrom: (ok(g) || {}).team_from || null };
   },
   async createTestSession(teamId, tested_on, battery) { return ok(await supabase.from('test_sessions').insert({ team_id: teamId, tested_on, battery }).select().single()); },
-  async setTestBattery(id, battery) { ok(await supabase.from('test_sessions').update({ battery }).eq('id', id)); },
+  /** patch: {battery, individual} */
+  async updateTestSession(id, patch) { ok(await supabase.from('test_sessions').update(patch).eq('id', id)); },
+  /** First date whose testing counts in team averages ('' / null = all). */
+  async setTeamAveragesFrom(teamId, date) { ok(await supabase.from('gym_config').upsert({ team_id: teamId, team_from: date || null })); },
   async deleteTestSession(id) { ok(await supabase.from('test_sessions').delete().eq('id', id)); },
   /** rows: [{player_id, values}]; a row with no values removes that player's results for the session. */
   async saveTestResults(teamId, sessionId, rows) {

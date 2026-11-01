@@ -117,3 +117,12 @@ test('bulk import warns when the pasted columns are shifted off the headings', a
   assert.deepEqual(ok.textCols, []);
   assert.deepEqual(ok.days[0].values.a, { bw: 172.4, cmj_jh: 45.1, rsimod: 0.52, abalakov: 52.3, sj_jh: 41, eur: 1.1, t505: 2.41, cassivi: 31.8, sprint20: 3.12 });
 });
+
+test('team averages leave out individual testing days and testing before the start date', async () => {
+  const { teamSessions, metricSeries } = await import('../src/lib/testing.js');
+  const sessions = [{ id: 'a', tested_on: '2025-10-06', individual: true }, { id: 'b', tested_on: '2026-07-10', individual: true }, { id: 'c', tested_on: '2025-11-20' }, { id: 'd', tested_on: '2026-09-08' }];
+  assert.deepEqual(teamSessions(sessions, '2026-01-01').map((s) => s.id), ['d']);
+  assert.deepEqual(teamSessions(sessions, null).map((s) => s.id), ['c', 'd']);
+  const results = [{ session_id: 'b', values: { cmj_jh: 60 } }, { session_id: 'd', values: { cmj_jh: 40 } }, { session_id: 'd', values: { cmj_jh: 44 } }];
+  assert.deepEqual(metricSeries(teamSessions(sessions, '2026-01-01'), results).cmj_jh.map((p) => [p.date, p.median, p.n]), [['2026-09-08', 42, 2]]);
+});

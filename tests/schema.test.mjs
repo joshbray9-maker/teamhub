@@ -314,3 +314,16 @@ test('migration + seed load, and access follows memberships', async () => {
   const pubNow = JSON.stringify((await as(db, null, `select public_schedule('bcs') s`))[0].s);
   assert.ok(!pubNow.includes('coach here') && !pubNow.includes('staff only'));
 });
+
+test('team averages: the basketball data fix marks individual testing days and the start date', async () => {
+  const db = await setup();
+  const t = (await db.query(`select id from teams where legacy_id = 't_basketball'`)).rows[0].id;
+  const ids = [];
+  for (const d of ['2025-10-06', '2025-12-08', '2026-07-10', '2026-09-08']) ids.push((await db.query(`insert into test_sessions (team_id, tested_on, battery) values ($1, $2, 'full') returning id`, [t, d])).rows[0].id);
+  const fix = readFileSync('supabase/data-fixes/2026-11-01-basketball-team-averages.sql', 'utf8');
+  assert.deepEqual((await db.query(fix)).rows[0], { sessions_marked_individual: 3, team_start_date_set: 1 });
+  assert.deepEqual((await db.query(fix)).rows[0], { sessions_marked_individual: 0, team_start_date_set: 1 });
+  assert.deepEqual((await db.query(`select tested_on::text d, individual from test_sessions where team_id = $1 order by tested_on`, [t])).rows.map((r) => `${r.d} ${r.individual}`),
+    ['2025-10-06 true', '2025-12-08 true', '2026-07-10 true', '2026-09-08 false']);
+  assert.equal((await db.query(`select team_from::text f from gym_config where team_id = $1`, [t])).rows[0].f, '2026-01-01');
+});
