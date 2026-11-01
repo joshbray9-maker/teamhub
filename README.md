@@ -142,6 +142,12 @@ trend chart of the team's median % change per test since its first session (a fa
 counts as an improvement), then one box per test with the team median over time and the middle
 half of the team.
 
+**Athlete reports (admins and coaches only):** every rostered athlete with their testing days;
+open one for their full history over a time frame (this season, last 3 / 12 months, all testing,
+or custom dates): a summary per test (first, latest, change, best, latest team median), a chart
+of each test against the team median, and every result by date (individual testing days marked).
+**Print / PDF** makes a one-athlete report to send out. The team median uses team testing only.
+
 **S&C → Gym groups (admins and coaches only):** each athlete's latest full testing is compared
 with **targets you set** (Targets button; no built-in numbers). Force = IMTP peak force and
 relative peak force; expression = CMJ JH, SJ JH and RSImod. Below the force target →

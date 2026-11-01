@@ -183,6 +183,40 @@ export function readiness(sessions, results, teamFrom, session) {
   }).filter((x) => Object.keys(x.tests).length);
 }
 
+/* ---------- athlete reports ---------- */
+/** One athlete's testing between from and to (inclusive, '' = open), for the Athlete reports tab.
+ *  Every session counts for the athlete (individual days too); the team median beside each test
+ *  comes only from team sessions (teamSessions). Text tests are listed in `days` but not charted.
+ *  → { days: [{date, individual, values}], tests: [{k, pts: [{date, value}], first, latest, best,
+ *      change (latest vs first, positive = better, null for neutral), team: [{date, median}]}] } */
+export function athleteHistory(sessions, results, teamFrom, playerId, from, to, profile) {
+  const inRange = (d) => (!from || d >= from) && (!to || d <= to);
+  const byId = Object.fromEntries(sessions.map((s) => [s.id, s]));
+  const mine = results.filter((r) => r.player_id === playerId && byId[r.session_id] && inRange(byId[r.session_id].tested_on))
+    .map((r) => ({ date: byId[r.session_id].tested_on, individual: !!byId[r.session_id].individual, values: r.values || {} })).sort((a, b) => a.date.localeCompare(b.date));
+  const team = teamSessions(sessions, teamFrom).filter((s) => inRange(s.tested_on));
+  const tests = metricOrder(profile).filter((k) => !METRICS[k].text).map((k) => {
+    const pts = mine.map((r) => ({ date: r.date, value: num(r.values[k]) })).filter((x) => x.value !== null);
+    if (!pts.length) return null;
+    const first = pts[0], latest = pts[pts.length - 1], m = METRICS[k];
+    const best = m.neutral ? null : pts.reduce((b, x) => (m.lower ? (x.value < b.value ? x : b) : (x.value > b.value ? x : b)));
+    const change = m.neutral || pts.length < 2 || !first.value ? null : ((latest.value - first.value) / first.value) * (m.lower ? -1 : 1);
+    const tm = team.map((s) => { const v = results.filter((r) => r.session_id === s.id).map((r) => num((r.values || {})[k])).filter((x) => x !== null).sort((a, b) => a - b); return v.length ? { date: s.tested_on, median: quantile(v, 0.5) } : null; }).filter(Boolean);
+    return { k, pts, first, latest, best, change, team: tm };
+  }).filter(Boolean);
+  return { days: mine, tests };
+}
+/** Date range presets for reports, as of `today`: this season (the team-averages date, or Sept 1 of
+ *  the school year), the last 3 or 12 months, or everything. */
+export function reportRange(preset, today, teamFrom) {
+  const y = +today.slice(0, 4), m = +today.slice(5, 7);
+  const back = (months) => { const d = new Date(Date.UTC(y, m - 1 - months, +today.slice(8, 10))); return d.toISOString().slice(0, 10); };
+  if (preset === 'season') return { from: teamFrom || `${m >= 8 ? y : y - 1}-09-01`, to: today };
+  if (preset === '3m') return { from: back(3), to: today };
+  if (preset === '12m') return { from: back(12), to: today };
+  return { from: '', to: '' };
+}
+
 /* ---------- import ---------- */
 const hkey = (h) => String(h || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
 const SYN = [ // checked in order; a heading matches when it equals or starts with an entry

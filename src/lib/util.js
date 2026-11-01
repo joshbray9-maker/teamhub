@@ -19,6 +19,7 @@ export const MENUS = [
   { id: 'data', label: 'Data Center', icon: 'chart' },
   { id: 'injury', label: 'Injury report', icon: 'cross', coach: true },
   { id: 'sc', label: 'S&C', icon: 'dumbbell' },
+  { id: 'athletes', label: 'Athlete reports', icon: 'report', coach: true },
   { id: 'recruit', label: 'Recruitment', icon: 'search', coach: true },
   { id: 'spectators', label: 'Spectators', icon: 'ext', admin: true },
   { id: 'profile', label: 'My Profile', icon: 'user' },

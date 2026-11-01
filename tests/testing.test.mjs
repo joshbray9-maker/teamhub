@@ -189,3 +189,24 @@ test('bulk import reads day/month dates and keeps only the chosen date range', a
   assert.equal(rowsToTestDays(amb, roster, 'bcs:hockey').days[0].date, '2025-09-08');
   assert.equal(rowsToTestDays(amb, roster, 'bcs:hockey', { order: 'mdy' }).days[0].date, '2025-08-09');
 });
+
+test('athlete reports: one athlete over a time frame, team median from team days only', async () => {
+  const { athleteHistory, reportRange } = await import('../src/lib/testing.js');
+  assert.deepEqual(reportRange('season', '2026-11-01', '2026-09-01'), { from: '2026-09-01', to: '2026-11-01' });
+  assert.deepEqual(reportRange('season', '2027-02-10', null), { from: '2026-09-01', to: '2027-02-10' });
+  assert.deepEqual(reportRange('3m', '2026-11-01', null), { from: '2026-08-01', to: '2026-11-01' });
+  assert.deepEqual(reportRange('all', '2026-11-01', null), { from: '', to: '' });
+  const S = [{ id: 'a', tested_on: '2025-09-08' }, { id: 'i', tested_on: '2026-09-02', individual: true }, { id: 'b', tested_on: '2026-09-23' }, { id: 'c', tested_on: '2026-10-14' }];
+  const R = [{ session_id: 'a', player_id: 'p', values: { cmj_jh: 40, sprint10: 1.9 } }, { session_id: 'i', player_id: 'p', values: { cmj_jh: 41 } },
+    { session_id: 'b', player_id: 'p', values: { cmj_jh: 42, archetype: 'Force deficient' } }, { session_id: 'b', player_id: 'q', values: { cmj_jh: 50 } },
+    { session_id: 'c', player_id: 'p', values: { cmj_jh: 44, sprint10: 1.8 } }, { session_id: 'c', player_id: 'q', values: { cmj_jh: 52 } }];
+  const all = athleteHistory(S, R, '2026-09-01', 'p', '', '', 'bcs:hockey');
+  assert.deepEqual(all.days.map((d) => d.date), ['2025-09-08', '2026-09-02', '2026-09-23', '2026-10-14']);
+  const cmj = all.tests.find((x) => x.k === 'cmj_jh'), sp = all.tests.find((x) => x.k === 'sprint10');
+  assert.equal(cmj.first.value, 40); assert.equal(cmj.latest.value, 44); assert.equal(cmj.best.value, 44); assert.ok(Math.abs(cmj.change - 0.1) < 1e-9);
+  assert.deepEqual(cmj.team, [{ date: '2026-09-23', median: 46 }, { date: '2026-10-14', median: 48 }]); // team days from the season start, no individual day
+  assert.ok(sp.change > 0); // 1.9 -> 1.8 s is faster: counts as up
+  assert.equal(all.tests.some((x) => x.k === 'archetype'), false); // text: in the results table, not charted
+  const season = athleteHistory(S, R, '2026-09-01', 'p', '2026-09-01', '2026-11-01', 'bcs:hockey');
+  assert.deepEqual(season.days.map((d) => d.date), ['2026-09-02', '2026-09-23', '2026-10-14']);
+});
