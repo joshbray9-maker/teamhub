@@ -149,3 +149,28 @@ test("readiness uses Josh's confirmed CMJ and RSImod flag rules against each ath
   assert.deepEqual(got, { p1: ['red', { cmj_jh: 'red', rsimod: 'green' }], p2: ['orange', { cmj_jh: 'orange', rsimod: null }], p3: ['green', { cmj_jh: null, rsimod: 'green' }], p4: [null, { cmj_jh: null }] });
   assert.equal(weeklyTesting([], [], null, 'hockey'), null);
 });
+
+test('BCS hockey: its own test columns in the sheet order, text columns, bodyweight unit from IMTP and N/kg', async () => {
+  const { testProfile, batteryCols, seasonSheet, metricOrder, rowsToTestDays, leaderboards } = await import('../src/lib/testing.js');
+  const bcs = { slug: 'bcs' }, uni = { slug: 'universel' };
+  assert.equal(testProfile({ sport: 'hockey' }, bcs), 'bcs:hockey');
+  assert.equal(testProfile({ sport: 'hockey' }, uni), 'hockey');
+  assert.equal(testProfile({ sport: 'basketball' }, bcs), 'basketball');
+  assert.deepEqual(batteryCols('full', 'hockey'), ['cmj_jh', 'rsimod', 'sj_jh', 'imtp_pf', 'rel_pf', 'fly10', 'cooper']); // Universel unchanged
+  const head = seasonSheet('bcs:hockey');
+  assert.deepEqual(head, ['Athlete Name', 'Date', 'Team', 'Bodyweight', 'CMJ', 'RSI Mod', '10m Sprint', 'IMTP', 'N/kg', 'Links', 'SJ', 'Chin-up', 'Cooper(laps)', 'Cooper(distance)', 'Archetype', 'TTPF', 'Est. VO2max', 'On Ice 5-10-5 best', 'On Ice 5-10-5 Stdv', 'Peak power']);
+  const order = ['bw', 'cmj_jh', 'rsimod', 'sprint10', 'imtp_pf', 'rel_pf', 'links', 'sj_jh', 'chinup', 'cooper_laps', 'cooper', 'archetype', 'ttpf', 'vo2max', 'ice5105', 'ice5105_sd', 'peak_power'];
+  assert.deepEqual(batteryCols('full', 'bcs:hockey'), order); assert.deepEqual(metricOrder('bcs:hockey').slice(0, order.length), order);
+  const roster = [{ id: 'a', name: 'Athlete HK01' }, { id: 'b', name: 'Athlete HK02' }];
+  // bodyweight typed in kg: IMTP / N/kg = bodyweight -> converted to pounds
+  const row = (n, bw, imtp, rel) => [n, '2026-09-10', 'U18', bw, '42.5', '0.48', '1.85', imtp, rel, 'https://example.test/v1', '38', '12', '30.5', '2440', 'Force deficient', '0.215', '48.2', '4.62', '0.081', '4100'];
+  const r = rowsToTestDays([head, row('Athlete HK01', '80', '2800', '35'), row('Athlete HK02', '90', '3150', '35')], roster, 'bcs:hockey');
+  assert.equal(r.bwRead, 'kg'); assert.deepEqual(r.textCols, []);
+  assert.deepEqual(r.days[0].values.a, { bw: 176.4, cmj_jh: 42.5, rsimod: 0.48, sprint10: 1.85, imtp_pf: 2800, rel_pf: 35, links: 'https://example.test/v1', sj_jh: 38, chinup: 12, cooper_laps: 30.5, cooper: 2440, archetype: 'Force deficient', ttpf: 0.215, vo2max: 48.2, ice5105: 4.62, ice5105_sd: 0.081, peak_power: 4100 });
+  // typed in pounds: left as is
+  const lb = rowsToTestDays([head, row('Athlete HK01', '176.4', '2800', '35')], roster, 'bcs:hockey');
+  assert.equal(lb.bwRead, 'lb'); assert.equal(lb.days[0].values.a.bw, 176.4);
+  // leaderboard: fastest 10 m / 5-10-5 first; text, TTPF and the 5-10-5 spread never ranked
+  const L = leaderboards([['a', 'sprint10', 1.85], ['b', 'sprint10', 1.80], ['a', 'ttpf', 0.2], ['b', 'ttpf', 0.3], ['a', 'archetype', 'X'], ['b', 'archetype', 'Y']].map(([player_id, metric, value]) => ({ player_id, name: player_id, metric, value })));
+  assert.equal(L.byMetric.sprint10[0].player_id, 'b'); assert.equal(L.byMetric.ttpf, undefined); assert.equal(L.byMetric.archetype, undefined);
+});

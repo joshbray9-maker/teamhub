@@ -129,7 +129,12 @@ becomes its own session (or merges into the one already on that date), with the 
 from the tests that day and changeable before saving. Basketball teams have their own full
 battery, in the order of Josh's sheet: bodyweight (lb), CMJ, RSImod, Abalakov, SJ, EUR, 5-0-5,
 Cassivi shuttle, 20 m sprint (bodyweight and EUR are recorded but never ranked; timed drills rank
-fastest first). A session can be marked **Individual testing** (in the session, or per day in
+fastest first). The BCS hockey teams (U18 Varsity, U16 Prep) have their own battery and names,
+in the order of Josh's sheet: Bodyweight, CMJ, RSI Mod, 10m Sprint, IMTP, N/kg, Links, SJ,
+Chin-up, Cooper(laps), Cooper(distance), Archetype, TTPF, Est. VO2max, On Ice 5-10-5 best and
+Stdv, Peak power (Links and Archetype are text; TTPF and the 5-10-5 Stdv aren't ranked; a
+Bodyweight in kg, recognised from IMTP ÷ N/kg, is saved in pounds). Universel hockey keeps the
+standard battery. A session can be marked **Individual testing** (in the session, or per day in
 bulk import): its results stay in those athletes' profiles, gym groups and leaderboard bests but
 are left out of every team median, trend and comparison. **Team averages from** (Coaches view)
 sets the first date whose testing counts for the team. **Coaches view**: a

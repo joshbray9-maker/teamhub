@@ -3,10 +3,10 @@
 // best per test, team median, rank on the team, trend), gym group, and injury history.
 // Opened from the Roster and the Injury report; Print / PDF prints just this page.
 import { useEffect, useState } from 'react';
-import { useHub } from '../lib/hub.jsx';
+import { useHub, useMetrics } from '../lib/hub.jsx';
 import { fmtDate, todayISO } from '../lib/util.js';
 import { STATUS, isActive, currentInjury, nextStep, inDays, daysFrom } from '../lib/injury.js';
-import { METRICS, metricOrder, teamSessions, GROUPS, num, fmt, gymGroup, quantile } from '../lib/testing.js';
+import { METRICS, metricOrder, teamSessions, GROUPS, num, fmt, gymGroup, quantile, testProfile } from '../lib/testing.js';
 import Modal from '../components/Modal.jsx';
 import Icon from '../components/Icon.jsx';
 import Logo from '../components/Logo.jsx';
@@ -17,6 +17,7 @@ import { StatusPill, where } from './Injury.jsx';
 export function openPlayerReport(H, p, photo) { H.openDialog((c) => <PlayerReport p={p} photo={photo} close={c} />); }
 
 function PlayerReport({ p, photo, close }) {
+  const M = useMetrics();
   const H = useHub(); const t = H.team; const today = todayISO();
   const [d, setD] = useState(null);
   useEffect(() => {
@@ -33,17 +34,17 @@ function PlayerReport({ p, photo, close }) {
   if (d) {
     const date = Object.fromEntries(d.sessions.map((s) => [s.id, s.tested_on]));
     const mine = d.results.filter((r) => r.player_id === p.id).map((r) => ({ date: date[r.session_id], v: r.values || {} })).filter((r) => r.date).sort((a, b) => a.date.localeCompare(b.date));
-    tests = metricOrder(t.sport).map((k) => {
+    tests = metricOrder(testProfile(t, H.orgOf(t))).map((k) => {
       const pts = mine.map((r) => ({ date: r.date, value: num(r.v[k]) })).filter((x) => x.value !== null);
       if (!pts.length) return null;
-      const last = pts[pts.length - 1], best = pts.reduce((b, x) => (METRICS[k].lower ? (x.value < b.value ? x : b) : (x.value > b.value ? x : b)));
+      const last = pts[pts.length - 1], best = pts.reduce((b, x) => (M[k].lower ? (x.value < b.value ? x : b) : (x.value > b.value ? x : b)));
       // the team on the session of this player's latest result: median and rank (active players);
       // none when that was an individual testing day or before the team's averages start
       const counts = new Set(teamSessions(d.sessions, d.teamFrom).map((s) => s.id));
       const sid0 = d.sessions.find((s) => s.tested_on === last.date && d.results.some((r) => r.session_id === s.id && r.player_id === p.id && num((r.values || {})[k]) !== null));
       const sid = sid0 && counts.has(sid0.id) ? sid0 : null;
       const team = sid ? d.results.filter((r) => r.session_id === sid.id && d.active.has(r.player_id)).map((r) => num((r.values || {})[k])).filter((x) => x !== null).sort((a, b) => a - b) : [];
-      const rank = 1 + team.filter((x) => (METRICS[k].lower ? x < last.value : x > last.value)).length;
+      const rank = 1 + team.filter((x) => (M[k].lower ? x < last.value : x > last.value)).length;
       return { k, pts, last, best, median: quantile(team, 0.5), rank, n: team.length };
     }).filter(Boolean);
     const full = d.sessions.filter((s) => s.battery === 'full').sort((a, b) => b.tested_on.localeCompare(a.tested_on));
@@ -91,11 +92,11 @@ function PlayerReport({ p, photo, close }) {
         {!d ? <p className="muted small" style={{ margin: 0 }}>Loading…</p> : !tests.length ? <p className="muted" style={{ margin: 0 }}>No test results yet.</p>
           : <table className="tbl pr-tests"><thead><tr><th>Test</th><th className="num">Latest</th><th className="num">Best</th><th className="num">Team median</th><th className="num">Rank</th><th>Trend</th></tr></thead>
             <tbody>{tests.map(({ k, pts, last, best, median, rank, n }) => <tr key={k}>
-              <td><b>{METRICS[k].long}</b>{METRICS[k].lower && <span className="muted small"> (lower is better)</span>}</td>
-              <td className="num tnum"><b>{fmt(k, last.value)}</b> {METRICS[k].unit}<div className="muted small">{fmtDate(last.date)}</div></td>
-              <td className="num tnum">{METRICS[k].neutral ? '—' : <>{fmt(k, best.value)}<div className="muted small">{fmtDate(best.date)}</div></>}</td>
+              <td><b>{M[k].long}</b>{M[k].lower && <span className="muted small"> (lower is better)</span>}</td>
+              <td className="num tnum"><b>{fmt(k, last.value)}</b> {M[k].unit}<div className="muted small">{fmtDate(last.date)}</div></td>
+              <td className="num tnum">{M[k].neutral ? '—' : <>{fmt(k, best.value)}<div className="muted small">{fmtDate(best.date)}</div></>}</td>
               <td className="num tnum">{median === null ? '—' : fmt(k, median)}</td>
-              <td className="num tnum">{n > 1 && !METRICS[k].neutral ? `${rank} of ${n}` : '—'}</td>
+              <td className="num tnum">{n > 1 && !M[k].neutral ? `${rank} of ${n}` : '—'}</td>
               <td><Spark k={k} pts={pts} /></td>
             </tr>)}</tbody></table>}
         {group && <div className="muted small">{group.group ? `Gym group: ${group.reason}.` : `Gym group: ${group.reason}.`}</div>}

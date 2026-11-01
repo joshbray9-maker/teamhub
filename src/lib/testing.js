@@ -28,15 +28,33 @@ export const METRICS = {
   t505: { label: '5-0-5', unit: 's', long: '5-0-5 drill', dp: 2, lower: true },
   cassivi: { label: 'Cassivi', unit: 's', long: 'Cassivi shuttle (3 pt, ½, full ×4)', dp: 2, lower: true },
   sprint20: { label: '20 m', unit: 's', long: '20 m sprint', dp: 2, lower: true },
+  // BCS hockey battery (Josh's sheet headings, 2026-11-01). TTPF and the 5-10-5 spread have no
+  // confirmed better direction, so they're neutral; Archetype and Links are text, kept as typed.
+  sprint10: { label: '10 m', unit: 's', long: '10 m sprint', dp: 2, lower: true },
+  links: { label: 'Links', unit: '', long: 'Links', text: true },
+  chinup: { label: 'Chin-up', unit: 'reps', long: 'Chin-ups', dp: 0 },
+  cooper_laps: { label: 'Cooper laps', unit: 'laps', long: 'Cooper test laps', dp: 1 },
+  archetype: { label: 'Archetype', unit: '', long: 'Archetype', text: true },
+  ttpf: { label: 'TTPF', unit: '', long: 'Time to peak force', dp: 3, neutral: true },
+  vo2max: { label: 'Est. VO2max', unit: 'ml/kg/min', long: 'Estimated VO2max', dp: 1 },
+  ice5105: { label: '5-10-5 best', unit: 's', long: 'On-ice 5-10-5 best', dp: 2, lower: true },
+  ice5105_sd: { label: '5-10-5 SD', unit: 's', long: 'On-ice 5-10-5 standard deviation', dp: 3, neutral: true },
+  peak_power: { label: 'Peak power', unit: 'W', long: 'Peak power', dp: 0 },
 };
 export const BATTERIES = {
   readiness: { label: 'Weekly readiness', metrics: ['cmj_jh', 'rsimod', 'fly10'] },
   full: { label: 'Full team testing', metrics: ['cmj_jh', 'rsimod', 'sj_jh', 'imtp_pf', 'rel_pf', 'fly10', 'cooper'] },
 };
-// sports with their own test columns (in the order of the coach's sheet); others use BATTERIES
+// teams with their own test columns (in the order of the coach's sheet), by "<org slug>:<sport>"
+// (one organization's teams of a sport) or by sport; everything else uses BATTERIES
 const SPORT_BATTERIES = {
   basketball: { readiness: ['cmj_jh', 'rsimod'], full: ['bw', 'cmj_jh', 'rsimod', 'abalakov', 'sj_jh', 'eur', 't505', 'cassivi', 'sprint20'] },
+  'bcs:hockey': { readiness: ['cmj_jh', 'rsimod', 'sprint10'],
+    full: ['bw', 'cmj_jh', 'rsimod', 'sprint10', 'imtp_pf', 'rel_pf', 'links', 'sj_jh', 'chinup', 'cooper_laps', 'cooper', 'archetype', 'ttpf', 'vo2max', 'ice5105', 'ice5105_sd', 'peak_power'] },
 };
+/** Which test setup a team uses: "<org slug>:<sport>" when that organization has its own for the
+ *  sport (BCS hockey), else the sport. Pass the result wherever a `sport` is asked for below. */
+export const testProfile = (team, org) => { const k = org && org.slug && team ? `${org.slug}:${team.sport}` : null; return k && SPORT_BATTERIES[k] ? k : team && team.sport; };
 /** The test columns of a battery for a team's sport. */
 export const batteryCols = (battery, sport) => (SPORT_BATTERIES[sport] && SPORT_BATTERIES[sport][battery]) || BATTERIES[battery].metrics;
 /** Every test, the sport's full battery first in its order: how lists of tests are shown. */
@@ -44,7 +62,15 @@ export const metricOrder = (sport) => [...new Set([...batteryCols('full', sport)
 // the heading row of the coach's season sheet, column for column (bulk import's paste grid)
 const SPORT_SHEETS = {
   basketball: ['Name', 'Date', 'Team', 'Position', 'Type of Training', 'Bodyweight (pounds)', 'CMJ', 'RSImod', 'Abalakov jump', 'SJ', 'EUR', '5-0-5 drill', 'Cassivi shuttle', '20m sprint'],
+  'bcs:hockey': ['Athlete Name', 'Date', 'Team', 'Bodyweight', 'CMJ', 'RSI Mod', '10m Sprint', 'IMTP', 'N/kg', 'Links', 'SJ', 'Chin-up', 'Cooper(laps)', 'Cooper(distance)', 'Archetype', 'TTPF', 'Est. VO2max', 'On Ice 5-10-5 best', 'On Ice 5-10-5 Stdv', 'Peak power'],
 };
+// the coach's own names for the tests, shown instead of the built-in labels
+const LABELS = {
+  'bcs:hockey': { bw: 'Bodyweight', cmj_jh: 'CMJ', rsimod: 'RSI Mod', sprint10: '10m Sprint', imtp_pf: 'IMTP', rel_pf: 'N/kg', links: 'Links', sj_jh: 'SJ', chinup: 'Chin-up',
+    cooper_laps: 'Cooper(laps)', cooper: 'Cooper(distance)', archetype: 'Archetype', ttpf: 'TTPF', vo2max: 'Est. VO2max', ice5105: 'On Ice 5-10-5 best', ice5105_sd: 'On Ice 5-10-5 Stdv', peak_power: 'Peak power' },
+};
+/** METRICS with a team's own test names (label and long name) when it has them. */
+export const metricsFor = (profile) => (LABELS[profile] ? Object.fromEntries(Object.entries(METRICS).map(([k, m]) => [k, LABELS[profile][k] ? { ...m, label: LABELS[profile][k], long: LABELS[profile][k] } : m])) : METRICS);
 export const seasonSheet = (sport) => SPORT_SHEETS[sport] || ['Name', 'Date', ...batteryCols('full', sport).map((k) => `${METRICS[k].label}${METRICS[k].unit ? ` (${METRICS[k].unit})` : ''}`)];
 export const FORCE = ['imtp_pf', 'rel_pf'], EXPRESSION = ['cmj_jh', 'sj_jh', 'rsimod'];
 export const GROUPS = {
@@ -54,7 +80,9 @@ export const GROUPS = {
 };
 
 export const num = (v) => { if (v === null || v === undefined || v === '') return null; const x = typeof v === 'number' ? v : parseFloat(String(v).trim().replace(',', '.')); return Number.isFinite(x) ? x : null; };
-export const fmt = (k, v) => (v === null || v === undefined ? '' : Number(v).toFixed(METRICS[k].dp));
+export const fmt = (k, v) => (v === null || v === undefined ? '' : METRICS[k].text ? String(v) : Number(v).toFixed(METRICS[k].dp));
+/** A cell's value for a test: a number, or for a text test (Archetype, Links) the trimmed text. */
+export const cellValue = (k, v) => (METRICS[k] && METRICS[k].text ? (String(v ?? '').trim() || null) : num(v));
 
 /** Ratio of a result to its target (1 = on target, higher = better); null when either is missing. */
 export function ratio(k, value, target) {
@@ -160,7 +188,11 @@ const hkey = (h) => String(h || '').toLowerCase().normalize('NFD').replace(/[̀-
 const SYN = [ // checked in order; a heading matches when it equals or starts with an entry
   ['rsimod', ['rsimod', 'rsimodified', 'rsim', 'rsi']], ['rel_pf', ['relpf', 'relativepeakforce', 'relativeforce', 'relativepower', 'bwkg', 'nkg', 'pfbw', 'pfkg', 'imtprel', 'relimtp']],
   ['imtp_pf', ['imtp', 'peakforce', 'pf', 'isometricmidthigh']], ['cmj_jh', ['cmj', 'countermovement']], ['sj_jh', ['sj', 'squatjump']],
-  ['fly10', ['10mfly', 'fly10', '10fly', 'flying10', 'fly']], ['cooper', ['cooper', '12min']],
+  ['fly10', ['10mfly', 'fly10', '10fly', 'flying10', 'fly']], ['sprint10', ['10msprint', 'sprint10', '10sprint', '10m']],
+  ['cooper_laps', ['cooperlaps', 'cooperlap', 'laps']], ['cooper', ['cooper', '12min']],
+  ['links', ['links', 'link', 'video']], ['chinup', ['chinup', 'chinups', 'pullup']], ['archetype', ['archetype']], ['ttpf', ['ttpf', 'timetopeakforce']],
+  ['vo2max', ['estvo2max', 'vo2max', 'vo2', 'estimatedvo2']], ['ice5105_sd', ['onice5105stdv', 'onice5105std', 'onice5105sd', '5105stdv', '5105sd', '5105std']],
+  ['ice5105', ['onice5105', '5105']], ['peak_power', ['peakpower']],
   ['abalakov', ['abalakov', 'abal', 'aba']], ['eur', ['eur', 'eccentricutil']], ['t505', ['505', 'fivezerofive']], ['cassivi', ['cassivi', 'cassici', 'cassivy']],
   ['sprint20', ['20msprint', '20m', 'sprint20', '20sprint']], ['bw', ['bodyweight', 'bw', 'bodymass', 'weight', 'mass', 'poids']],
 ];
@@ -181,7 +213,7 @@ export function rowsToTests(rows, roster) {
     let name = g('name') || [g('first'), g('last')].filter(Boolean).join(' '); const m = name.match(/^([^,]+),\s*([^,]+)$/); if (m) name = `${m[2]} ${m[1]}`;
     const n = g('num').replace(/^#/, '');
     const p = (name && byName.get(nameKey(name))) || (n && byNum.get(n)) || (/^#?\d+$/.test(name) && byNum.get(name.replace(/^#/, '')));
-    const v = {}; met.forEach((k, i) => { if (k) { const x = num(r[i]); if (x !== null) v[k] = scale[i] === 1 ? x : Math.round(x * scale[i] * 10) / 10; } });
+    const v = {}; met.forEach((k, i) => { if (k) { const x = cellValue(k, r[i]); if (x !== null) v[k] = scale[i] === 1 || typeof x !== 'number' ? x : Math.round(x * scale[i] * 10) / 10; } });
     if (!Object.keys(v).length) continue;
     if (!p) { unmatched.push(name || '#' + n); continue; }
     values[p.id] = { ...(values[p.id] || {}), ...v };
@@ -217,7 +249,7 @@ export function rowsToTestDays(rows, roster, sport) {
     if (!byDate.has(cur)) byDate.set(cur, []); byDate.get(cur).push(r);
   }
   const h2 = head.map((h, i) => (i === di ? '' : h)), unmatched = new Set(), metrics = new Set(); const days = [];
-  const textCols = head.map((h, i) => { if (i === di || !metricField(h) || ['name', 'num', 'first', 'last'].includes(fieldFor(h))) return null;
+  const textCols = head.map((h, i) => { if (i === di || !metricField(h) || METRICS[metricField(h)].text || ['name', 'num', 'first', 'last'].includes(fieldFor(h))) return null;
     const words = [...new Set([...byDate.values()].flat().map((r) => String(r[i] || '').trim()).filter((v) => v && num(v) === null))];
     return words.length ? { heading: String(h).trim(), examples: words.slice(0, 3) } : null; }).filter(Boolean);
   for (const [date, list] of [...byDate].sort((a, b) => a[0].localeCompare(b[0]))) {
@@ -227,7 +259,16 @@ export function rowsToTestDays(rows, roster, sport) {
     const used = new Set(Object.values(t.values).flatMap(Object.keys)); used.forEach((k) => metrics.add(k));
     days.push({ date, battery: [...used].some((k) => !READINESS.has(k)) ? 'full' : 'readiness', values: t.values });
   }
-  return { days, metrics: [...metrics], unmatched: [...unmatched], badDates, textCols };
+  // A Bodyweight heading without a unit: IMTP ÷ N/kg is bodyweight in kg, so the sheet's own
+  // numbers say whether it was typed in kg (then it's converted: bodyweight is kept in pounds).
+  const bwHead = head.find((h) => metricField(h) === 'bw'); let bwRead = null;
+  if (bwHead && !/\b(kgs?|kilo\w*|lbs?|pounds?)\b/i.test(String(bwHead))) {
+    const ratios = days.flatMap((d) => Object.values(d.values)).filter((v) => typeof v.bw === 'number' && v.imtp_pf > 0 && v.rel_pf > 0 && v.bw > 0).map((v) => v.imtp_pf / v.rel_pf / v.bw).sort((a, b) => a - b);
+    const m = quantile(ratios, 0.5);
+    if (m !== null && m > 0.85 && m < 1.15) { bwRead = 'kg'; days.forEach((d) => Object.values(d.values).forEach((v) => { if (typeof v.bw === 'number') v.bw = Math.round(v.bw * 2.20462 * 10) / 10; })); }
+    else if (m !== null && m > 0.39 && m < 0.52) bwRead = 'lb';
+  }
+  return { days, metrics: [...metrics], unmatched: [...unmatched], badDates, textCols, bwRead };
 }
 
 /* ---------- leaderboard ---------- */

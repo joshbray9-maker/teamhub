@@ -5,10 +5,10 @@
 // FLAG_RULES): each athlete's latest result against their own recent tests. There is no
 // overall readiness score: the description just counts and names the flags.
 import { useEffect, useState } from 'react';
-import { useHub } from '../lib/hub.jsx';
+import { useHub, useMetrics } from '../lib/hub.jsx';
 import WeeklySnapshot from './WeeklySnapshot.jsx';
 import { fmtDate, fmtTime, todayISO, gameView, ourGames, hasScore, daysUntil } from '../lib/util.js';
-import { METRICS, BATTERIES, BASELINE_TESTS, fmt, weeklyTesting, readiness } from '../lib/testing.js';
+import { METRICS, BATTERIES, BASELINE_TESTS, fmt, weeklyTesting, readiness, testProfile } from '../lib/testing.js';
 import { STATUS, currentInjury, nextStep, inDays, isActive } from '../lib/injury.js';
 import PageHead from '../components/PageHead.jsx';
 import Avatar from '../components/Avatar.jsx';
@@ -17,6 +17,7 @@ import Icon from '../components/Icon.jsx';
 import { useRoster, StatusPill, where } from './Injury.jsx';
 
 export default function CoachReport() {
+  const M = useMetrics();
   const [view, setView] = useState('today');
   const H = useHub(); const t = H.team;
   const { roster, photos } = useRoster();
@@ -34,7 +35,7 @@ export default function CoachReport() {
   const byId = Object.fromEntries((roster || []).map((p) => [p.id, p]));
   const person = (p) => <span className="inj-who"><Avatar p={p} url={photos[p.photo]} size={26} /><b>{p.num ? `#${p.num} ` : ''}{p.name}</b>{p.position && <span className="muted small">{p.position}</span>}</span>;
   // latest team testing and readiness against each athlete's own recent tests
-  const wk = tests && weeklyTesting(tests.sessions, tests.results, tests.teamFrom, t.sport);
+  const wk = tests && weeklyTesting(tests.sessions, tests.results, tests.teamFrom, testProfile(t, H.orgOf(t)));
   const ready = wk ? readiness(tests.sessions, tests.results, tests.teamFrom, wk.session).filter((x) => byId[x.player_id]) : [];
   const count = (f) => ready.filter((x) => f(x.flag)).length;
   const rd = { red: count((f) => f === 'red'), orange: count((f) => f === 'orange'), ok: count((f) => f === 'green' || f === 'none'), first: count((f) => f === null) };
@@ -93,11 +94,12 @@ const RULE = { cmj_jh: 'CMJ: a drop of 5–10% is orange, 10% or more red', rsim
 
 /* Team readiness: a short description from the flags, then who is flagged and why. */
 function Readiness({ wk, ready, rd, age, tests, person }) {
+  const M = useMetrics();
   if (!tests) return <section className="card"><div className="card-head"><h2>Team readiness</h2></div><div className="muted small">Loading…</div></section>;
   const med = (k) => wk && wk.rows.find((r) => r.k === k);
-  const line = (k) => { const r = med(k); if (!r) return null; return `team ${METRICS[k].label} median ${fmt(k, r.median)}${METRICS[k].unit ? ' ' + METRICS[k].unit : ''}${r.change === null ? '' : ` (${pct(r.change * 100)} vs ${fmtDate(wk.prev.tested_on)})`}`; };
+  const line = (k) => { const r = med(k); if (!r) return null; return `team ${M[k].label} median ${fmt(k, r.median)}${M[k].unit ? ' ' + M[k].unit : ''}${r.change === null ? '' : ` (${pct(r.change * 100)} vs ${fmtDate(wk.prev.tested_on)})`}`; };
   const flagged = ['red', 'orange'].flatMap((f) => ready.filter((x) => x.flag === f));
-  const why = (x) => Object.entries(x.tests).filter(([, v]) => v.flag === 'red' || v.flag === 'orange').map(([k, v]) => `${METRICS[k].label} ${pct(v.change)}`).join(', ');
+  const why = (x) => Object.entries(x.tests).filter(([, v]) => v.flag === 'red' || v.flag === 'orange').map(([k, v]) => `${M[k].label} ${pct(v.change)}`).join(', ');
   const rated = rd.ok + rd.orange + rd.red;
   return <section className="card cr-ready-card">
     <div className="card-head"><h2>Team readiness</h2>{wk && <span className="pill">{fmtDate(wk.session.tested_on)}</span>}</div>
@@ -117,12 +119,13 @@ function Readiness({ wk, ready, rd, age, tests, person }) {
 
 /* The latest team testing session: each test's team median and change since the previous one. */
 function WeeklyTesting({ wk, tests }) {
+  const M = useMetrics();
   return <section className="card">
     <div className="card-head"><h2>Weekly testing results</h2>{wk && <span className="muted small">{fmtDate(wk.session.tested_on, true)} · {BATTERIES[wk.session.battery].label} · {wk.n} athletes</span>}</div>
     {!tests ? <div className="muted small">Loading…</div> : !wk ? <p className="muted small" style={{ margin: 0 }}>No team testing yet. Enter it in S&amp;C → Tests.</p>
       : <table className="tbl ws-tests"><thead><tr><th>Test</th><th className="num">Team median</th><th className="num">{wk.prev ? `Previous (${fmtDate(wk.prev.tested_on)})` : 'Previous'}</th><th className="num">Change</th><th className="num">n</th></tr></thead>
-        <tbody>{wk.rows.map(({ k, median, prev, change, n }) => <tr key={k}><td>{METRICS[k].long}</td><td className="num tnum"><b>{fmt(k, median)}</b> {METRICS[k].unit}</td><td className="num tnum muted">{prev === null ? '—' : fmt(k, prev)}</td>
-          <td className={`num tnum ${change === null || METRICS[k].neutral ? '' : change > 0.0005 ? 'ws-up' : change < -0.0005 ? 'ws-down' : ''}`}>{change === null ? '—' : `${change > 0 ? '▲' : change < 0 ? '▼' : ''} ${Math.abs(change * 100).toFixed(1)}%`}</td><td className="num tnum muted">{n}</td></tr>)}</tbody></table>}
+        <tbody>{wk.rows.map(({ k, median, prev, change, n }) => <tr key={k}><td>{M[k].long}</td><td className="num tnum"><b>{fmt(k, median)}</b> {M[k].unit}</td><td className="num tnum muted">{prev === null ? '—' : fmt(k, prev)}</td>
+          <td className={`num tnum ${change === null || M[k].neutral ? '' : change > 0.0005 ? 'ws-up' : change < -0.0005 ? 'ws-down' : ''}`}>{change === null ? '—' : `${change > 0 ? '▲' : change < 0 ? '▼' : ''} ${Math.abs(change * 100).toFixed(1)}%`}</td><td className="num tnum muted">{n}</td></tr>)}</tbody></table>}
     {wk && wk.rows.length > 0 && <div className="muted small">Team testing only (individual days and testing before the team-averages date are left out). Up is better; a faster time counts as up. Bodyweight and EUR changes aren't better or worse.</div>}
   </section>;
 }

@@ -3,11 +3,11 @@
 // and injury changes, and any testing that week compared with the session before. Everything
 // comes from data already in TeamHub; nothing is estimated.
 import { useEffect, useState } from 'react';
-import { useHub } from '../lib/hub.jsx';
+import { useHub, useMetrics } from '../lib/hub.jsx';
 import { fmtDate, fmtTime, todayISO, gameView, ourGames, hasScore } from '../lib/util.js';
 import { INT, DEFAULT_LOADS, mondayOf, addDays } from '../lib/sc.js';
 import { STATUS, currentInjury, isActive } from '../lib/injury.js';
-import { METRICS, BATTERIES, metricOrder, metricSeries, teamSessions, fmt } from '../lib/testing.js';
+import { METRICS, BATTERIES, metricOrder, metricSeries, teamSessions, fmt, testProfile } from '../lib/testing.js';
 import Logo from '../components/Logo.jsx';
 import Icon from '../components/Icon.jsx';
 import { useRoster, where, StatusPill } from './Injury.jsx';
@@ -17,6 +17,7 @@ const inWeek = (d, mon) => !!d && d >= mon && d <= addDays(mon, 6);
 const span = (mon) => { const sun = addDays(mon, 6); return `${fmtDate(mon).replace(/^\w+ /, '')} – ${fmtDate(sun).replace(/^\w+ /, '')}`; };
 
 export default function WeeklySnapshot() {
+  const M = useMetrics();
   const H = useHub(); const t = H.team;
   const [mon, setMon] = useState(mondayOf(todayISO()));
   const { roster } = useRoster();
@@ -42,8 +43,8 @@ export default function WeeklySnapshot() {
   // testing this week vs the previous session of each test
   const series = tests ? metricSeries(teamSessions(tests.sessions, tests.teamFrom), tests.results) : {}; // team testing only
   const wkSessions = tests ? tests.sessions.filter((s) => inWeek(s.tested_on, mon)) : [];
-  const testRows = metricOrder(t.sport).map((k) => { const pts = series[k] || []; const i = pts.findIndex((p) => inWeek(p.date, mon)); if (i < 0) return null;
-    const p = pts[i], q = pts[i - 1]; const ch = q ? ((p.median - q.median) / q.median) * (METRICS[k].lower ? -1 : 1) : null; return { k, p, q, ch }; }).filter(Boolean);
+  const testRows = metricOrder(testProfile(t, H.orgOf(t))).map((k) => { const pts = series[k] || []; const i = pts.findIndex((p) => inWeek(p.date, mon)); if (i < 0) return null;
+    const p = pts[i], q = pts[i - 1]; const ch = q ? ((p.median - q.median) / q.median) * (M[k].lower ? -1 : 1) : null; return { k, p, q, ch }; }).filter(Boolean);
   const name = (pid) => (byId[pid] ? `${byId[pid].num ? '#' + byId[pid].num + ' ' : ''}${byId[pid].name}` : 'Removed player');
 
   const gameLine = (g) => { const v = gameView(g, t); return <li key={g.id}><span className="ws-d">{fmtDate(g.date)}{g.time ? ' · ' + fmtTime(g.time) : ''}</span>
@@ -86,8 +87,8 @@ export default function WeeklySnapshot() {
       <section className="card"><div className="card-head"><h2>Testing</h2>{wkSessions.length > 0 && <span className="muted small">{wkSessions.map((s) => BATTERIES[s.battery].label).join(', ')}</span>}</div>
         {!testRows.length ? <p className="muted small" style={{ margin: 0 }}>No testing this week.</p>
           : <table className="tbl ws-tests"><thead><tr><th>Test</th><th className="num">Team median</th><th className="num">Previous</th><th className="num">Change</th><th className="num">n</th></tr></thead>
-            <tbody>{testRows.map(({ k, p, q, ch }) => <tr key={k}><td>{METRICS[k].long}</td><td className="num tnum"><b>{fmt(k, p.median)}</b> {METRICS[k].unit}</td><td className="num tnum muted">{q ? fmt(k, q.median) : '—'}</td>
-              <td className={`num tnum ${ch === null || METRICS[k].neutral ? '' : ch > 0.0005 ? 'ws-up' : ch < -0.0005 ? 'ws-down' : ''}`}>{ch === null ? '—' : `${ch > 0 ? '▲' : ch < 0 ? '▼' : ''} ${Math.abs(ch * 100).toFixed(1)}%`}</td><td className="num tnum muted">{p.n}</td></tr>)}</tbody></table>}
+            <tbody>{testRows.map(({ k, p, q, ch }) => <tr key={k}><td>{M[k].long}</td><td className="num tnum"><b>{fmt(k, p.median)}</b> {M[k].unit}</td><td className="num tnum muted">{q ? fmt(k, q.median) : '—'}</td>
+              <td className={`num tnum ${ch === null || M[k].neutral ? '' : ch > 0.0005 ? 'ws-up' : ch < -0.0005 ? 'ws-down' : ''}`}>{ch === null ? '—' : `${ch > 0 ? '▲' : ch < 0 ? '▼' : ''} ${Math.abs(ch * 100).toFixed(1)}%`}</td><td className="num tnum muted">{p.n}</td></tr>)}</tbody></table>}
         {testRows.length > 0 && <div className="muted small">Change: up is better (a faster time counts as up). Bodyweight and EUR changes aren't better or worse.</div>}
       </section>
     </div>

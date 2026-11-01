@@ -4,9 +4,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { applyTheme, store, SWATCHES, MENUS, SISTER } from './util.js';
 import Modal from '../components/Modal.jsx';
+import { metricsFor, testProfile } from './testing.js';
 
 const Ctx = createContext(null);
 export const useHub = () => useContext(Ctx);
+/** The current team's tests with its own names (BCS hockey uses the coach's headings). */
+export const useMetrics = () => { const H = useHub(); return metricsFor(testProfile(H.team, H.orgOf(H.team))); };
 
 const EMPTY = { league: { groups: [], games: [] }, events: [], notifs: [], sc: { weeks: {}, days: {} }, coach: null, candidates: [], lastRun: null, injuries: [] };
 

@@ -635,6 +635,7 @@ span.gd-row{cursor:default}
 .pg-bar .btn.primary{margin-left:auto}
 /* ---------- S&C tests + gym groups ---------- */
 .ts-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ts-cell.ts-text input{text-align:left;min-width:120px}
 .cr-rtext{margin:0 0 8px;line-height:1.5}
 .cr-flags{list-style:none;margin:0 0 8px;padding:0;display:flex;flex-direction:column;gap:6px}
 .cr-flags li{display:flex;gap:8px;align-items:center;flex-wrap:wrap}

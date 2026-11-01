@@ -2,6 +2,7 @@
 // api.supabase.js, running on the exported artifact data in seed/export, saved to this
 // browser's localStorage. Only loaded in development builds (see api.js).
 import { clone, uid, slugify } from './util.js';
+import { METRICS } from './testing.js';
 
 const KEY = 'teamhub-demo-db';
 const files = import.meta.glob('../../seed/export/**/*.json');
@@ -91,8 +92,8 @@ export const api = {
     const when = Object.fromEntries((d.testSessions || []).map((s) => [s.id, s.tested_on]));
     for (const r of d.testResults || []) { const p = players[r.player_id]; if (!p) continue;
       for (const [k, v] of Object.entries(r.values || {})) { const key = p.id + k, b = best[key];
-        if (['bw', 'eur'].includes(k)) continue;
-        if (!b || (['fly10', 't505', 'cassivi', 'sprint20'].includes(k) ? v < b.value : v > b.value)) best[key] = { player_id: p.id, name: p.name, num: p.num, metric: k, value: v, tested_on: when[r.session_id] }; } }
+        if (!METRICS[k] || METRICS[k].neutral || METRICS[k].text || typeof v !== 'number') continue;   // same tests as leaderboard() in SQL
+        if (!b || (METRICS[k].lower ? v < b.value : v > b.value)) best[key] = { player_id: p.id, name: p.name, num: p.num, metric: k, value: v, tested_on: when[r.session_id] }; } }
     return Object.values(best);
   },
   async setLeaderboardShared(teamId, on) { const d = D(teamId); d.gym = { targets: {}, overrides: {}, ...(d.gym || {}), leaderboard: on }; save(); },

@@ -7,9 +7,9 @@
 // Gym groups: from each athlete's latest full testing against the targets the coach sets
 // (formula in lib/testing.js), with a manual move per player.
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useHub } from '../lib/hub.jsx';
+import { useHub, useMetrics } from '../lib/hub.jsx';
 import { fmtDate, todayISO } from '../lib/util.js';
-import { METRICS, BATTERIES, batteryCols, metricOrder, seasonSheet, GROUPS, FORCE, EXPRESSION, num, fmt, ratio, gymGroup, metricSeries, changeSeries, teamSessions, metricField, rowsToTests, rowsToTestDays, leaderboards } from '../lib/testing.js';
+import { METRICS, BATTERIES, batteryCols, metricOrder, seasonSheet, testProfile, cellValue, GROUPS, FORCE, EXPRESSION, num, fmt, ratio, gymGroup, metricSeries, changeSeries, teamSessions, metricField, rowsToTests, rowsToTestDays, leaderboards } from '../lib/testing.js';
 import { parseTsv } from '../lib/imports.js';
 import { byNumber } from './Roster.jsx';
 import Modal from '../components/Modal.jsx';
@@ -20,6 +20,7 @@ import ImportSource from '../components/ImportSource.jsx';
 const COLORS = { cmj_jh: '#2563eb', rsimod: '#d97706', sj_jh: '#7c3aed', imtp_pf: '#dc2626', rel_pf: '#db2777', fly10: '#059669', cooper: '#0891b2',
   bw: '#64748b', abalakov: '#4f46e5', eur: '#a16207', t505: '#0d9488', cassivi: '#c026d3', sprint20: '#ea580c' };
 const sessLabel = (s) => `${fmtDate(s.tested_on, true)} · ${BATTERIES[s.battery].label}${s.individual ? ' · individual' : ''}`;
+const tp = (H) => testProfile(H.team, H.orgOf(H.team)); // which test setup this team uses
 const StaffOnly = ({ what }) => <section className="card"><p className="muted" style={{ margin: 0 }}>{what} are only visible to coaches and admins.</p></section>;
 
 function useTestData() {
@@ -37,6 +38,7 @@ function useTestData() {
 
 /* ================= Tests ================= */
 export default function Tests() {
+  const M = useMetrics();
   const H = useHub();
   const [d, reload] = useTestData();
   const [view, setView] = useState('enter');
@@ -73,23 +75,25 @@ export default function Tests() {
 }
 
 function NewSession({ close, onSave }) {
+  const M = useMetrics();
   const H = useHub();
   const [date, setDate] = useState(todayISO()), [battery, setBattery] = useState('readiness');
   return <Modal title="New testing session" onClose={close} actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" disabled={!date} onClick={() => { close(); onSave(date, battery); }}>Create</button></>}>
     <label className="field"><span>Date</span><input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
     <div className="field"><span>Battery</span>
       {Object.entries(BATTERIES).map(([k, b]) => <label key={k} className="ts-bat"><input type="radio" name="bat" checked={battery === k} onChange={() => setBattery(k)} />
-        <span><b>{b.label}</b><span className="muted small">{batteryCols(k, H.team.sport).map((m) => METRICS[m].label).join(', ')}</span></span></label>)}</div>
+        <span><b>{b.label}</b><span className="muted small">{batteryCols(k, tp(H)).map((m) => M[m].label).join(', ')}</span></span></label>)}</div>
   </Modal>;
 }
 
 /* Spreadsheet-style entry: one row per player, one column per test in the battery. */
 function EntryGrid({ d, session, onSaved }) {
+  const M = useMetrics();
   const H = useHub();
   const saved = useMemo(() => Object.fromEntries(d.results.filter((r) => r.session_id === session.id).map((r) => [r.player_id, r.values || {}])), [d, session.id]);
   // the battery's tests for this sport, plus any other test already saved in this session (e.g. from a bulk import)
-  const cols = useMemo(() => { const base = batteryCols(session.battery, H.team.sport), extra = new Set(Object.values(saved).flatMap(Object.keys));
-    return [...base, ...metricOrder(H.team.sport).filter((k) => extra.has(k) && !base.includes(k))]; }, [session.battery, saved, H.team.sport]);
+  const cols = useMemo(() => { const base = batteryCols(session.battery, tp(H)), extra = new Set(Object.values(saved).flatMap(Object.keys));
+    return [...base, ...metricOrder(tp(H)).filter((k) => extra.has(k) && !base.includes(k))]; }, [session.battery, saved, tp(H)]);
   // active roster, plus anyone with results here who has since left
   const rows = useMemo(() => d.players.filter((p) => p.active !== false || saved[p.id]), [d.players, saved]);
   const toText = (v) => Object.fromEntries(cols.map((k) => [k, v && v[k] !== undefined && v[k] !== null ? String(v[k]) : '']));
@@ -97,7 +101,7 @@ function EntryGrid({ d, session, onSaved }) {
   const [busy, setBusy] = useState(false);
   const box = useRef();
   const dirty = rows.some((p) => cols.some((k) => (cells[p.id] || {})[k] !== toText(saved[p.id])[k]));
-  const bad = (v) => v.trim() !== '' && num(v) === null;
+  const bad = (k, v) => !M[k].text && v.trim() !== '' && num(v) === null;
   const set = (pid, k, v) => setCells((c) => ({ ...c, [pid]: { ...c[pid], [k]: v } }));
   const focus = (r, c) => { const el = box.current && box.current.querySelector(`input[data-r="${r}"][data-c="${c}"]`); if (el) { el.focus(); el.select(); } };
   const paste = (e, r, c) => {
@@ -113,9 +117,9 @@ function EntryGrid({ d, session, onSaved }) {
     else if (e.key === 'ArrowLeft' && e.target.selectionEnd === 0) { e.preventDefault(); focus(r, c - 1); }
   };
   const save = async () => {
-    const out = rows.map((p) => ({ player_id: p.id, values: Object.fromEntries(cols.map((k) => [k, num((cells[p.id] || {})[k])]).filter(([, v]) => v !== null)) }))
+    const out = rows.map((p) => ({ player_id: p.id, values: Object.fromEntries(cols.map((k) => [k, cellValue(k, (cells[p.id] || {})[k])]).filter(([, v]) => v !== null)) }))
       .filter((r) => Object.keys(r.values).length || saved[r.player_id]);
-    const skipped = rows.reduce((n, p) => n + cols.filter((k) => bad((cells[p.id] || {})[k] || '')).length, 0);
+    const skipped = rows.reduce((n, p) => n + cols.filter((k) => bad(k, (cells[p.id] || {})[k] || '')).length, 0);
     setBusy(true);
     try { await H.api.saveTestResults(H.teamId, session.id, out); H.toast(`Saved${skipped ? ` (${skipped === 1 ? '1 cell that isn\'t a number was' : `${skipped} cells that aren't numbers were`} left out)` : ''}`); await onSaved(); }
     catch (e) { H.toast('Could not save. ' + e.message); }
@@ -125,7 +129,7 @@ function EntryGrid({ d, session, onSaved }) {
   const importRows = () => H.openDialog((c) => <ImportTests roster={rows} cols={cols} close={c} onUse={(vals) => setCells((cur) => {
     const n = { ...cur }; Object.entries(vals).forEach(([pid, v]) => { n[pid] = { ...n[pid], ...Object.fromEntries(Object.entries(v).filter(([k]) => cols.includes(k)).map(([k, x]) => [k, String(x)])) }; }); return n;
   })} />);
-  const filled = rows.filter((p) => cols.some((k) => num((cells[p.id] || {})[k]) !== null)).length;
+  const filled = rows.filter((p) => cols.some((k) => cellValue(k, (cells[p.id] || {})[k]) !== null)).length;
   if (!rows.length) return <section className="card"><p className="muted" style={{ margin: 0 }}>Add players in the <a href="#" onClick={(e) => { e.preventDefault(); H.go('roster'); }}>Roster</a> tab first; they fill the Name column here.</p></section>;
   return <section className="card">
     <div className="card-head"><div><h2>{BATTERIES[session.battery].label}</h2><span className="muted small">{fmtDate(session.tested_on, true)} · {filled} of {rows.length} players entered</span>
@@ -133,17 +137,18 @@ function EntryGrid({ d, session, onSaved }) {
       <div className="acts"><button className="btn" onClick={importRows}><Icon n="refresh" /> Import: file or paste</button><button className="btn primary" disabled={!dirty || busy} onClick={save}>{busy ? 'Saving…' : dirty ? 'Save results' : 'Saved'}</button></div></div>
     <p className="muted small" style={{ margin: 0 }}>Type results, or copy a block of cells from a spreadsheet, click the first cell and paste (⌘V). Use the same column order as here. Leave a cell blank if the test wasn't done.</p>
     <div className="tbl-wrap ts-grid" ref={box}><table className="tbl">
-      <thead><tr><th>Name</th>{cols.map((k) => <th key={k} className="num">{METRICS[k].label}{METRICS[k].unit && <span className="muted"> ({METRICS[k].unit})</span>}</th>)}</tr></thead>
+      <thead><tr><th>Name</th>{cols.map((k) => <th key={k} className="num">{M[k].label}{M[k].unit && <span className="muted"> ({M[k].unit})</span>}</th>)}</tr></thead>
       <tbody>{rows.map((p, r) => <tr key={p.id} className={p.active === false ? 'muted' : ''}>
         <td className="ts-name">{p.num && <span className="muted tnum">{p.num} </span>}<b>{p.name}</b> <InjuryFlag p={p} /></td>
-        {cols.map((k, c) => { const v = (cells[p.id] || {})[k] || ''; return <td key={k} className="ts-cell"><input className={`tnum ${bad(v) ? 'bad' : ''}`} inputMode="decimal" data-r={r} data-c={c} value={v}
-          aria-label={`${p.name} ${METRICS[k].long}`} onChange={(e) => set(p.id, k, e.target.value)} onPaste={(e) => paste(e, r, c)} onKeyDown={(e) => key(e, r, c)} /></td>; })}
+        {cols.map((k, c) => { const v = (cells[p.id] || {})[k] || ''; return <td key={k} className={`ts-cell ${M[k].text ? 'ts-text' : ''}`}><input className={`tnum ${bad(k, v) ? 'bad' : ''}`} inputMode={M[k].text ? 'text' : 'decimal'} data-r={r} data-c={c} value={v}
+          aria-label={`${p.name} ${M[k].long}`} onChange={(e) => set(p.id, k, e.target.value)} onPaste={(e) => paste(e, r, c)} onKeyDown={(e) => key(e, r, c)} /></td>; })}
       </tr>)}</tbody>
     </table></div>
   </section>;
 }
 
 function ImportTests({ roster, cols, close, onUse }) {
+  const M = useMetrics();
   const [res, setRes] = useState(null);
   const take = (rows, label) => {
     const r = rowsToTests(rows, roster);
@@ -154,10 +159,10 @@ function ImportTests({ roster, cols, close, onUse }) {
   return <Modal title="Import test results" wide onClose={close}
     actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" disabled={!res} onClick={() => { close(); onUse(res.values); }}>Put in the grid</button></>}>
     <p className="muted small" style={{ margin: 0 }}>A sheet with a <b>Name</b> (or <b>#</b>) column and test columns such as <b>CMJ JH</b>, <b>RSImod</b>, <b>SJ JH</b>, <b>IMTP</b>, <b>Rel PF</b> (N/kg), <b>10m fly</b>, <b>Cooper</b>. Players are matched to the roster by name or number. The results go into the grid; nothing is saved until you press <b>Save results</b>.</p>
-    <ImportSource onRows={take} isHeading={(h) => !!metricField(h)} template={[['Name', ...cols.map((k) => `${METRICS[k].label}${METRICS[k].unit ? ` (${METRICS[k].unit})` : ''}`)]]} templateName="test-results-template.csv" />
+    <ImportSource onRows={take} isHeading={(h) => !!metricField(h)} template={[['Name', ...cols.map((k) => `${M[k].label}${M[k].unit ? ` (${M[k].unit})` : ''}`)]]} templateName="test-results-template.csv" />
     {res && <>
-      <div className="small"><b>{res.file}</b>: {Object.keys(res.values).length} players{res.unmatched.length ? `; not on the roster (skipped): ${res.unmatched.join(', ')}` : ''}{res.other.length ? `; not in this battery (ignored): ${res.other.map((k) => METRICS[k].label).join(', ')}` : ''}.</div>
-      <div className="tbl-wrap" style={{ maxHeight: 280, overflow: 'auto' }}><table className="tbl"><thead><tr><th>Name</th>{cols.map((k) => <th key={k} className="num">{METRICS[k].label}</th>)}</tr></thead>
+      <div className="small"><b>{res.file}</b>: {Object.keys(res.values).length} players{res.unmatched.length ? `; not on the roster (skipped): ${res.unmatched.join(', ')}` : ''}{res.other.length ? `; not in this battery (ignored): ${res.other.map((k) => M[k].label).join(', ')}` : ''}.</div>
+      <div className="tbl-wrap" style={{ maxHeight: 280, overflow: 'auto' }}><table className="tbl"><thead><tr><th>Name</th>{cols.map((k) => <th key={k} className="num">{M[k].label}</th>)}</tr></thead>
         <tbody>{Object.entries(res.values).map(([pid, v]) => <tr key={pid}><td>{byId[pid].name}</td>{cols.map((k) => <td key={k} className="num tnum">{fmt(k, v[k])}</td>)}</tr>)}</tbody></table></div>
     </>}
   </Modal>;
@@ -170,10 +175,11 @@ function ImportTests({ roster, cols, close, onUse }) {
    already entered for a player that day are kept unless the sheet has a new number for them. */
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 function BulkImport({ d, close, onDone }) {
+  const M = useMetrics();
   const H = useHub();
   const [res, setRes] = useState(null), [bat, setBat] = useState({}), [ind, setInd] = useState({}), [busy, setBusy] = useState(false);
   const take = (rows, label) => {
-    const r = rowsToTestDays(rows, d.players, H.team.sport);
+    const r = rowsToTestDays(rows, d.players, tp(H));
     if (!r.days.length) throw new Error(r.unmatched.length ? `None of the ${r.unmatched.length} names matched the roster.` : r.badDates.length ? `No dates could be read (e.g. "${r.badDates[0]}").` : 'No results found.');
     setRes({ ...r, file: label }); setBat(Object.fromEntries(r.days.map((x) => [x.date, x.battery])));
     setInd(Object.fromEntries(r.days.map((x) => { const s = d.sessions.find((y) => y.tested_on === x.date); return [x.date, !!(s && s.individual)]; })));
@@ -197,12 +203,13 @@ function BulkImport({ d, close, onDone }) {
   };
   return <Modal title="Bulk import test results" wide onClose={close}
     actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" disabled={!res || busy} onClick={save}>{busy ? 'Importing…' : res ? `${res.textCols.length ? 'Import anyway: ' : 'Import '}${plural(res.days.length, 'day')}` : 'Import'}</button></>}>
-    <p className="muted small" style={{ margin: 0 }}><b>Copy your heading row with the data</b> and paste it into the top-left cell: columns are then matched by name, whatever their order. Paste your whole sheet: one row per player per testing day, with a <b>Date</b> column, a <b>Name</b> (or <b>#</b>) column and test columns such as <b>{batteryCols('full', H.team.sport).map((k) => METRICS[k].label).join(', ')}</b>. Other columns (team, position, notes) are ignored. A blank date repeats the date above. Each date becomes its own testing session (or adds to the one already there); you can check everything before it's saved.</p>
-    <ImportSource mode0="paste" onRows={take} isHeading={(h) => !!metricField(h)} template={[seasonSheet(H.team.sport)]} templateName="test-results-season-template.csv" />
+    <p className="muted small" style={{ margin: 0 }}><b>Copy your heading row with the data</b> and paste it into the top-left cell: columns are then matched by name, whatever their order. Paste your whole sheet: one row per player per testing day, with a <b>Date</b> column, a <b>Name</b> (or <b>#</b>) column and test columns such as <b>{batteryCols('full', tp(H)).map((k) => M[k].label).join(', ')}</b>. Other columns (team, position, notes) are ignored. A blank date repeats the date above. Each date becomes its own testing session (or adds to the one already there); you can check everything before it's saved.</p>
+    <ImportSource mode0="paste" onRows={take} isHeading={(h) => !!metricField(h)} template={[seasonSheet(tp(H))]} templateName="test-results-season-template.csv" />
     {res && <>
-      <div className="small"><b>{res.file}</b>: {plural(total, 'result')} for {plural(new Set(res.days.flatMap((x) => Object.keys(x.values))).size, 'player')} over {plural(res.days.length, 'testing day')} ({metricOrder(H.team.sport).filter((k) => res.metrics.includes(k)).map((k) => METRICS[k].label).join(', ')}).
+      <div className="small"><b>{res.file}</b>: {plural(total, 'result')} for {plural(new Set(res.days.flatMap((x) => Object.keys(x.values))).size, 'player')} over {plural(res.days.length, 'testing day')} ({metricOrder(tp(H)).filter((k) => res.metrics.includes(k)).map((k) => M[k].label).join(', ')}).
         {res.unmatched.length > 0 && <> <b>Not on the roster (skipped):</b> {res.unmatched.join(', ')}.</>}
-        {res.badDates.length > 0 && <> <b>Dates not understood (rows skipped):</b> {res.badDates.join(', ')}.</>}</div>
+        {res.badDates.length > 0 && <> <b>Dates not understood (rows skipped):</b> {res.badDates.join(', ')}.</>}
+        {res.bwRead === 'kg' && <> Bodyweight is in kg (it matches IMTP ÷ N/kg), so it's saved in pounds.</>}</div>
       {res.textCols.length > 0 && <div className="hint warn"><b>Check your columns before importing.</b> These test columns contain words, so your data probably doesn't line up with the headings:{' '}
         {res.textCols.map((c) => `${c.heading} ("${c.examples.join('", "')}")`).join('; ')}. Clear the grid and paste again with your heading row included, starting in the top-left cell.</div>}
       <div className="tbl-wrap" style={{ maxHeight: 320, overflow: 'auto' }}><table className="tbl">
@@ -211,7 +218,7 @@ function BulkImport({ d, close, onDone }) {
           return <tr key={x.date}><td>{fmtDate(x.date, true)}</td>
             <td><select className="select" value={bat[x.date]} onChange={(e) => setBat({ ...bat, [x.date]: e.target.value })} aria-label={`Battery for ${x.date}`}>{Object.entries(BATTERIES).map(([k, b]) => <option key={k} value={k}>{b.label}</option>)}</select></td>
             <td><input type="checkbox" className="cb" checked={!!ind[x.date]} onChange={(e) => setInd({ ...ind, [x.date]: e.target.checked })} aria-label={`Individual testing on ${x.date}`} /></td>
-            <td className="num tnum">{Object.keys(x.values).length}</td><td className="small">{metricOrder(H.team.sport).filter((k) => used.includes(k)).map((k) => METRICS[k].label).join(', ')}</td>
+            <td className="num tnum">{Object.keys(x.values).length}</td><td className="small">{metricOrder(tp(H)).filter((k) => used.includes(k)).map((k) => M[k].label).join(', ')}</td>
             <td className="small">{!s ? <span className="muted">New session</span> : s.battery !== bat[x.date] && bat[x.date] === 'full' ? 'Existing session (merged, becomes full team testing)' : 'Existing session (merged)'}</td></tr>; })}</tbody>
       </table></div>
     </>}
@@ -221,6 +228,7 @@ function BulkImport({ d, close, onDone }) {
 /* ================= Coaches view: trends ================= */
 const CW = 720, CL = 46, CR = 14, CT = 12;
 function Trends({ d, onReload }) {
+  const M = useMetrics();
   const H = useHub();
   const counted = useMemo(() => teamSessions(d.sessions, d.teamFrom), [d]);
   const series = useMemo(() => metricSeries(counted, d.results), [counted, d.results]);
@@ -230,8 +238,8 @@ function Trends({ d, onReload }) {
     {d.teamFrom && <button className="btn sm ghost" onClick={() => setFrom('')}>Use all dates</button>}
     <span className="muted small">{left ? `${plural(left, 'session')} left out: individual testing days${d.teamFrom ? ' and testing before that date' : ''}. They still show in each athlete's profile.` : 'Every testing session counts.'}</span></section>;
   const change = useMemo(() => changeSeries(series), [series]);
-  const keys = metricOrder(H.team.sport).filter((k) => series[k].length);
-  const trend = keys.filter((k) => !METRICS[k].neutral); // bodyweight and EUR have no better direction
+  const keys = metricOrder(tp(H)).filter((k) => series[k].length);
+  const trend = keys.filter((k) => !M[k].neutral); // bodyweight and EUR have no better direction
   const [hide, setHide] = useState({});
   if (!keys.length) return <>{fromBar}<section className="card"><p className="muted" style={{ margin: 0 }}>Trends appear once a team testing session has results.</p></section></>;
   const dates = [...new Set(keys.flatMap((k) => series[k].map((p) => p.date)))].sort();
@@ -239,13 +247,14 @@ function Trends({ d, onReload }) {
     {fromBar}
     <section className="card">
       <div className="card-head"><div><h2>Team trend</h2><span className="muted small">Median change since each test's first session. Up is better (a faster time counts as up). Bodyweight and EUR aren't charted here.</span></div></div>
-      <div className="tr-legend">{trend.map((k) => <button key={k} className={hide[k] ? 'off' : ''} onClick={() => setHide({ ...hide, [k]: !hide[k] })}><i style={{ background: COLORS[k] }} />{METRICS[k].label}</button>)}</div>
+      <div className="tr-legend">{trend.map((k) => <button key={k} className={hide[k] ? 'off' : ''} onClick={() => setHide({ ...hide, [k]: !hide[k] })}><i style={{ background: COLORS[k] }} />{M[k].label}</button>)}</div>
       <ChangeChart dates={dates} change={change} keys={trend.filter((k) => !hide[k] && change[k])} />
     </section>
     <div className="tr-grid">{keys.map((k) => <MetricBox key={k} k={k} pts={series[k]} />)}</div>
   </>;
 }
 function ChangeChart({ dates, change, keys }) {
+  const M = useMetrics();
   const H = 240, ph = H - 26 - CT, pw = CW - CL - CR;
   const vals = keys.flatMap((k) => change[k].map((p) => p.change));
   const lim = Math.max(0.05, ...vals.map(Math.abs)); const top = Math.ceil(lim * 20) / 20;
@@ -256,11 +265,12 @@ function ChangeChart({ dates, change, keys }) {
     {dates.map((dt) => <text key={dt} x={x(dt)} y={H - 6} className="ax" textAnchor="middle">{fmtDate(dt).replace(/^\w+ /, '')}</text>)}
     {keys.map((k) => { const pts = change[k]; return <g key={k}>
       <polyline points={pts.map((p) => `${x(p.date)},${y(p.change)}`).join(' ')} fill="none" stroke={COLORS[k]} strokeWidth="2.2" strokeLinejoin="round" />
-      {pts.map((p) => <circle key={p.date} cx={x(p.date)} cy={y(p.change)} r="3.5" fill={COLORS[k]}><title>{`${METRICS[k].label} ${fmtDate(p.date)}: ${p.change >= 0 ? '+' : ''}${(p.change * 100).toFixed(1)}%`}</title></circle>)}</g>; })}
+      {pts.map((p) => <circle key={p.date} cx={x(p.date)} cy={y(p.change)} r="3.5" fill={COLORS[k]}><title>{`${M[k].label} ${fmtDate(p.date)}: ${p.change >= 0 ? '+' : ''}${(p.change * 100).toFixed(1)}%`}</title></circle>)}</g>; })}
   </svg>;
 }
 function MetricBox({ k, pts }) {
-  const m = METRICS[k], W = 320, H = 120, L = 6, R = 6, T = 10, B = 18;
+  const M = useMetrics();
+  const m = M[k], W = 320, H = 120, L = 6, R = 6, T = 10, B = 18;
   const last = pts[pts.length - 1], first = pts[0], prev = pts[pts.length - 2];
   const lo = Math.min(...pts.map((p) => p.q1)), hi = Math.max(...pts.map((p) => p.q3)); const pad = (hi - lo) * 0.15 || Math.abs(hi) * 0.05 || 1;
   const y = (v) => T + ((hi + pad - v) / (hi - lo + 2 * pad)) * (H - T - B), x = (i) => (pts.length < 2 ? W / 2 : L + (i / (pts.length - 1)) * (W - L - R));
@@ -282,6 +292,7 @@ function MetricBox({ k, pts }) {
 
 /* ================= Gym groups ================= */
 export function GymGroups() {
+  const M = useMetrics();
   const H = useHub();
   const [d] = useTestData();
   const [cfg, setCfg] = useState(null);
@@ -303,7 +314,7 @@ export function GymGroups() {
       <select className="select gg-move" value={cfg.overrides[p.id] || ''} onChange={(e) => move(p.id, e.target.value)} aria-label={`Group for ${p.name}`}>
         <option value="">By formula</option>{Object.entries(GROUPS).map(([k, x]) => <option key={k} value={k}>{x.label}</option>)}</select></div>
     {g && <div className="muted small">{g.reason}</div>}
-    {t && <div className="gg-vals">{[...FORCE, ...EXPRESSION].filter((k) => num(t.values[k]) !== null).map((k) => { const r = ratio(k, t.values[k], cfg.targets[k]); return <span key={k} className={r === null ? '' : r >= 1 ? 'ok' : 'low'} title={cfg.targets[k] ? `Target ${cfg.targets[k]} ${METRICS[k].unit}` : 'No target set'}>{METRICS[k].label} {fmt(k, t.values[k])}</span>; })}</div>}
+    {t && <div className="gg-vals">{[...FORCE, ...EXPRESSION].filter((k) => num(t.values[k]) !== null).map((k) => { const r = ratio(k, t.values[k], cfg.targets[k]); return <span key={k} className={r === null ? '' : r >= 1 ? 'ok' : 'low'} title={cfg.targets[k] ? `Target ${cfg.targets[k]} ${M[k].unit}` : 'No target set'}>{M[k].label} {fmt(k, t.values[k])}</span>; })}</div>}
   </li>;
   const notPlaced = placed.filter((x) => !x.g || !x.g.group);
   return <>
@@ -324,12 +335,13 @@ export function GymGroups() {
 }
 
 function Targets({ targets, close, onSave }) {
+  const M = useMetrics();
   const keys = [...FORCE, ...EXPRESSION];
   const [t, setT] = useState(Object.fromEntries(keys.map((k) => [k, targets[k] !== undefined && targets[k] !== null ? String(targets[k]) : ''])));
   const submit = () => { close(); onSave(Object.fromEntries(keys.map((k) => [k, num(t[k])]).filter(([, v]) => v !== null && v > 0))); };
   return <Modal title="Gym group targets" onClose={close} actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" onClick={submit}>Save</button></>}>
     <p className="muted small" style={{ margin: 0 }}>The value you consider good for this team, per test. Leave a test blank to leave it out of the formula. Athletes are compared with these numbers.</p>
-    <div className="row2">{keys.map((k) => <label key={k} className="field"><span>{METRICS[k].long}{METRICS[k].unit && ` (${METRICS[k].unit})`}</span>
+    <div className="row2">{keys.map((k) => <label key={k} className="field"><span>{M[k].long}{M[k].unit && ` (${M[k].unit})`}</span>
       <input className="input tnum" inputMode="decimal" value={t[k]} onChange={(e) => setT({ ...t, [k]: e.target.value })} placeholder="No target" /></label>)}</div>
     <div className="hint">Force deficient: force below target. Otherwise expression efficient when expression and RSImod meet target, else expression deficient.</div>
   </Modal>;
@@ -338,6 +350,7 @@ function Targets({ targets, close, onSave }) {
 /* ================= Leaderboard (everyone on the team) ================= */
 // Players and parents see each active player's best result per test, unless a coach hides it.
 export function Leaderboard() {
+  const M = useMetrics();
   const H = useHub();
   const [rows, setRows] = useState(null), [shared, setShared] = useState(true), [tab, setTab] = useState('overall');
   useEffect(() => {
@@ -346,7 +359,7 @@ export function Leaderboard() {
   }, [H.teamId]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!rows) return <div className="loading">Loading…</div>;
   const L = leaderboards(rows);
-  const keys = metricOrder(H.team.sport).filter((k) => L.byMetric[k]);
+  const keys = metricOrder(tp(H)).filter((k) => L.byMetric[k]);
   const toggle = async (on) => { setShared(on); try { await H.api.setLeaderboardShared(H.teamId, on); H.toast(on ? 'Players can see the leaderboard' : 'Leaderboard hidden from players'); } catch (e) { setShared(!on); H.toast(e.message); } };
   const medal = (r) => <span className={`lb-rank r${r <= 3 ? r : ''}`}>{r}</span>;
   const who = (r) => <span className="lb-who">{r.num && <span className="muted tnum">{r.num}</span>}<b>{r.name}</b></span>;
@@ -358,16 +371,16 @@ export function Leaderboard() {
       {!keys.length ? <p className="muted small" style={{ margin: 0 }}>No results to show yet.</p> : <>
         <div className="lb-tabs">
           <button className={tab === 'overall' ? 'on' : ''} onClick={() => setTab('overall')}>Overall</button>
-          {keys.map((k) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{METRICS[k].label}</button>)}
+          {keys.map((k) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{M[k].label}</button>)}
         </div>
         {tab === 'overall' ? <>
           <p className="muted small" style={{ margin: 0 }}>Average standing across the tests each player has done: 100 means best on the team in every test, 0 means last. Players need at least {L.need} test{L.need === 1 ? '' : 's'} to be ranked.</p>
           {!L.overall.length ? <p className="muted small" style={{ margin: 0 }}>Not enough results yet for an overall ranking.</p>
             : <table className="tbl lb-tbl"><thead><tr><th>#</th><th>Player</th><th className="num">Score</th><th className="num">Tests</th></tr></thead>
               <tbody>{L.overall.map((s) => <tr key={s.player_id}><td>{medal(s.rank)}</td><td>{who(s)}</td><td className="num tnum"><b>{Math.round(s.score)}</b></td><td className="num tnum muted">{s.tests}</td></tr>)}</tbody></table>}
-        </> : <table className="tbl lb-tbl"><thead><tr><th>#</th><th>Player</th><th className="num">{METRICS[tab].long}{METRICS[tab].unit && ` (${METRICS[tab].unit})`}</th><th className="num">Date</th></tr></thead>
+        </> : <table className="tbl lb-tbl"><thead><tr><th>#</th><th>Player</th><th className="num">{M[tab].long}{M[tab].unit && ` (${M[tab].unit})`}</th><th className="num">Date</th></tr></thead>
           <tbody>{cur.map((r) => <tr key={r.player_id}><td>{medal(r.rank)}</td><td>{who(r)}</td><td className="num tnum"><b>{fmt(tab, r.value)}</b></td><td className="num muted">{r.tested_on ? fmtDate(r.tested_on) : ''}</td></tr>)}</tbody></table>}
-        {tab !== 'overall' && METRICS[tab].lower && <span className="muted small">Lowest time ranks first.</span>}
+        {tab !== 'overall' && M[tab].lower && <span className="muted small">Lowest time ranks first.</span>}
       </>}
     </section>
   </>;
