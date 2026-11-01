@@ -92,3 +92,13 @@ test('bulk import: full team testing headings (bodyweight in pounds, "Cassici sh
   const k = rowsToTestDays([['Name', 'Date', 'Bodyweight (kg)', 'CMJ'], ['Athlete HV01', '2026-09-15', '80', '40']], roster, 'basketball');
   assert.equal(k.days[0].values.a.bw, 176.4);
 });
+
+test('basketball lists tests and the season sheet in the coach\'s order', async () => {
+  const { metricOrder, seasonSheet, rowsToTestDays } = await import('../src/lib/testing.js');
+  assert.deepEqual(metricOrder('basketball').slice(0, 9), ['bw', 'cmj_jh', 'rsimod', 'abalakov', 'sj_jh', 'eur', 't505', 'cassivi', 'sprint20']);
+  const head = seasonSheet('basketball');
+  assert.deepEqual(head, ['Name', 'Date', 'Team', 'Bodyweight (pounds)', 'CMJ', 'RSImod', 'Abalakov jump', 'SJ', 'EUR', '5-0-5 drill', 'Cassivi shuttle', '20m sprint']);
+  // data rows pasted under the pre-filled headings land in the right tests
+  const r = rowsToTestDays([head, ['Athlete HV01', '9/15/2026', 'Prep', '172', '45', '0.5', '52', '41', '1.1', '2.4', '31.8', '3.1']], [{ id: 'a', name: 'Athlete HV01' }], 'basketball');
+  assert.deepEqual(r.days[0].values.a, { bw: 172, cmj_jh: 45, rsimod: 0.5, abalakov: 52, sj_jh: 41, eur: 1.1, t505: 2.4, cassivi: 31.8, sprint20: 3.1 });
+});

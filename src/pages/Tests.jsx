@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useHub } from '../lib/hub.jsx';
 import { fmtDate, todayISO } from '../lib/util.js';
-import { METRICS, BATTERIES, batteryCols, GROUPS, FORCE, EXPRESSION, num, fmt, ratio, gymGroup, metricSeries, changeSeries, metricField, rowsToTests, rowsToTestDays, leaderboards } from '../lib/testing.js';
+import { METRICS, BATTERIES, batteryCols, metricOrder, seasonSheet, GROUPS, FORCE, EXPRESSION, num, fmt, ratio, gymGroup, metricSeries, changeSeries, metricField, rowsToTests, rowsToTestDays, leaderboards } from '../lib/testing.js';
 import { parseTsv } from '../lib/imports.js';
 import { byNumber } from './Roster.jsx';
 import Modal from '../components/Modal.jsx';
@@ -89,7 +89,7 @@ function EntryGrid({ d, session, onSaved }) {
   const saved = useMemo(() => Object.fromEntries(d.results.filter((r) => r.session_id === session.id).map((r) => [r.player_id, r.values || {}])), [d, session.id]);
   // the battery's tests for this sport, plus any other test already saved in this session (e.g. from a bulk import)
   const cols = useMemo(() => { const base = batteryCols(session.battery, H.team.sport), extra = new Set(Object.values(saved).flatMap(Object.keys));
-    return [...base, ...Object.keys(METRICS).filter((k) => extra.has(k) && !base.includes(k))]; }, [session.battery, saved, H.team.sport]);
+    return [...base, ...metricOrder(H.team.sport).filter((k) => extra.has(k) && !base.includes(k))]; }, [session.battery, saved, H.team.sport]);
   // active roster, plus anyone with results here who has since left
   const rows = useMemo(() => d.players.filter((p) => p.active !== false || saved[p.id]), [d.players, saved]);
   const toText = (v) => Object.fromEntries(cols.map((k) => [k, v && v[k] !== undefined && v[k] !== null ? String(v[k]) : '']));
@@ -191,9 +191,9 @@ function BulkImport({ d, close, onDone }) {
   return <Modal title="Bulk import test results" wide onClose={close}
     actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" disabled={!res || busy} onClick={save}>{busy ? 'Importing…' : res ? `Import ${res.days.length} day${res.days.length === 1 ? '' : 's'}` : 'Import'}</button></>}>
     <p className="muted small" style={{ margin: 0 }}>Paste your whole sheet: one row per player per testing day, with a <b>Date</b> column, a <b>Name</b> (or <b>#</b>) column and test columns such as <b>{batteryCols('full', H.team.sport).map((k) => METRICS[k].label).join(', ')}</b>. Other columns (team, position, notes) are ignored. A blank date repeats the date above. Each date becomes its own testing session (or adds to the one already there); you can check everything before it's saved.</p>
-    <ImportSource mode0="paste" onRows={take} isHeading={(h) => !!metricField(h)} template={[['Name', 'Date', ...batteryCols('full', H.team.sport).map((k) => `${METRICS[k].label}${METRICS[k].unit ? ` (${METRICS[k].unit})` : ''}`)]]} templateName="test-results-season-template.csv" />
+    <ImportSource mode0="paste" onRows={take} isHeading={(h) => !!metricField(h)} template={[seasonSheet(H.team.sport)]} templateName="test-results-season-template.csv" />
     {res && <>
-      <div className="small"><b>{res.file}</b>: {plural(total, 'result')} for {plural(new Set(res.days.flatMap((x) => Object.keys(x.values))).size, 'player')} over {plural(res.days.length, 'testing day')} ({Object.keys(METRICS).filter((k) => res.metrics.includes(k)).map((k) => METRICS[k].label).join(', ')}).
+      <div className="small"><b>{res.file}</b>: {plural(total, 'result')} for {plural(new Set(res.days.flatMap((x) => Object.keys(x.values))).size, 'player')} over {plural(res.days.length, 'testing day')} ({metricOrder(H.team.sport).filter((k) => res.metrics.includes(k)).map((k) => METRICS[k].label).join(', ')}).
         {res.unmatched.length > 0 && <> <b>Not on the roster (skipped):</b> {res.unmatched.join(', ')}.</>}
         {res.badDates.length > 0 && <> <b>Dates not understood (rows skipped):</b> {res.badDates.join(', ')}.</>}</div>
       <div className="tbl-wrap" style={{ maxHeight: 320, overflow: 'auto' }}><table className="tbl">
@@ -201,7 +201,7 @@ function BulkImport({ d, close, onDone }) {
         <tbody>{res.days.map((x) => { const used = [...new Set(Object.values(x.values).flatMap(Object.keys))]; const s = existing(x.date, bat[x.date]);
           return <tr key={x.date}><td>{fmtDate(x.date, true)}</td>
             <td><select className="select" value={bat[x.date]} onChange={(e) => setBat({ ...bat, [x.date]: e.target.value })} aria-label={`Battery for ${x.date}`}>{Object.entries(BATTERIES).map(([k, b]) => <option key={k} value={k}>{b.label}</option>)}</select></td>
-            <td className="num tnum">{Object.keys(x.values).length}</td><td className="small">{Object.keys(METRICS).filter((k) => used.includes(k)).map((k) => METRICS[k].label).join(', ')}</td>
+            <td className="num tnum">{Object.keys(x.values).length}</td><td className="small">{metricOrder(H.team.sport).filter((k) => used.includes(k)).map((k) => METRICS[k].label).join(', ')}</td>
             <td className="small">{s ? 'Existing session (merged)' : <span className="muted">New session</span>}</td></tr>; })}</tbody>
       </table></div>
     </>}
@@ -211,9 +211,10 @@ function BulkImport({ d, close, onDone }) {
 /* ================= Coaches view: trends ================= */
 const CW = 720, CL = 46, CR = 14, CT = 12;
 function Trends({ d }) {
+  const H = useHub();
   const series = useMemo(() => metricSeries(d.sessions, d.results), [d]);
   const change = useMemo(() => changeSeries(series), [series]);
-  const keys = Object.keys(METRICS).filter((k) => series[k].length);
+  const keys = metricOrder(H.team.sport).filter((k) => series[k].length);
   const trend = keys.filter((k) => !METRICS[k].neutral); // bodyweight and EUR have no better direction
   const [hide, setHide] = useState({});
   if (!keys.length) return <section className="card"><p className="muted" style={{ margin: 0 }}>Trends appear once a testing session has results.</p></section>;
@@ -328,7 +329,7 @@ export function Leaderboard() {
   }, [H.teamId]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!rows) return <div className="loading">Loading…</div>;
   const L = leaderboards(rows);
-  const keys = Object.keys(METRICS).filter((k) => L.byMetric[k]);
+  const keys = metricOrder(H.team.sport).filter((k) => L.byMetric[k]);
   const toggle = async (on) => { setShared(on); try { await H.api.setLeaderboardShared(H.teamId, on); H.toast(on ? 'Players can see the leaderboard' : 'Leaderboard hidden from players'); } catch (e) { setShared(!on); H.toast(e.message); } };
   const medal = (r) => <span className={`lb-rank r${r <= 3 ? r : ''}`}>{r}</span>;
   const who = (r) => <span className="lb-who">{r.num && <span className="muted tnum">{r.num}</span>}<b>{r.name}</b></span>;

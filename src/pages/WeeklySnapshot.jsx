@@ -7,7 +7,7 @@ import { useHub } from '../lib/hub.jsx';
 import { fmtDate, fmtTime, todayISO, gameView, ourGames, hasScore } from '../lib/util.js';
 import { INT, DEFAULT_LOADS, mondayOf, addDays } from '../lib/sc.js';
 import { STATUS, currentInjury, isActive } from '../lib/injury.js';
-import { METRICS, BATTERIES, metricSeries, fmt } from '../lib/testing.js';
+import { METRICS, BATTERIES, metricOrder, metricSeries, fmt } from '../lib/testing.js';
 import Logo from '../components/Logo.jsx';
 import Icon from '../components/Icon.jsx';
 import { useRoster, where, StatusPill } from './Injury.jsx';
@@ -42,7 +42,7 @@ export default function WeeklySnapshot() {
   // testing this week vs the previous session of each test
   const series = tests ? metricSeries(tests.sessions, tests.results) : {};
   const wkSessions = tests ? tests.sessions.filter((s) => inWeek(s.tested_on, mon)) : [];
-  const testRows = Object.keys(METRICS).map((k) => { const pts = series[k] || []; const i = pts.findIndex((p) => inWeek(p.date, mon)); if (i < 0) return null;
+  const testRows = metricOrder(t.sport).map((k) => { const pts = series[k] || []; const i = pts.findIndex((p) => inWeek(p.date, mon)); if (i < 0) return null;
     const p = pts[i], q = pts[i - 1]; const ch = q ? ((p.median - q.median) / q.median) * (METRICS[k].lower ? -1 : 1) : null; return { k, p, q, ch }; }).filter(Boolean);
   const name = (pid) => (byId[pid] ? `${byId[pid].num ? '#' + byId[pid].num + ' ' : ''}${byId[pid].name}` : 'Removed player');
 

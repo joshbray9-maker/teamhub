@@ -39,6 +39,13 @@ const SPORT_BATTERIES = {
 };
 /** The test columns of a battery for a team's sport. */
 export const batteryCols = (battery, sport) => (SPORT_BATTERIES[sport] && SPORT_BATTERIES[sport][battery]) || BATTERIES[battery].metrics;
+/** Every test, the sport's full battery first in its order: how lists of tests are shown. */
+export const metricOrder = (sport) => [...new Set([...batteryCols('full', sport), ...Object.keys(METRICS)])];
+// the heading row of the coach's season sheet, column for column (bulk import's paste grid)
+const SPORT_SHEETS = {
+  basketball: ['Name', 'Date', 'Team', 'Bodyweight (pounds)', 'CMJ', 'RSImod', 'Abalakov jump', 'SJ', 'EUR', '5-0-5 drill', 'Cassivi shuttle', '20m sprint'],
+};
+export const seasonSheet = (sport) => SPORT_SHEETS[sport] || ['Name', 'Date', ...batteryCols('full', sport).map((k) => `${METRICS[k].label}${METRICS[k].unit ? ` (${METRICS[k].unit})` : ''}`)];
 export const FORCE = ['imtp_pf', 'rel_pf'], EXPRESSION = ['cmj_jh', 'sj_jh', 'rsimod'];
 export const GROUPS = {
   efficient: { label: 'Expression efficient', focus: 'Preserve qualities and keep getting stronger and more explosive.', color: 'green' },

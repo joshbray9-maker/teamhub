@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { useHub } from '../lib/hub.jsx';
 import { fmtDate, todayISO } from '../lib/util.js';
 import { STATUS, isActive, currentInjury, nextStep, inDays, daysFrom } from '../lib/injury.js';
-import { METRICS, GROUPS, num, fmt, gymGroup, quantile } from '../lib/testing.js';
+import { METRICS, metricOrder, GROUPS, num, fmt, gymGroup, quantile } from '../lib/testing.js';
 import Modal from '../components/Modal.jsx';
 import Icon from '../components/Icon.jsx';
 import Logo from '../components/Logo.jsx';
@@ -33,7 +33,7 @@ function PlayerReport({ p, photo, close }) {
   if (d) {
     const date = Object.fromEntries(d.sessions.map((s) => [s.id, s.tested_on]));
     const mine = d.results.filter((r) => r.player_id === p.id).map((r) => ({ date: date[r.session_id], v: r.values || {} })).filter((r) => r.date).sort((a, b) => a.date.localeCompare(b.date));
-    tests = Object.keys(METRICS).map((k) => {
+    tests = metricOrder(t.sport).map((k) => {
       const pts = mine.map((r) => ({ date: r.date, value: num(r.v[k]) })).filter((x) => x.value !== null);
       if (!pts.length) return null;
       const last = pts[pts.length - 1], best = pts.reduce((b, x) => (METRICS[k].lower ? (x.value < b.value ? x : b) : (x.value > b.value ? x : b)));
