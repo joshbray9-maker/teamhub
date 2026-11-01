@@ -119,7 +119,10 @@ and most imports offer a **Download blank template**:
 **Weekly readiness** (CMJ JH, RSImod, 10 m fly) or **Full team testing** (CMJ JH, RSImod, SJ JH,
 IMTP peak force, relative peak force N/kg, 10 m fly, Cooper). **New session** fills the Name
 column from the roster with empty test columns; type straight into the grid, paste a block of
-cells, or **Import** a file / pasted sheet (matched by name or number). **Coaches view**: a
+cells, or **Import** a file / pasted sheet (matched by name or number). **Bulk import** takes a
+whole season in one sheet (Date, Name and test columns, one row per player per day): each date
+becomes its own session (or merges into the one already on that date), with the battery picked
+from the tests that day and changeable before saving. **Coaches view**: a
 trend chart of the team's median % change per test since its first session (a faster 10 m fly
 counts as an improvement), then one box per test with the team median over time and the middle
 half of the team.

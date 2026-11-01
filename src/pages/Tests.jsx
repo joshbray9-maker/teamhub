@@ -1,14 +1,15 @@
 // S&C → Tests and S&C → Gym groups (admins + coaches only; RLS enforces it).
 // Tests: pick a testing session (date + battery) or start one; the roster fills the Name column
 // and the battery's test columns start empty. Type or paste straight into the grid, or import a
-// file / pasted sheet. The coaches view charts the team's median change across every metric
+// file / pasted sheet. Bulk import takes a whole season's sheet (a Date column plus names and
+// tests) and files each day into its own session. The coaches view charts the team's median change across every metric
 // (top) and each metric's history in its own box.
 // Gym groups: from each athlete's latest full testing against the targets the coach sets
 // (formula in lib/testing.js), with a manual move per player.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useHub } from '../lib/hub.jsx';
 import { fmtDate, todayISO } from '../lib/util.js';
-import { METRICS, BATTERIES, GROUPS, FORCE, EXPRESSION, num, fmt, ratio, gymGroup, metricSeries, changeSeries, metricField, rowsToTests, leaderboards } from '../lib/testing.js';
+import { METRICS, BATTERIES, GROUPS, FORCE, EXPRESSION, num, fmt, ratio, gymGroup, metricSeries, changeSeries, metricField, rowsToTests, rowsToTestDays, leaderboards } from '../lib/testing.js';
 import { parseTsv } from '../lib/imports.js';
 import { byNumber } from './Roster.jsx';
 import Modal from '../components/Modal.jsx';
@@ -50,6 +51,7 @@ export default function Tests() {
     if (!(await H.confirm('Delete testing session?', `${sessLabel(session)} and all its results are removed.`))) return;
     try { await H.api.deleteTestSession(session.id); setSid(null); await reload(); } catch (e) { H.toast(e.message); }
   };
+  const bulk = () => H.openDialog((c) => <BulkImport d={d} close={c} onDone={async () => { await reload(); setView('enter'); }} />);
   return <>
     <div className="ts-bar">
       <div className="seg" role="tablist">{[['enter', 'Enter results'], ['trends', 'Coaches view']].map(([k, l]) => <button key={k} role="tab" aria-selected={view === k} className={view === k ? 'on' : ''} onClick={() => setView(k)}>{l}</button>)}</div>
@@ -59,6 +61,7 @@ export default function Tests() {
           {[...d.sessions].reverse().map((s) => <option key={s.id} value={s.id}>{sessLabel(s)}</option>)}
         </select>
         <button className="btn primary" onClick={newSession}><Icon n="plus" /> New session</button>
+        <button className="btn" onClick={bulk}><Icon n="refresh" /> Bulk import</button>
         {session && <button className="btn ghost danger" onClick={del}><Icon n="trash" /> Delete session</button>}
       </>}
     </div>
@@ -150,6 +153,53 @@ function ImportTests({ roster, cols, close, onUse }) {
       <div className="small"><b>{res.file}</b>: {Object.keys(res.values).length} players{res.unmatched.length ? `; not on the roster (skipped): ${res.unmatched.join(', ')}` : ''}{res.other.length ? `; not in this battery (ignored): ${res.other.map((k) => METRICS[k].label).join(', ')}` : ''}.</div>
       <div className="tbl-wrap" style={{ maxHeight: 280, overflow: 'auto' }}><table className="tbl"><thead><tr><th>Name</th>{cols.map((k) => <th key={k} className="num">{METRICS[k].label}</th>)}</tr></thead>
         <tbody>{Object.entries(res.values).map(([pid, v]) => <tr key={pid}><td>{byId[pid].name}</td>{cols.map((k) => <td key={k} className="num tnum">{fmt(k, v[k])}</td>)}</tr>)}</tbody></table></div>
+    </>}
+  </Modal>;
+}
+
+/* Bulk import: every testing day in one sheet. Each date goes into the session on that date with
+   the same battery (made if missing); results merge per player, so tests already entered for a
+   player that day are kept unless the sheet has a new number for them. */
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+function BulkImport({ d, close, onDone }) {
+  const H = useHub();
+  const [res, setRes] = useState(null), [bat, setBat] = useState({}), [busy, setBusy] = useState(false);
+  const take = (rows, label) => {
+    const r = rowsToTestDays(rows, d.players);
+    if (!r.days.length) throw new Error(r.unmatched.length ? `None of the ${r.unmatched.length} names matched the roster.` : r.badDates.length ? `No dates could be read (e.g. "${r.badDates[0]}").` : 'No results found.');
+    setRes({ ...r, file: label }); setBat(Object.fromEntries(r.days.map((x) => [x.date, x.battery])));
+  };
+  const existing = (date, b) => d.sessions.find((s) => s.tested_on === date && s.battery === b);
+  const total = res ? res.days.reduce((n, x) => n + Object.keys(x.values).length, 0) : 0;
+  const save = async () => {
+    setBusy(true);
+    try {
+      for (const day of res.days) {
+        const b = bat[day.date]; let s = existing(day.date, b);
+        if (!s) s = await H.api.createTestSession(H.teamId, day.date, b);
+        const before = Object.fromEntries(d.results.filter((r) => r.session_id === s.id).map((r) => [r.player_id, r.values || {}]));
+        await H.api.saveTestResults(H.teamId, s.id, Object.entries(day.values).map(([pid, v]) => ({ player_id: pid, values: { ...(before[pid] || {}), ...v } })));
+      }
+      H.toast(`Imported ${plural(total, 'result')} over ${plural(res.days.length, 'testing day')}`); close(); await onDone();
+    } catch (e) { H.toast('Could not finish the import. ' + e.message + ' Days before the error were saved; running it again is safe.'); await onDone(); }
+    finally { setBusy(false); }
+  };
+  return <Modal title="Bulk import test results" wide onClose={close}
+    actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" disabled={!res || busy} onClick={save}>{busy ? 'Importing…' : res ? `Import ${res.days.length} day${res.days.length === 1 ? '' : 's'}` : 'Import'}</button></>}>
+    <p className="muted small" style={{ margin: 0 }}>Paste your whole sheet: one row per player per testing day, with a <b>Date</b> column, a <b>Name</b> (or <b>#</b>) column and test columns such as <b>CMJ JH</b>, <b>RSImod</b>, <b>SJ JH</b>, <b>IMTP</b>, <b>Rel PF</b>, <b>10m fly</b>, <b>Cooper</b>. A blank date repeats the date above. Each date becomes its own testing session (or adds to the one already there); you can check everything before it's saved.</p>
+    <ImportSource mode0="paste" onRows={take} isHeading={(h) => !!metricField(h)} template={[['Date', 'Name', ...BATTERIES.full.metrics.map((k) => `${METRICS[k].label}${METRICS[k].unit ? ` (${METRICS[k].unit})` : ''}`)]]} templateName="test-results-season-template.csv" />
+    {res && <>
+      <div className="small"><b>{res.file}</b>: {plural(total, 'result')} for {plural(new Set(res.days.flatMap((x) => Object.keys(x.values))).size, 'player')} over {plural(res.days.length, 'testing day')} ({Object.keys(METRICS).filter((k) => res.metrics.includes(k)).map((k) => METRICS[k].label).join(', ')}).
+        {res.unmatched.length > 0 && <> <b>Not on the roster (skipped):</b> {res.unmatched.join(', ')}.</>}
+        {res.badDates.length > 0 && <> <b>Dates not understood (rows skipped):</b> {res.badDates.join(', ')}.</>}</div>
+      <div className="tbl-wrap" style={{ maxHeight: 320, overflow: 'auto' }}><table className="tbl">
+        <thead><tr><th>Date</th><th>Battery</th><th className="num">Players</th><th>Tests</th><th>Goes into</th></tr></thead>
+        <tbody>{res.days.map((x) => { const used = [...new Set(Object.values(x.values).flatMap(Object.keys))]; const s = existing(x.date, bat[x.date]);
+          return <tr key={x.date}><td>{fmtDate(x.date, true)}</td>
+            <td><select className="select" value={bat[x.date]} onChange={(e) => setBat({ ...bat, [x.date]: e.target.value })} aria-label={`Battery for ${x.date}`}>{Object.entries(BATTERIES).map(([k, b]) => <option key={k} value={k}>{b.label}</option>)}</select></td>
+            <td className="num tnum">{Object.keys(x.values).length}</td><td className="small">{Object.keys(METRICS).filter((k) => used.includes(k)).map((k) => METRICS[k].label).join(', ')}</td>
+            <td className="small">{s ? 'Existing session (merged)' : <span className="muted">New session</span>}</td></tr>; })}</tbody>
+      </table></div>
     </>}
   </Modal>;
 }

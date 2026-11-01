@@ -104,13 +104,49 @@ export function rowsToTests(rows, roster) {
     const g = (f) => { const i = who.indexOf(f); return i >= 0 ? String(r[i] || '').trim() : ''; };
     let name = g('name') || [g('first'), g('last')].filter(Boolean).join(' '); const m = name.match(/^([^,]+),\s*([^,]+)$/); if (m) name = `${m[2]} ${m[1]}`;
     const n = g('num').replace(/^#/, '');
-    const p = (name && byName.get(nameKey(name))) || (n && byNum.get(n));
+    const p = (name && byName.get(nameKey(name))) || (n && byNum.get(n)) || (/^#?\d+$/.test(name) && byNum.get(name.replace(/^#/, '')));
     const v = {}; met.forEach((k, i) => { if (k) { const x = num(r[i]); if (x !== null) v[k] = x; } });
     if (!Object.keys(v).length) continue;
     if (!p) { unmatched.push(name || '#' + n); continue; }
     values[p.id] = { ...(values[p.id] || {}), ...v };
   }
   return { values, metrics: [...new Set(met.filter(Boolean))], unmatched };
+}
+
+/** A test date from a sheet cell: 2026-09-15, 9/15/2026, 15/9/2026 (day first when the first
+ *  number can't be a month), 9/15/26, or "Sep 15 2026". '' when it isn't a date. */
+export function testDate(v) {
+  const s = String(v || '').trim(); let m = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  if (!m) { m = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{2}|\d{4})\b/); if (m) { let [a, b] = [+m[1], +m[2]]; if (a > 12) [a, b] = [b, a]; m = [0, m[3].length === 2 ? '20' + m[3] : m[3], a, b]; } }
+  if (m) { const [y, mo, d] = [+m[1], +m[2], +m[3]]; return mo >= 1 && mo <= 12 && d >= 1 && d <= 31 ? `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}` : ''; }
+  if (!/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/i.test(s) || !/\d/.test(s)) return '';
+  const d = new Date(s); return isNaN(d) ? '' : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+const READINESS = new Set(BATTERIES.readiness.metrics);
+/** Bulk import: one sheet with a Date column, a Name (or #) column and test columns, one row per
+ *  player per testing day (a blank date repeats the one above). Rows are grouped by date; a day
+ *  with any test outside weekly readiness counts as full team testing.
+ *  → { days: [{date, battery, values: {player_id: {metric: number}}}], metrics, unmatched, badDates } */
+export function rowsToTestDays(rows, roster) {
+  const head = rows[0] || [];
+  const di = head.findIndex((h) => ['date', 'testdate', 'dateoftest', 'testedon', 'day', 'session', 'sessiondate'].includes(hkey(h)));
+  if (di < 0) throw new Error('No Date column found. The first row should be headings like Date, Name, CMJ JH, RSImod.');
+  const byDate = new Map(), badDates = []; let cur = '';
+  for (const r of rows.slice(1)) {
+    const raw = String(r[di] || '').trim();
+    if (raw) { cur = testDate(raw); if (!cur && !badDates.includes(raw)) badDates.push(raw); }
+    if (!cur || !r.some((x, i) => i !== di && String(x || '').trim())) continue;
+    if (!byDate.has(cur)) byDate.set(cur, []); byDate.get(cur).push(r);
+  }
+  const h2 = head.map((h, i) => (i === di ? '' : h)), unmatched = new Set(), metrics = new Set(); const days = [];
+  for (const [date, list] of [...byDate].sort((a, b) => a[0].localeCompare(b[0]))) {
+    const t = rowsToTests([h2, ...list], roster);
+    t.unmatched.forEach((n) => unmatched.add(n));
+    if (!Object.keys(t.values).length) continue;
+    const used = new Set(Object.values(t.values).flatMap(Object.keys)); used.forEach((k) => metrics.add(k));
+    days.push({ date, battery: [...used].some((k) => !READINESS.has(k)) ? 'full' : 'readiness', values: t.values });
+  }
+  return { days, metrics: [...metrics], unmatched: [...unmatched], badDates };
 }
 
 /* ---------- leaderboard ---------- */
