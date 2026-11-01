@@ -1,5 +1,5 @@
 // S&C: day themes + intensity calendar, periodization, and the Workload tab.
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
 import { useHub } from '../lib/hub.jsx';
 import { fmtDate, fromISO, todayISO, MON, DOW, gameView, ourGames, clone } from '../lib/util.js';
 import { INT, DEFAULT_LOADS, DEFAULT_BAND, RATED, mondayOf, addDays, scWeeks, scSeries, niceTicks } from '../lib/sc.js';
@@ -40,9 +40,11 @@ function ScCalendar() {
   };
   const tools = <div className="sc-tools"><Legend /><div className="head-actions">{weeks.length > 0 && <button className="btn sm" onClick={jump}>This week</button>}{H.isCoach && <button className="btn sm primary" onClick={addWeek}><Icon n="plus" /> Add week</button>}</div></div>;
   if (!weeks.length) return <>{tools}<div className="empty"><b>No S&C plan yet.</b>Add a week to start planning day themes.</div></>;
-  return <>{tools}<div className="sc-list">{weeks.map((mk) => {
+  // this week on top, then the weeks ahead in order, then earlier weeks, most recent first
+  const ahead = weeks.filter((mk) => mk >= thisMon), past = weeks.filter((mk) => mk < thisMon).reverse();
+  return <>{tools}<div className="sc-list">{[...ahead, ...past].map((mk) => {
     const w = (sc.weeks || {})[mk] || {};
-    return <section key={mk} className={`sc-week ${mk === thisMon ? 'now' : ''}`} id={'wk-' + mk}>
+    return <Fragment key={mk}>{mk === past[0] && <h3 className="sc-earlier">Earlier weeks</h3>}<section className={`sc-week ${mk === thisMon ? 'now' : ''}`} id={'wk-' + mk}>
       <div className="sc-whead"><b>Week of {MON[fromISO(mk).getMonth()]} {fromISO(mk).getDate()}</b>
         {w.phase && <span className="phase">{w.phase}</span>}{w.week && <span className="muted small">Season week {w.week}</span>}
         {H.isCoach && <button className="btn sm ghost" style={{ marginLeft: 'auto' }} onClick={() => H.openDialog((c) => <WeekForm mk={mk} close={c} />)}><Icon n="edit" /> Periodization</button>}</div>
@@ -55,7 +57,7 @@ function ScCalendar() {
           {gs.length > 0 && x.intensity !== 'game' && <span className="sc-flag">{gs.map((g) => { const v = gameView(g, H.team); return (v.home ? 'vs ' : '@ ') + v.opp; }).join(', ')}</span>}
           {x.pdfColor === 'cyan' && !x.intensity && <span className="sc-flag">Cyan in sheet</span>}
         </button>;
-      })}</div></section>;
+      })}</div></section></Fragment>;
   })}</div></>;
 }
 

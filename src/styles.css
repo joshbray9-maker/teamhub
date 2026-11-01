@@ -635,6 +635,7 @@ span.gd-row{cursor:default}
 .pg-bar .btn.primary{margin-left:auto}
 /* ---------- S&C tests + gym groups ---------- */
 .ts-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.sc-earlier{margin:18px 0 4px;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
 .bi-opts{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .bi-opts label{display:flex;gap:6px;align-items:center}
 .bi-opts .input,.bi-opts .select{width:auto}
