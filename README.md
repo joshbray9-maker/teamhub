@@ -97,8 +97,12 @@ limited / available, live from the Injury report), every active limitation, and 
 PDF button. A **Weekly snapshot** view (week picker, print / PDF) shows that week's games and results plus
 next week's, team events, the S&C week with its load versus the week before, who's out or
 limited with new and returning injuries, and any testing compared with the previous session.
-**Team readiness** is a placeholder: it will come from weekly testing metrics
-once those are set up, and its scoring rules haven't been decided, so nothing is estimated.
+**Weekly testing results** show the latest team testing session: each test's team median and
+change since the previous team session. **Team readiness** describes the same session in a few
+sentences: how many athletes are on track, moderately down (orange) or well down (red), using
+only Josh's confirmed rules (2026-10-22) on each athlete's latest CMJ jump height and RSImod
+against the mean of their previous 3 tests (`FLAG_RULES` in `src/lib/testing.js`). There is no
+overall readiness score.
 
 **Imports at a glance:** every tab that holds team data has an **Import** button with two
 ways in: **Upload a file** (CSV, or a PDF with selectable text and a row of column headings)

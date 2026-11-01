@@ -126,3 +126,26 @@ test('team averages leave out individual testing days and testing before the sta
   const results = [{ session_id: 'b', values: { cmj_jh: 60 } }, { session_id: 'd', values: { cmj_jh: 40 } }, { session_id: 'd', values: { cmj_jh: 44 } }];
   assert.deepEqual(metricSeries(teamSessions(sessions, '2026-01-01'), results).cmj_jh.map((p) => [p.date, p.median, p.n]), [['2026-09-08', 42, 2]]);
 });
+
+test("readiness uses Josh's confirmed CMJ and RSImod flag rules against each athlete's own baseline", async () => {
+  const { FLAG_RULES, readiness, weeklyTesting } = await import('../src/lib/testing.js');
+  const c = FLAG_RULES.cmj_jh, r = FLAG_RULES.rsimod;
+  assert.deepEqual([0, 3, -4.9, -5, -9.9, -10, -20].map(c), ['green', 'green', 'none', 'orange', 'orange', 'red', 'red']);
+  assert.deepEqual([2, -5, -5.1, -12.9, -13, -30].map(r), ['green', 'green', 'orange', 'orange', 'red', 'red']);
+  const S = [{ id: 'i', tested_on: '2025-10-06', individual: true }, { id: 'a', tested_on: '2026-09-08' }, { id: 'b', tested_on: '2026-09-23' }, { id: 'c', tested_on: '2026-10-14' }];
+  const R = [
+    { session_id: 'i', player_id: 'p1', values: { cmj_jh: 80 } },                         // before team_from: not in baseline
+    { session_id: 'a', player_id: 'p1', values: { cmj_jh: 40, rsimod: 0.50 } }, { session_id: 'b', player_id: 'p1', values: { cmj_jh: 40, rsimod: 0.50 } },
+    { session_id: 'c', player_id: 'p1', values: { cmj_jh: 35.9, rsimod: 0.49 } },           // CMJ -10.25% -> red
+    { session_id: 'a', player_id: 'p2', values: { cmj_jh: 50 } }, { session_id: 'c', player_id: 'p2', values: { cmj_jh: 47, rsimod: 0.45 } }, // CMJ -6% orange; RSImod first test
+    { session_id: 'b', player_id: 'p3', values: { rsimod: 0.40 } }, { session_id: 'c', player_id: 'p3', values: { cmj_jh: 30, rsimod: 0.41 } }, // RSImod +2.5% green; CMJ first
+    { session_id: 'c', player_id: 'p4', values: { cmj_jh: 33 } },                           // first test ever
+  ];
+  const wk = weeklyTesting(S, R, '2026-01-01', 'hockey');
+  assert.equal(wk.session.id, 'c'); assert.equal(wk.prev.id, 'b'); assert.equal(wk.n, 4);
+  const rows = Object.fromEntries(wk.rows.map((x) => [x.k, x]));
+  assert.equal(rows.cmj_jh.median, 34.45); assert.equal(rows.cmj_jh.prev, 40);
+  const got = Object.fromEntries(readiness(S, R, '2026-01-01', wk.session).map((x) => [x.player_id, [x.flag, Object.fromEntries(Object.entries(x.tests).map(([k, v]) => [k, v.flag]))]]));
+  assert.deepEqual(got, { p1: ['red', { cmj_jh: 'red', rsimod: 'green' }], p2: ['orange', { cmj_jh: 'orange', rsimod: null }], p3: ['green', { cmj_jh: null, rsimod: 'green' }], p4: [null, { cmj_jh: null }] });
+  assert.equal(weeklyTesting([], [], null, 'hockey'), null);
+});

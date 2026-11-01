@@ -106,6 +106,55 @@ export function changeSeries(series) {
   return out;
 }
 
+/* ---------- weekly testing and readiness (Coach's report) ---------- */
+/** The latest team testing session and the one before it, with each test's team median and the
+ *  change between them (positive = better; neutral tests have no direction).
+ *  → null, or { session, prev, n, rows: [{k, median, prev, change, n}] } */
+export function weeklyTesting(sessions, results, teamFrom, sport) {
+  const team = teamSessions(sessions, teamFrom).filter((s) => results.some((r) => r.session_id === s.id)).sort((a, b) => a.tested_on.localeCompare(b.tested_on));
+  const session = team[team.length - 1]; if (!session) return null;
+  const prev = team[team.length - 2] || null;
+  const vals = (s, k) => (s ? results.filter((r) => r.session_id === s.id).map((r) => num((r.values || {})[k])).filter((x) => x !== null).sort((a, b) => a - b) : []);
+  const rows = metricOrder(sport).map((k) => {
+    const v = vals(session, k); if (!v.length) return null;
+    const median = quantile(v, 0.5), pv = vals(prev, k), pm = pv.length ? quantile(pv, 0.5) : null;
+    const change = pm ? ((median - pm) / pm) * (METRICS[k].lower ? -1 : 1) : null;
+    return { k, median, prev: pm, change, n: v.length };
+  }).filter(Boolean);
+  return { session, prev, n: results.filter((r) => r.session_id === session.id).length, rows };
+}
+
+// Josh's confirmed flag rules (2026-10-22): % change of the latest result vs the athlete's own
+// baseline. CMJ jump height: any gain green, 0 to -5% no flag, -5% to -10% orange, -10% or worse
+// red. RSImod: a gain or a drop of 5% or less green, more than 5% up to under 13% orange, 13% or
+// more red. Baseline = mean of the athlete's previous BASELINE_TESTS results (testing that counts
+// from the team-averages start date, individual days included: it's the athlete's own data).
+export const FLAG_RULES = {
+  cmj_jh: (c) => (c >= 0 ? 'green' : c > -5 ? 'none' : c > -10 ? 'orange' : 'red'),
+  rsimod: (c) => (c >= -5 ? 'green' : c > -13 ? 'orange' : 'red'),
+};
+export const BASELINE_TESTS = 3;
+const WORST = { red: 3, orange: 2, none: 1, green: 0 };
+/** Readiness of the athletes in one testing session against their own baselines.
+ *  → [{ player_id, flag, tests: {cmj_jh: {value, base, change, flag}, rsimod: {...}} }]; flag is
+ *  the worst of the flagged tests, or null when the athlete has no earlier result to compare with. */
+export function readiness(sessions, results, teamFrom, session) {
+  const when = Object.fromEntries(sessions.filter((s) => !teamFrom || s.tested_on >= teamFrom).map((s) => [s.id, s.tested_on]));
+  return results.filter((r) => r.session_id === session.id).map((r) => {
+    const tests = {};
+    for (const [k, rule] of Object.entries(FLAG_RULES)) {
+      const value = num((r.values || {})[k]); if (value === null) continue;
+      const earlier = results.filter((x) => x.player_id === r.player_id && when[x.session_id] && when[x.session_id] < session.tested_on && num((x.values || {})[k]) !== null)
+        .sort((a, b) => when[b.session_id].localeCompare(when[a.session_id])).slice(0, BASELINE_TESTS).map((x) => num(x.values[k]));
+      if (!earlier.length) { tests[k] = { value, base: null, change: null, flag: null }; continue; }
+      const base = earlier.reduce((a, b) => a + b, 0) / earlier.length, change = ((value - base) / base) * 100;
+      tests[k] = { value, base, change, flag: rule(change) };
+    }
+    const flags = Object.values(tests).map((x) => x.flag).filter(Boolean);
+    return { player_id: r.player_id, tests, flag: flags.length ? flags.sort((a, b) => WORST[b] - WORST[a])[0] : null };
+  }).filter((x) => Object.keys(x.tests).length);
+}
+
 /* ---------- import ---------- */
 const hkey = (h) => String(h || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]/g, '');
 const SYN = [ // checked in order; a heading matches when it equals or starts with an entry
