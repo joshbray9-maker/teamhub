@@ -150,6 +150,14 @@ lands in a slot once its **gym time** is set in S&C (click the day); anything wi
 in **Time not set**, anything outside the slots in **Other times**. The month calendar for the
 whole organization is still the organization's own page.
 
+**All teams · S&C (only the admin of every organization, i.e. Josh):** in the team switcher under
+**Master schedules**. Every team's S&C sessions, games and events (no practices) on one sheet laid
+out like the S&C spreadsheet: a block per week (Date (Monday), Team, Periodization, Week, Monday
+to Sunday), teams in the sheet's order (Universel, Bishop's, BCS U16 / U18 / varsity / prep),
+cells coloured by the day's intensity, games in yellow, events in navy. Current week first, then
+the weeks ahead; earlier weeks on request. Read-only (`src/pages/AllTeamsSC.jsx`,
+`src/lib/master.js`). The "only you" check is UI only: the data is still limited by RLS.
+
 **BCS gym rotation** (`ORG_ROTATION` in `src/lib/slots.js`): Monday basketball 3:30, U18 4:45,
 U16 6:00; Tuesday and Wednesday U16 3:30, U18 4:45, basketball 6:00. A gym day without its own
 time uses it, and in a week the team has an S&C plan, a rotation day with nothing planned still

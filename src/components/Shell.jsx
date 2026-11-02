@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { sheetOrder } from '../lib/master.js';
 import { useHub } from '../lib/hub.jsx';
 import { MENUS, SPORTS, LEVELS, ORG_PAL } from '../lib/util.js';
 import Icon from './Icon.jsx';
@@ -53,7 +54,7 @@ function Side({ onNavigate }) {
     const f = (e) => { if (wrap.current && !wrap.current.contains(e.target)) setOpen(false); };
     document.addEventListener('click', f); return () => document.removeEventListener('click', f);
   }, [open]);
-  const t = H.team, o = H.viewOrg, ots = o ? H.orgTeams(o.id) : [];
+  const t = H.team, o = H.viewOrg, ots = o ? (o.all ? sheetOrder(H.orgTeams('all')) : H.orgTeams(o.id)) : [];
   const orgsWithTeams = H.orgs.map((x) => ({ ...x, n: H.orgTeams(x.id).length })).filter((x) => x.n);
   const adminOrgs = H.orgs.filter((x) => x.role === 'admin');
   const pick = (fn) => () => { setOpen(false); fn(); onNavigate(); };
@@ -71,6 +72,8 @@ function Side({ onNavigate }) {
         {H.teamList.map((x) => <button key={x.id} className="pop-item" role="menuitem" onClick={pick(() => H.selectTeam(x.id))}>
           <Logo t={x} /><span className="ts-txt">{x.name}<span className="ts-meta">{SPORTS[x.sport] || ''} · {LEVELS[x.level] || ''}</span></span>{x.id === H.teamId && !o && <Icon n="check" />}</button>)}
         {orgsWithTeams.length > 0 && <><div className="pop-sep" /><div className="pop-label">Master schedules</div>
+          {H.isOwner && <button className="pop-item" role="menuitem" onClick={pick(() => H.openOrg('all'))}>
+            <span className="logo"><Icon n="dumbbell" /></span><span className="ts-txt">All teams · S&C<span className="ts-meta">Only you · {H.teams.length} teams</span></span>{o && o.all && <Icon n="check" />}</button>}
           {orgsWithTeams.map((x) => <button key={x.id} className="pop-item" role="menuitem" onClick={pick(() => H.openOrg(x.id))}>
             <Logo t={{ name: x.name, logo: x.logo_url }} /><span className="ts-txt">{x.name}<span className="ts-meta">{x.n} team{x.n === 1 ? '' : 's'}</span></span>{o && o.id === x.id && <Icon n="check" />}</button>)}</>}
         {(H.isCoach || adminOrgs.length > 0) && <><div className="pop-sep" />
@@ -84,7 +87,7 @@ function Side({ onNavigate }) {
     </div>
     {o ? <>
       <div className="side-label">Schedule</div>
-      <ul className="menu"><li className="on"><a href="#" onClick={(e) => e.preventDefault()}><Icon n="cal" /><span>Master schedule</span></a></li></ul>
+      <ul className="menu"><li className="on"><a href="#" onClick={(e) => e.preventDefault()}><Icon n={o.all ? 'dumbbell' : 'cal'} /><span>{o.all ? 'All teams · S&C' : 'Master schedule'}</span></a></li></ul>
       <div className="side-label">Teams</div>
       <ul className="menu">{ots.map((x, i) => <li key={x.id}><a href="#" onClick={(e) => { e.preventDefault(); H.selectTeam(x.id); onNavigate(); }}><i className="tdot" style={{ background: ORG_PAL[i % ORG_PAL.length] }} /><span>{x.name}</span></a></li>)}</ul>
     </> : <>

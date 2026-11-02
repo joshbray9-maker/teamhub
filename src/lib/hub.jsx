@@ -41,13 +41,18 @@ export function HubProvider({ api, user, children }) {
   const role = roleOf(team);
   const isCoach = role === 'admin' || role === 'coach';
   const isAdmin = role === 'admin';
-  const viewOrg = orgId ? orgs.find((o) => o.id === orgId) || null : null;
 
   const teamList = useMemo(() => {
     const order = prefs.teamOrder || [];
     return [...teams].sort((a, b) => { const ia = order.indexOf(a.id), ib = order.indexOf(b.id); return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib) || (a.sort_order - b.sort_order); });
   }, [teams, prefs.teamOrder]);
-  const orgTeams = useCallback((oid) => teamList.filter((t) => t.org_id === oid), [teamList]);
+  // 'all' = every team, grouped by organization (the all-teams S&C master schedule)
+  const orgTeams = useCallback((oid) => (oid === 'all' ? orgs.flatMap((o) => teamList.filter((t) => t.org_id === o.id)) : teamList.filter((t) => t.org_id === oid)), [teamList, orgs]);
+  // Josh's all-teams S&C view: only for someone who is admin of every organization with teams.
+  // UI only; what it shows is still limited by RLS to the teams this user can read.
+  const withTeams = orgs.filter((o) => teams.some((t) => t.org_id === o.id));
+  const isOwner = withTeams.length > 0 && withTeams.every((o) => o.role === 'admin');
+  const viewOrg = orgId === 'all' ? (isOwner ? { id: 'all', name: 'All teams · S&C', all: true, role: 'admin' } : null) : orgId ? orgs.find((o) => o.id === orgId) || null : null;
 
   // pick a team once loaded
   useEffect(() => { if (hub && !team) { const first = teamList[0]; setTeamId(first ? first.id : null); } }, [hub, team, teamList]);
@@ -121,7 +126,7 @@ export function HubProvider({ api, user, children }) {
 
   const value = {
     api, user, hub, orgs, teams, teamList, orgTeams, prefs, savePrefs, reloadHub, setHub,
-    team, teamId, role, isCoach, isAdmin, orgOf, roleOf, selectTeam, menuAvailable,
+    team, teamId, role, isCoach, isAdmin, isOwner, orgOf, roleOf, selectTeam, menuAvailable,
     viewOrg, openOrg: (id) => setOrgId(id), closeOrg: () => setOrgId(null), orgData, reloadOrg,
     page, go: (p) => { setPage(p); window.scrollTo(0, 0); },
     tdata, setTdata, reloadTeam, save, pending,

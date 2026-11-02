@@ -18,6 +18,7 @@ import MyProfile from './pages/MyProfile.jsx';
 import InjuredCard from './components/InjuredCard.jsx';
 import OrgSchedule from './pages/OrgSchedule.jsx';
 import MasterWeek from './pages/MasterWeek.jsx';
+import AllTeamsSC from './pages/AllTeamsSC.jsx';
 import PageHead from './components/PageHead.jsx';
 import TeamForm from './components/TeamForm.jsx';
 import Icon from './components/Icon.jsx';
@@ -34,6 +35,7 @@ export default function App() {
 function Page() {
   const H = useHub();
   if (!H.hub) return <div className="loading">Loading TeamHub…</div>;
+  if (H.viewOrg && H.viewOrg.all) return <AllTeamsSC />;
   if (H.viewOrg) {
     const ts = H.orgTeams(H.viewOrg.id);
     if (ts.length) return <OrgSchedule key={H.viewOrg.id} orgKey={H.viewOrg.id} orgName={H.viewOrg.name} teams={ts} data={H.orgData} openDialog={H.openDialog}

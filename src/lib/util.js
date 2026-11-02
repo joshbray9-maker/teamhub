@@ -78,6 +78,8 @@ function toHex(c) { return '#' + c.map((v) => Math.round(Math.max(0, Math.min(25
 function lum(c) { const a = c.map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2]; }
 function contrast(a, b) { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
 function mix(a, b, t) { return a.map((v, i) => v + (b[i] - v) * t); }
+/** Readable text colour (white or near-black) on a background colour. */
+export function onColor(color) { const c = rgb(color); return contrast(c, [255, 255, 255]) >= contrast(c, [17, 19, 23]) ? '#ffffff' : '#111317'; }
 export function applyTheme(color) {
   const c = rgb(color), white = [255, 255, 255], ink = [17, 19, 23];
   const onAccent = contrast(c, white) >= contrast(c, ink) ? '#ffffff' : '#111317';

@@ -946,3 +946,28 @@ span.gd-row{cursor:default}
 .mw-edit:hover .mw-add,.mw-add:focus-visible{opacity:1}
 @media (hover:none){.mw-add{opacity:.6}}
 @media print{.mw-grid{min-width:0;font-size:10px}.mw-item{break-inside:avoid}}
+
+/* All teams · S&C (Josh's sheet layout) */
+.ms-sheet{width:100%;min-width:1180px;border-collapse:collapse;table-layout:fixed;font-size:12.5px}
+.ms-sheet th,.ms-sheet td{border:1px solid var(--line);padding:4px 5px;text-align:center;vertical-align:middle}
+.ms-head th{background:var(--surface-2);font-weight:800;font-size:12px;letter-spacing:.02em;padding:7px 4px}
+.ms-head th:nth-child(1){width:104px}.ms-head th:nth-child(2){width:150px}.ms-head th:nth-child(3){width:118px}.ms-head th:nth-child(4){width:52px}
+.ms-date{font-size:17px;font-weight:600;background:var(--surface)}
+.ms-date .pill{display:flex;width:max-content;margin:6px auto 0}
+.ms-team{font-weight:700;font-size:13px;line-height:1.2}
+.ms-meta{color:var(--fg);font-size:12.5px}
+.ms-wk{font-weight:700}
+.ms-first>*{border-top:3px solid var(--fg)}
+.ms-sheet td.ms-day{padding:0;height:34px}
+.ms-day.today{box-shadow:inset 0 0 0 2px var(--accent)}
+.ms-it{padding:5px 4px;font-weight:700;line-height:1.2;overflow-wrap:anywhere}
+.ms-it+.ms-it{border-top:1px solid var(--line)}
+.ms-it.i-heavy,.ms-it.i-moderate,.ms-day.i-heavy,.ms-day.i-moderate{background:var(--ic);color:#fff}
+.ms-it.i-light,.ms-day.i-light{background:color-mix(in oklab, var(--ic) 55%, white);color:#0b2a17}
+.ms-it.i-game,.ms-day.i-game{background:#f4e04d;color:#1c1600}
+.ms-it.i-off{color:var(--muted);font-weight:600}
+.ms-it.i-none{font-weight:600}
+.ms-it.ev,.ms-day.ev{background:#1b2a4a;color:#fff}
+.ms-time{font-weight:500;opacity:.85}
+.ms-sep td{background:var(--surface-2);font-weight:700;text-align:left;padding:8px}
+@media print{.ms-sheet{min-width:0;font-size:9px}.ms-it,.ms-day{-webkit-print-color-adjust:exact;print-color-adjust:exact}.ms-team{-webkit-print-color-adjust:exact;print-color-adjust:exact}}

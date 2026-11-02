@@ -78,12 +78,13 @@ export const api = {
   },
   async loadOrgData(teamIds) {
     if (!teamIds.length) return {};
-    const [g, e, s] = await Promise.all([supabase.from('games').select('*').in('team_id', teamIds), supabase.from('events').select('*').in('team_id', teamIds),
-      supabase.from('sc_days').select('*').in('team_id', teamIds)]);
-    const out = Object.fromEntries(teamIds.map((id) => [id, { games: [], events: [], sc: {} }]));
+    const [g, e, s, w] = await Promise.all([supabase.from('games').select('*').in('team_id', teamIds), supabase.from('events').select('*').in('team_id', teamIds),
+      supabase.from('sc_days').select('*').in('team_id', teamIds), supabase.from('sc_weeks').select('*').in('team_id', teamIds)]);
+    const out = Object.fromEntries(teamIds.map((id) => [id, { games: [], events: [], sc: {}, weeks: {} }]));
     ok(g).forEach((x) => out[x.team_id].games.push(gameIn(x)));
     ok(e).forEach((x) => out[x.team_id].events.push(x));
     ok(s).forEach((x) => { out[x.team_id].sc[x.date] = scDayIn(x); });
+    ok(w).forEach((x) => { out[x.team_id].weeks[x.week_start] = { phase: x.phase, week: x.season_week }; });
     return out;
   },
 
