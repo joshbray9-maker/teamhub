@@ -150,6 +150,15 @@ lands in a slot once its **gym time** is set in S&C (click the day); anything wi
 in **Time not set**, anything outside the slots in **Other times**. The month calendar for the
 whole organization is still the organization's own page.
 
+**BCS gym rotation** (`ORG_ROTATION` in `src/lib/slots.js`): Monday basketball 3:30, U18 4:45,
+U16 6:00; Tuesday and Wednesday U16 3:30, U18 4:45, basketball 6:00. A gym day without its own
+time uses it, and in a week the team has an S&C plan, a rotation day with nothing planned still
+shows as **Gym** (a day off or game day removes it). **Coaches can change it by hand:** click an
+item to move it (date / time), rename or remove it, or click the **+** in an empty spot to add
+gym, a practice or an event there. Gym changes save to that team's S&C calendar (removing marks
+the day off so the rotation doesn't put it back); practices and events save to the team's
+schedule. Games stay on each team's Home page.
+
 **Athlete reports (admins and coaches only):** every rostered athlete with their testing days;
 open one for their full history over a time frame (this season, last 3 / 12 months, all testing,
 or custom dates): a summary per test (first, latest, change, best, latest team median), a chart

@@ -10,6 +10,7 @@ const teamOut = (t) => ({ org_id: t.org_id, name: t.name, school: t.school || ''
 const gameIn = (g) => ({ id: g.id, date: g.date, time: g.time, home: g.home, away: g.away, hs: g.home_score, as: g.away_score, venue: g.venue, round: g.round, source: g.source, ext_id: g.ext_id, sync_flag: g.sync_flag, sync_changes: g.sync_changes });
 const gameOut = (teamId, g) => ({ team_id: teamId, date: g.date, time: g.time || '', home: g.home, away: g.away, home_score: g.hs ?? null, away_score: g.as ?? null, venue: g.venue || '', round: g.round || '', source: g.source || 'manual', ext_id: g.ext_id || null });
 const eventOut = (teamId, e) => ({ team_id: teamId, date: e.date, time: e.time || '', title: e.title, kind: e.kind === 'practice' ? 'practice' : 'event', location: e.location || '', ext_id: e.ext_id || null });
+const scDayIn = (d) => ({ theme: d.theme, intensity: d.intensity, ...(d.time ? { time: d.time } : {}), ...(d.note ? { note: d.note } : {}), ...(d.pdf_color ? { pdfColor: d.pdf_color } : {}) });
 const notifIn = (n) => ({ id: n.id, text: n.text, read: n.read, ts: Date.parse(n.created_at) });
 const chatIn = (m) => ({ id: m.id, channel: m.channel || 'team', user_id: m.user_id, author: m.author, body: m.body, ts: Date.parse(m.created_at) });
 
@@ -66,7 +67,7 @@ export const api = {
       notifs: ok(notifs).map(notifIn),
       sc: {
         weeks: Object.fromEntries(ok(weeks).map((w) => [w.week_start, { phase: w.phase, week: w.season_week }])),
-        days: Object.fromEntries(ok(days).map((d) => [d.date, { theme: d.theme, intensity: d.intensity, ...(d.time ? { time: d.time } : {}), ...(d.note ? { note: d.note } : {}), ...(d.pdf_color ? { pdfColor: d.pdf_color } : {}) }])),
+        days: Object.fromEntries(ok(days).map((d) => [d.date, scDayIn(d)])),
         loads: set.sc_loads, band: set.sc_band,
       },
       coach: canEdit ? (c ? { notes: c.notes, todos: c.todos } : { notes: '', todos: [] }) : null,
@@ -78,11 +79,11 @@ export const api = {
   async loadOrgData(teamIds) {
     if (!teamIds.length) return {};
     const [g, e, s] = await Promise.all([supabase.from('games').select('*').in('team_id', teamIds), supabase.from('events').select('*').in('team_id', teamIds),
-      supabase.from('sc_days').select('team_id,date,theme,intensity,time').in('team_id', teamIds)]);
+      supabase.from('sc_days').select('*').in('team_id', teamIds)]);
     const out = Object.fromEntries(teamIds.map((id) => [id, { games: [], events: [], sc: {} }]));
     ok(g).forEach((x) => out[x.team_id].games.push(gameIn(x)));
     ok(e).forEach((x) => out[x.team_id].events.push(x));
-    ok(s).forEach((x) => { out[x.team_id].sc[x.date] = { theme: x.theme, intensity: x.intensity, time: x.time || '' }; });
+    ok(s).forEach((x) => { out[x.team_id].sc[x.date] = scDayIn(x); });
     return out;
   },
 

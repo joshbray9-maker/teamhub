@@ -36,3 +36,30 @@ test('weekItems + weekGrid: games, practices and gym days of every team in the w
   assert.equal(g.rows[4].cells[4][0].title, 'Regen'); // Fri, no gym time set
   assert.deepEqual(weekGrid([], orgSlots({ slug: 'bcs' }), '2026-11-02').rows.map((r) => r.key), [0, 1, 2]);
 });
+
+test('BCS rotation: Mon basketball/U18/U16, Tue & Wed U16/U18/basketball, nothing Thu', async () => {
+  const { rotationTime, teamKey } = await import('../src/lib/slots.js');
+  const bcs = { slug: 'bcs', name: 'BCS' }, bb = { name: 'BCS Varsity Basketball', sport: 'basketball' }, u18 = { name: 'BCS U18 Hockey', sport: 'hockey' }, u16 = { name: 'BCS U16 Hockey', sport: 'hockey' };
+  assert.deepEqual([bb, u18, u16].map(teamKey), ['basketball', 'u18', 'u16']);
+  assert.deepEqual([bb, u18, u16].map((t) => rotationTime(bcs, t, '2026-11-02')), ['15:30', '16:45', '18:00']); // Monday
+  for (const d of ['2026-11-03', '2026-11-04']) assert.deepEqual([u16, u18, bb].map((t) => rotationTime(bcs, t, d)), ['15:30', '16:45', '18:00']);
+  assert.equal(rotationTime(bcs, u16, '2026-11-05'), '');
+  assert.equal(rotationTime({ slug: 'universel', name: 'Universel' }, u16, '2026-11-02'), '');
+});
+
+test('weekItems with the rotation: untimed gym days take it, empty rotation days show only in planned weeks', async () => {
+  const { weekItems, gymWrites } = await import('../src/lib/slots.js');
+  const bcs = { slug: 'bcs', name: 'BCS' }, teams = [{ id: 'h', name: 'BCS U18 Hockey', sport: 'hockey' }];
+  const gym = (sc, mk = '2026-11-02') => weekItems(teams, { h: { sc } }, mk, () => '#000', bcs).filter((x) => x.kind === 'gym').map((x) => `${x.date} ${x.time} ${x.title}`);
+  assert.deepEqual(gym({ '2026-11-02': { theme: 'Brick', intensity: 'heavy' }, '2026-11-04': { theme: 'Lift', intensity: 'light', time: '18:00' }, '2026-11-03': { theme: '', intensity: 'game' } }),
+    ['2026-11-02 16:45 Brick', '2026-11-04 18:00 Lift']); // Tue is a game day; Wed keeps its own time
+  assert.deepEqual(gym({ '2026-11-06': { theme: 'Regen', intensity: 'light' } }), ['2026-11-02 16:45 Gym', '2026-11-03 16:45 Gym', '2026-11-04 16:45 Gym', '2026-11-06  Regen']);
+  assert.deepEqual(gym({}), []); // no S&C plan that week: no rotation blocks
+  // hand edits
+  const [mon] = weekItems(teams, { h: { sc: { '2026-11-06': { theme: 'Regen', intensity: 'light' } } } }, '2026-11-02', () => '#000', bcs);
+  assert.deepEqual(gymWrites(mon, null, bcs, teams[0]), [['2026-11-02', { intensity: 'off', time: '' }]]);
+  assert.deepEqual(gymWrites(mon, { date: '2026-11-02', time: '15:30', theme: 'Brick' }, bcs, teams[0]), [['2026-11-02', { theme: 'Brick', intensity: '', time: '15:30' }]]);
+  assert.deepEqual(gymWrites(mon, { date: '2026-11-05', time: '16:45', theme: '' }, bcs, teams[0]), [['2026-11-05', { theme: '', intensity: '', time: '16:45' }], ['2026-11-02', { intensity: 'off', time: '' }]]);
+  const thu = { date: '2026-11-05', sc: { theme: 'Gym', intensity: '', time: '16:45' } };
+  assert.deepEqual(gymWrites(thu, null, bcs, teams[0]), [['2026-11-05', null]]);
+});

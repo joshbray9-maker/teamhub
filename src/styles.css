@@ -929,7 +929,7 @@ span.gd-row{cursor:default}
 .mw-grid tr.mw-extra .mw-slot{color:var(--muted);font-weight:600}
 .mw-grid .today{background:color-mix(in oklab, var(--accent) 7%, transparent)}
 .mw-grid td{height:52px}
-.mw-item{display:flex;flex-direction:column;gap:1px;border-left:3px solid;border-radius:6px;background:var(--surface-2);padding:4px 6px;margin-bottom:4px;font-size:12px;line-height:1.25;min-width:0}
+.mw-item{width:100%;text-align:left;cursor:pointer;color:var(--fg);border-top:0;border-right:0;border-bottom:0;font:inherit;display:flex;flex-direction:column;gap:1px;border-left:3px solid;border-radius:6px;background:var(--surface-2);padding:4px 6px;margin-bottom:4px;font-size:12px;line-height:1.25;min-width:0}
 .mw-item.me{box-shadow:inset 0 0 0 1px color-mix(in oklab, var(--accent) 45%, transparent)}
 .mw-team{font-weight:700;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mw-title{display:flex;gap:5px;align-items:baseline;overflow-wrap:anywhere}
@@ -939,4 +939,10 @@ span.gd-row{cursor:default}
 .mw-kind.gym{background:var(--warn)}
 .mw-kind.event{background:var(--muted)}
 .mw-foot{margin:10px 0 0}
+.mw-item:hover{outline:1px solid color-mix(in oklab, var(--accent) 35%, transparent)}
+.mw-edit{cursor:copy}
+.mw-add{display:flex;align-items:center;justify-content:center;width:100%;height:20px;border:1px dashed var(--line);border-radius:6px;background:none;color:var(--muted);cursor:pointer;opacity:0;padding:0}
+.mw-add svg{width:12px;height:12px}
+.mw-edit:hover .mw-add,.mw-add:focus-visible{opacity:1}
+@media (hover:none){.mw-add{opacity:.6}}
 @media print{.mw-grid{min-width:0;font-size:10px}.mw-item{break-inside:avoid}}
