@@ -63,7 +63,7 @@ export default function MasterWeek() {
 }
 
 /* Time: the slots, or another time. */
-function TimePick({ time, setTime, slots }) {
+export function TimePick({ time, setTime, slots }) {
   const [custom, setCustom] = useState(!!time && !(slots || []).some(([a]) => a === time));
   return <div className="sc-time">
     <select className="select" value={custom ? 'custom' : time} onChange={(e) => { const v = e.target.value; setCustom(v === 'custom'); if (v !== 'custom') setTime(v); }} aria-label="Time slot">

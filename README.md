@@ -155,8 +155,11 @@ whole organization is still the organization's own page.
 out like the S&C spreadsheet: a block per week (Date (Monday), Team, Periodization, Week, Monday
 to Sunday), teams in the sheet's order (Universel, Bishop's, BCS U16 / U18 / varsity / prep),
 cells coloured by the day's intensity, games in yellow, events in navy. Current week first, then
-the weeks ahead; earlier weeks on request. Read-only (`src/pages/AllTeamsSC.jsx`,
-`src/lib/master.js`). The "only you" check is UI only: the data is still limited by RLS.
+the weeks ahead; earlier weeks on request. **Fully editable:** click any day for that team's
+S&C session (theme, intensity, gym time, notes), its games (opponent, home/away, date, time,
+venue) and events, to change, add, move or remove them; click Periodization / Week to change the
+week for one team or all of them. Everything saves to each team's own S&C tab and schedule
+(`src/pages/AllTeamsSC.jsx`, `src/lib/master.js`). The "only you" check is UI only: the data is still limited by RLS.
 
 **BCS gym rotation** (`ORG_ROTATION` in `src/lib/slots.js`): Monday basketball 3:30, U18 4:45,
 U16 6:00; Tuesday and Wednesday U16 3:30, U18 4:45, basketball 6:00. A gym day without its own
