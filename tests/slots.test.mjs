@@ -57,9 +57,28 @@ test('weekItems with the rotation: untimed gym days take it, empty rotation days
   assert.deepEqual(gym({}), []); // no S&C plan that week: no rotation blocks
   // hand edits
   const [mon] = weekItems(teams, { h: { sc: { '2026-11-06': { theme: 'Regen', intensity: 'light' } } } }, '2026-11-02', () => '#000', bcs);
-  assert.deepEqual(gymWrites(mon, null, bcs, teams[0]), [['2026-11-02', { intensity: 'off', time: '' }]]);
-  assert.deepEqual(gymWrites(mon, { date: '2026-11-02', time: '15:30', theme: 'Brick' }, bcs, teams[0]), [['2026-11-02', { theme: 'Brick', intensity: '', time: '15:30' }]]);
-  assert.deepEqual(gymWrites(mon, { date: '2026-11-05', time: '16:45', theme: '' }, bcs, teams[0]), [['2026-11-05', { theme: '', intensity: '', time: '16:45' }], ['2026-11-02', { intensity: 'off', time: '' }]]);
+  assert.deepEqual(gymWrites(mon, null, bcs, teams[0]), [['2026-11-02', { intensity: 'off', time: '', end: '' }]]);
+  assert.deepEqual(gymWrites(mon, { date: '2026-11-02', time: '15:30', theme: 'Brick' }, bcs, teams[0]), [['2026-11-02', { theme: 'Brick', intensity: '', time: '15:30', end: '' }]]);
+  assert.deepEqual(gymWrites(mon, { date: '2026-11-05', time: '16:45', theme: '' }, bcs, teams[0]), [['2026-11-05', { theme: '', intensity: '', time: '16:45', end: '' }], ['2026-11-02', { intensity: 'off', time: '', end: '' }]]);
   const thu = { date: '2026-11-05', sc: { theme: 'Gym', intensity: '', time: '16:45' } };
   assert.deepEqual(gymWrites(thu, null, bcs, teams[0]), [['2026-11-05', null]]);
+});
+
+test('any interval: slotsOf spans every slot it overlaps, gymWrites keeps the end time', async () => {
+  const { slotsOf, gymWrites, fmtSpan, orgSlots, weekItems, weekGrid } = await import('../src/lib/slots.js');
+  const bcs = orgSlots({ slug: 'bcs' });
+  assert.deepEqual(slotsOf('15:30', '', bcs), [0]);
+  assert.deepEqual(slotsOf('15:30', '17:15', bcs), [0, 1]);
+  assert.deepEqual(slotsOf('16:00', '19:00', bcs), [0, 1, 2]);
+  assert.deepEqual(slotsOf('16:35', '16:40', bcs), ['other']);
+  assert.deepEqual(slotsOf('20:00', '21:00', bcs), ['other']);
+  assert.deepEqual(slotsOf('', '', bcs), ['none']);
+  assert.equal(fmtSpan('15:30', '17:15'), '3:30 pm – 5:15 pm'); assert.equal(fmtSpan('15:30', ''), '3:30 pm');
+  const teams = [{ id: 'h', name: 'BCS U16 Hockey', sport: 'hockey' }];
+  const items = weekItems(teams, { h: { sc: { '2026-11-05': { theme: 'Long lift', intensity: 'heavy', time: '15:30', end: '17:15' } }, events: [{ id: 1, date: '2026-11-06', time: '16:00', end_time: '18:30', title: 'Meet' }] } }, '2026-11-02', () => '#000', { slug: 'bcs' });
+  const g = weekGrid(items, bcs, '2026-11-02');
+  assert.deepEqual(g.rows.map((r) => r.cells[3].map((x) => x.title)), [['Long lift'], ['Long lift'], []]);
+  assert.deepEqual(g.rows.map((r) => r.cells[4].map((x) => x.title)), [['Meet'], ['Meet'], ['Meet']]);
+  const it = items.find((x) => x.title === 'Long lift');
+  assert.deepEqual(gymWrites(it, { date: it.date, time: '15:00', end: '16:15', theme: 'Long lift' }, { slug: 'bcs' }, teams[0]), [['2026-11-05', { theme: 'Long lift', intensity: 'heavy', time: '15:00', end: '16:15' }]]);
 });

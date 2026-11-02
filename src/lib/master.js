@@ -19,11 +19,11 @@ export function sheetOrder(teams) {
 export function dayCell(team, d, date, items) {
   const x = (d.sc || {})[date], out = [], day = items.filter((i) => i.date === date && i.kind !== 'practice');
   if (x && x.intensity === 'off') out.push({ kind: 'off', text: 'OFF', cls: 'i-off' });
-  if (x && x.intensity === 'game' && x.theme && !day.some((i) => i.kind === 'game')) out.push({ kind: 'sc', text: x.theme, cls: 'i-game', time: x.time || '' });
+  if (x && x.intensity === 'game' && x.theme && !day.some((i) => i.kind === 'game')) out.push({ kind: 'sc', text: x.theme, cls: 'i-game', time: x.time || '', end: (x.time && x.end) || '' });
   day.forEach((i) => {
-    if (i.kind === 'gym') out.push({ kind: 'sc', text: (i.sc && i.sc.theme) || (INT.find((k) => k.k === i.intensity && k.k) || {}).label || 'Gym', cls: 'i-' + (i.intensity || 'none'), time: i.time || '' });
+    if (i.kind === 'gym') out.push({ kind: 'sc', text: (i.sc && i.sc.theme) || (INT.find((k) => k.k === i.intensity && k.k) || {}).label || 'Gym', cls: 'i-' + (i.intensity || 'none'), time: i.time || '', end: i.end || '' });
     else if (i.kind === 'game') out.push({ kind: 'game', text: i.title.replace(/^@ /, 'Away vs. '), cls: 'i-game', time: i.time || '' });
-    else out.push({ kind: 'event', text: i.title, cls: 'ev', time: i.time || '' });
+    else out.push({ kind: 'event', text: i.title, cls: 'ev', time: i.time || '', end: i.end || '' });
   });
   return out;
 }

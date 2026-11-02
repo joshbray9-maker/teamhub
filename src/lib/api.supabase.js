@@ -9,8 +9,10 @@ const teamIn = (t) => ({ id: t.id, org_id: t.org_id, name: t.name, school: t.sch
 const teamOut = (t) => ({ org_id: t.org_id, name: t.name, school: t.school || '', sport: t.sport, level: t.level, color: t.color, logo_url: t.logo || null, league_name: t.leagueName || '', league_url: t.leagueUrl || '', sync_url: t.syncUrl || '', sync_enabled: t.syncEnabled !== false, sort_order: t.sort_order ?? 0 });
 const gameIn = (g) => ({ id: g.id, date: g.date, time: g.time, home: g.home, away: g.away, hs: g.home_score, as: g.away_score, venue: g.venue, round: g.round, source: g.source, ext_id: g.ext_id, sync_flag: g.sync_flag, sync_changes: g.sync_changes });
 const gameOut = (teamId, g) => ({ team_id: teamId, date: g.date, time: g.time || '', home: g.home, away: g.away, home_score: g.hs ?? null, away_score: g.as ?? null, venue: g.venue || '', round: g.round || '', source: g.source || 'manual', ext_id: g.ext_id || null });
-const eventOut = (teamId, e) => ({ team_id: teamId, date: e.date, time: e.time || '', title: e.title, kind: e.kind === 'practice' ? 'practice' : 'event', location: e.location || '', ext_id: e.ext_id || null });
-const scDayIn = (d) => ({ theme: d.theme, intensity: d.intensity, ...(d.time ? { time: d.time } : {}), ...(d.note ? { note: d.note } : {}), ...(d.pdf_color ? { pdfColor: d.pdf_color } : {}) });
+const eventOut = (teamId, e) => ({ team_id: teamId, date: e.date, time: e.time || '', title: e.title, kind: e.kind === 'practice' ? 'practice' : 'event', location: e.location || '', ext_id: e.ext_id || null,
+  // only when the caller sets it, so a form without an end time doesn't clear one
+  ...('end_time' in e ? { end_time: (e.time && e.end_time) || null } : {}) });
+const scDayIn = (d) => ({ theme: d.theme, intensity: d.intensity, ...(d.time ? { time: d.time } : {}), ...(d.end_time ? { end: d.end_time } : {}), ...(d.note ? { note: d.note } : {}), ...(d.pdf_color ? { pdfColor: d.pdf_color } : {}) });
 const notifIn = (n) => ({ id: n.id, text: n.text, read: n.read, ts: Date.parse(n.created_at) });
 const chatIn = (m) => ({ id: m.id, channel: m.channel || 'team', user_id: m.user_id, author: m.author, body: m.body, ts: Date.parse(m.created_at) });
 
@@ -104,7 +106,7 @@ export const api = {
   /* ---------- S&C ---------- */
   async saveScDay(teamId, date, x) {
     if (!x) return ok(await supabase.from('sc_days').delete().eq('team_id', teamId).eq('date', date));
-    ok(await supabase.from('sc_days').upsert({ team_id: teamId, date, theme: x.theme || '', intensity: x.intensity || '', time: x.time || null, note: x.note || '', pdf_color: x.pdfColor || null }));
+    ok(await supabase.from('sc_days').upsert({ team_id: teamId, date, theme: x.theme || '', intensity: x.intensity || '', time: x.time || null, end_time: (x.time && x.end) || null, note: x.note || '', pdf_color: x.pdfColor || null }));
   },
   async saveScWeek(teamId, mk, w) { ok(await supabase.from('sc_weeks').upsert({ team_id: teamId, week_start: mk, phase: w.phase || '', season_week: w.week || '' })); },
   async removeScWeek(teamId, mk, lastDay) {

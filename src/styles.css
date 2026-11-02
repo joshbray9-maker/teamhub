@@ -976,5 +976,6 @@ span.gd-row{cursor:default}
 .ms-dh{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:16px 0 8px}
 .ms-dh:first-child{margin-top:0}
 .ms-row{display:grid;grid-template-columns:minmax(0,1.4fr) 86px 138px 104px minmax(0,1fr) 34px;gap:6px;margin-bottom:6px;align-items:center}
-.ms-row.ev{grid-template-columns:minmax(0,1fr) 138px 104px 34px}
+.ms-row.ev{grid-template-columns:minmax(0,1fr) 138px 104px 104px 34px}
+.sc-span{display:inline-flex;align-items:center;gap:6px}
 @media (max-width:640px){.ms-row,.ms-row.ev{grid-template-columns:1fr 1fr}.ms-row .icon-btn{justify-self:start}}

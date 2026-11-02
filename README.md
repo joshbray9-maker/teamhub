@@ -147,7 +147,10 @@ with the organization's time slots as rows: **Universel** 7:30 am–12 pm in 30-
 **BCS** 3:30–4:30, 4:45–5:45 and 6–7 pm (`src/lib/slots.js`). Games, practices, events and gym
 days all show, coloured by team, with filters per team and per kind and a Print button. A gym day
 lands in a slot once its **gym time** is set in S&C (click the day); anything without a time sits
-in **Time not set**, anything outside the slots in **Other times**. The month calendar for the
+in **Time not set**, anything outside the slots in **Other times**. **Any interval:** every time
+picker (master schedules, S&C day) offers the slots or **Custom time…** with a start and end
+(e.g. 3:30–5:15); a session that spans several slots shows in each of them. Gym days and events
+store the end time (`end_time`); games keep a start time only. The month calendar for the
 whole organization is still the organization's own page.
 
 **All teams · S&C (only the admin of every organization, i.e. Josh):** in the team switcher under

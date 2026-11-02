@@ -1,8 +1,9 @@
 // S&C: day themes + intensity calendar, periodization, and the Workload tab.
 import { useState, Fragment } from 'react';
 import { useHub } from '../lib/hub.jsx';
-import { fmtDate, fmtTime, fromISO, todayISO, MON, DOW, gameView, ourGames, clone } from '../lib/util.js';
-import { orgSlots } from '../lib/slots.js';
+import { fmtDate, fromISO, todayISO, MON, DOW, gameView, ourGames, clone } from '../lib/util.js';
+import { orgSlots, fmtSpan } from '../lib/slots.js';
+import { TimePick, spanError } from './MasterWeek.jsx';
 import { INT, DEFAULT_LOADS, DEFAULT_BAND, RATED, mondayOf, addDays, scWeeks, scSeries, niceTicks } from '../lib/sc.js';
 import PageHead from '../components/PageHead.jsx';
 import Modal from '../components/Modal.jsx';
@@ -54,7 +55,7 @@ function ScCalendar() {
         const label = (INT.find((v) => v.k === (x.intensity || '')) || INT[0]).label;
         return <button key={d} className={`sc-cell i-${x.intensity || 'none'} ${H.isCoach ? '' : 'ro'}`} onClick={() => H.isCoach && H.openDialog((c) => <DayForm d={d} close={c} />)} aria-label={`${fmtDate(d, true)}: ${x.theme || 'nothing planned'}, ${label}`}>
           <span className="sc-dtop"><span className={d === today ? 'today' : ''}>{DOW[dd.getDay()]} {dd.getDate()}</span>{(x.intensity || x.theme) && <IBadge k={x.intensity} />}</span>
-          <span className="sc-theme">{x.theme || ''}</span>{x.time && <span className="muted small">{fmtTime(x.time)}</span>}
+          <span className="sc-theme">{x.theme || ''}</span>{x.time && <span className="muted small">{fmtSpan(x.time, x.end)}</span>}
           {gs.length > 0 && x.intensity !== 'game' && <span className="sc-flag">{gs.map((g) => { const v = gameView(g, H.team); return (v.home ? 'vs ' : '@ ') + v.opp; }).join(', ')}</span>}
           {x.pdfColor === 'cyan' && !x.intensity && <span className="sc-flag">Cyan in sheet</span>}
         </button>;
@@ -65,23 +66,20 @@ function ScCalendar() {
 function DayForm({ d, close }) {
   const H = useHub(); const x = (H.tdata.sc.days || {})[d] || {};
   const [theme, setTheme] = useState(x.theme || ''); const [k, setK] = useState(x.intensity || ''); const [note, setNote] = useState(x.note || '');
-  const slots = orgSlots(H.orgOf(H.team)) || [], [time, setTime] = useState(x.time || '');
-  const [custom, setCustom] = useState(!!x.time && !slots.some(([a]) => a === x.time));
+  const slots = orgSlots(H.orgOf(H.team)) || [], [time, setTime] = useState(x.time || ''), [end, setEnd] = useState(x.end || '');
   const put = (val) => { close(); H.save((api) => api.saveScDay(H.teamId, d, val), { optimistic: (s) => { const days = { ...(s.sc.days || {}) }; if (val) days[d] = val; else delete days[d]; return { ...s, sc: { ...s.sc, days } }; } }); };
   const submit = () => {
     const t = theme.trim(), n = note.trim();
+    if (spanError(time, end)) { H.toast(spanError(time, end)); return; }
     if (!t && !k && !n) return put(null);
-    const val = { theme: t, intensity: k, ...(time ? { time } : {}), ...(n ? { note: n } : {}) }; if (!k && x.pdfColor) val.pdfColor = x.pdfColor;
+    const val = { theme: t, intensity: k, ...(time ? { time } : {}), ...(time && end ? { end } : {}), ...(n ? { note: n } : {}) }; if (!k && x.pdfColor) val.pdfColor = x.pdfColor;
     put(val);
   };
   return <Modal title={fmtDate(d, true)} onClose={close}
     actions={<>{(x.theme || x.intensity) && <><button className="btn danger" onClick={() => put(null)}><Icon n="trash" /> Clear day</button><span className="spacer" /></>}<button className="btn" onClick={close}>Cancel</button><button className="btn primary" onClick={submit}>Save</button></>}>
     <label className="field"><span>Day theme</span><input className="input" value={theme} onChange={(e) => setTheme(e.target.value)} placeholder="e.g. Brick 1, Regen, Supercharge" /></label>
     <div className="field"><span>Intensity</span><div className="iseg">{INT.map((i) => <button type="button" key={i.k} className={k === i.k ? 'on' : ''} aria-pressed={k === i.k} onClick={() => setK(i.k)}><IBadge k={i.k} />{i.label}</button>)}</div></div>
-    <div className="field"><span>Gym time (places the session on the master schedule)</span><div className="sc-time">
-      <select className="select" value={custom ? 'custom' : time} onChange={(e) => { const v = e.target.value; setCustom(v === 'custom'); if (v !== 'custom') setTime(v); }} aria-label="Gym time slot">
-        <option value="">No set time</option>{slots.map(([a, b]) => <option key={a} value={a}>{fmtTime(a)} – {fmtTime(b)}</option>)}<option value="custom">Other time…</option></select>
-      {custom && <input type="time" className="input" value={time} onChange={(e) => setTime(e.target.value)} aria-label="Gym start time" />}</div></div>
+    <div className="field"><span>Gym time (places the session on the master schedule)</span><TimePick time={time} end={end} set={(t, e) => { setTime(t); setEnd(e); }} slots={slots} /></div>
     <label className="field"><span>Notes</span><textarea className="input" rows="3" value={note} onChange={(e) => setNote(e.target.value)} /></label>
     {x.pdfColor === 'cyan' && <div className="hint">This day was cyan in the S&C sheet, which isn’t in the light/moderate/heavy code. Pick an intensity to include it in workload.</div>}
   </Modal>;
