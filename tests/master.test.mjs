@@ -1,22 +1,25 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { dayCell, sheetWeeks, sheetWeek } from '../src/lib/master.js';
+import { sheetWeeks, sheetWeek } from '../src/lib/master.js';
 
 const t = { id: 'a', name: 'BCS U18 Hockey' };
 const d = {
-  sc: { '2026-09-14': { theme: 'Brick 1', intensity: 'heavy' }, '2026-09-15': { theme: '', intensity: 'off' }, '2026-09-19': { theme: '', intensity: 'game' }, '2026-09-20': { theme: 'Away vs. UDM', intensity: 'game' } },
+  sc: { '2026-09-14': { theme: 'Brick 1', intensity: 'heavy' }, '2026-09-15': { theme: 'Brick 2', intensity: 'off' }, '2026-09-19': { theme: '', intensity: 'game' }, '2026-09-20': { theme: 'Away vs. UDM', intensity: 'game' } },
   weeks: { '2026-09-14': { phase: 'GPP week 1', week: '1' } },
   games: [{ id: 1, date: '2026-09-19', time: '13:00', home: 'Rivals', away: 'BCS U18 Hockey' }, { id: 2, date: '2026-09-19', home: 'X', away: 'Y' }],
   events: [{ id: 3, date: '2026-09-17', title: 'CADETS', kind: 'event' }, { id: 4, date: '2026-09-17', title: 'Practice', kind: 'practice' }],
 };
 
-test('dayCell: S&C session coloured by intensity, off, games instead of a bare game day, events but no practices', () => {
-  assert.deepEqual(dayCell(t, d, '2026-09-14').map((x) => [x.text, x.cls]), [['Brick 1', 'i-heavy']]);
-  assert.deepEqual(dayCell(t, d, '2026-09-15').map((x) => x.text), ['OFF']);
-  assert.deepEqual(dayCell(t, d, '2026-09-19').map((x) => [x.kind, x.text]), [['game', 'Away vs. Rivals']]);
-  assert.deepEqual(dayCell(t, d, '2026-09-20').map((x) => x.text), ['Away vs. UDM']); // theme kept when no game is listed
-  assert.deepEqual(dayCell(t, d, '2026-09-17').map((x) => x.text), ['CADETS']);
-  assert.deepEqual(dayCell(t, d, '2026-09-16'), []);
+test('cells from the team schedule: S&C by intensity, off, games instead of a bare game day, events but no practices', () => {
+  const cells = sheetWeek([t], { a: d }, '2026-09-14').rows[0].cells.map((c) => c.map((x) => `${x.text}|${x.cls}`));
+  assert.deepEqual(cells, [['Brick 1|i-heavy'], ['OFF|i-off'], [], ['CADETS|ev'], [], ['Away vs. Rivals|i-game'], ['Away vs. UDM|i-game']]);
+});
+
+test('BCS: gym days take their gym time, or the rotation, like the team master schedule', () => {
+  const bcs = { slug: 'bcs', name: 'BCS' }, u16 = { id: 'u', name: 'BCS U16 Hockey', sport: 'hockey' };
+  const data = { u: { sc: { '2026-11-02': { theme: 'Brick 1', intensity: 'heavy' }, '2026-11-03': { theme: 'MTW', intensity: 'moderate', time: '16:45' }, '2026-11-06': { theme: 'Supercharge', intensity: 'light' } } } };
+  const c = sheetWeek([u16], data, '2026-11-02', () => bcs).rows[0].cells.map((x) => x.map((y) => `${y.text}@${y.time}`));
+  assert.deepEqual(c, [['Brick 1@18:00'], ['MTW@16:45'], ['Gym@15:30'], [], ['Supercharge@'], [], []]);
 });
 
 test('sheetWeeks / sheetWeek: weeks from the first S&C week, one row per team, shared periodization merged', () => {

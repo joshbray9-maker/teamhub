@@ -23,7 +23,7 @@ export default function AllTeamsSC() {
   const loaded = teams.every((t) => data[t.id]);
   const weeks = loaded ? sheetWeeks(teams, data, today) : [];
   const ahead = weeks.filter((m) => m >= thisMon), past = weeks.filter((m) => m < thisMon).reverse();
-  const shown = [...ahead, ...(earlier ? past : [])].map((mk) => sheetWeek(teams, data, mk));
+  const shown = [...ahead, ...(earlier ? past : [])].map((mk) => sheetWeek(teams, data, mk, H.orgOf));
   const done = async (tids) => { await H.reloadOrg(); if (tids.includes(H.teamId)) H.reloadTeam().catch(() => {}); };
   const editDay = (team, date) => H.openDialog((c) => <DayDialog team={team} date={date} d={data[team.id] || {}} done={done} close={c} />);
   const editWeek = (w, r) => H.openDialog((c) => <WeekDialog w={w} r={r} teams={teams} done={done} close={c} />);
@@ -42,7 +42,7 @@ export default function AllTeamsSC() {
             {(!w.samePhase || ri === 0) && <td rowSpan={w.samePhase ? w.rows.length : 1} className="ms-meta ms-click" onClick={() => editWeek(w, r)} title="Change periodization / week">{r.phase || (w.samePhase ? '' : '–')}</td>}
             {(!w.sameWeek || ri === 0) && <td rowSpan={w.sameWeek ? w.rows.length : 1} className="ms-meta ms-wk ms-click" onClick={() => editWeek(w, r)} title="Change periodization / week">{r.week}</td>}
             {r.cells.map((c, i) => <td key={i} className={`ms-day ms-click ${c.length === 1 ? c[0].cls : ''} ${w.days[i] === today ? 'today' : ''}`} onClick={() => editDay(r.team, w.days[i])} title={`${r.team.name} · ${fmtDate(w.days[i])}: click to change`}>
-              {c.map((x, j) => <div key={j} className={`ms-it ${x.cls}`} title={x.time ? fmtTime(x.time) : undefined}>{x.text}{x.time && x.kind !== 'sc' ? <span className="ms-time"> · {fmtTime(x.time)}</span> : null}</div>)}
+              {c.map((x, j) => <div key={j} className={`ms-it ${x.cls}`} title={x.time ? fmtTime(x.time) : undefined}>{x.text}{x.time ? <span className="ms-time"> · {fmtTime(x.time)}</span> : null}</div>)}
             </td>)}
           </tr>)}
         </Fragment>)}</tbody></table></div>}

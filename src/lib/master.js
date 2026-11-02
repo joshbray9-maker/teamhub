@@ -1,8 +1,9 @@
 // All-teams S&C master schedule (Josh only), laid out like his S&C sheet: one block per week,
 // one row per team, with the week's periodization and season week, then Monday to Sunday.
-// Strictly S&C sessions, games and events: practices are left out.
-import { isUsT } from './util.js';
+// Built from each team's own schedule (the same items as its Master schedule): S&C sessions
+// with their gym times, games and events. Practices are left out.
 import { INT, addDays, mondayOf } from './sc.js';
+import { weekItems } from './slots.js';
 
 // Team order of Josh's S&C sheet: Universel (U18, USPHL, NCDC Québec, NCDC Vermont), Bishop's,
 // then BCS (U16, U18, varsity basketball, prep basketball). Teams matching none go last.
@@ -12,17 +13,18 @@ export function sheetOrder(teams) {
   return teams.map((t, i) => [t, i]).sort((a, b) => rank(a[0]) - rank(b[0]) || a[1] - b[1]).map(([t]) => t);
 }
 
-/** One team's cell for a day: S&C session, games and (non-practice) events, in that order. */
-export function dayCell(team, d, date) {
-  const x = (d.sc || {})[date], out = [];
-  const games = (d.games || []).filter((g) => g.date === date && (isUsT(g.home, team) || isUsT(g.away, team)));
-  if (x && x.intensity === 'off') out.push({ kind: 'off', text: x.theme || 'OFF', cls: 'i-off' });
-  // on a game day the game itself is the entry; a theme on it (e.g. "Away vs. UDM") is kept if there's no game
-  else if (x && (x.theme || x.intensity) && !(x.intensity === 'game' && games.length)) {
-    out.push({ kind: 'sc', text: x.theme || (INT.find((i) => i.k === x.intensity) || {}).label || '', cls: 'i-' + (x.intensity || 'none'), time: x.time || '' });
-  }
-  games.forEach((g) => { const home = isUsT(g.home, team); out.push({ kind: 'game', text: `${home ? 'vs' : 'Away vs.'} ${home ? g.away : g.home}`, cls: 'i-game', time: g.time || '' }); });
-  (d.events || []).filter((e) => e.date === date && e.kind !== 'practice').forEach((e) => out.push({ kind: 'event', text: e.title, cls: 'ev', time: e.time || '' }));
+/** One team's cell for a day, from that team's schedule (lib/slots.js weekItems: S&C gym days
+ * with their gym time or the organization's rotation, games, events). Practices are left out; a
+ * day off shows OFF; a game day with no game listed keeps its S&C theme (e.g. "Away vs. UDM"). */
+export function dayCell(team, d, date, items) {
+  const x = (d.sc || {})[date], out = [], day = items.filter((i) => i.date === date && i.kind !== 'practice');
+  if (x && x.intensity === 'off') out.push({ kind: 'off', text: 'OFF', cls: 'i-off' });
+  if (x && x.intensity === 'game' && x.theme && !day.some((i) => i.kind === 'game')) out.push({ kind: 'sc', text: x.theme, cls: 'i-game', time: x.time || '' });
+  day.forEach((i) => {
+    if (i.kind === 'gym') out.push({ kind: 'sc', text: (i.sc && i.sc.theme) || (INT.find((k) => k.k === i.intensity && k.k) || {}).label || 'Gym', cls: 'i-' + (i.intensity || 'none'), time: i.time || '' });
+    else if (i.kind === 'game') out.push({ kind: 'game', text: i.title.replace(/^@ /, 'Away vs. '), cls: 'i-game', time: i.time || '' });
+    else out.push({ kind: 'event', text: i.title, cls: 'ev', time: i.time || '' });
+  });
   return out;
 }
 
@@ -39,9 +41,12 @@ export function sheetWeeks(teams, data, today) {
 }
 
 /** One week block: a row per team, and whether periodization / week are the same for all. */
-export function sheetWeek(teams, data, mk) {
+export function sheetWeek(teams, data, mk, orgOf = () => null) {
   const days = [0, 1, 2, 3, 4, 5, 6].map((i) => addDays(mk, i));
-  const rows = teams.map((t) => { const d = data[t.id] || {}, w = (d.weeks || {})[mk] || {}; return { team: t, phase: w.phase || '', week: w.week || '', cells: days.map((date) => dayCell(t, d, date)) }; });
+  const rows = teams.map((t) => {
+    const d = data[t.id] || {}, w = (d.weeks || {})[mk] || {}, items = weekItems([t], data, mk, () => '', orgOf(t));
+    return { team: t, phase: w.phase || '', week: w.week || '', cells: days.map((date) => dayCell(t, d, date, items)) };
+  });
   const same = (k) => rows.every((r) => r[k] === rows[0][k]);
   return { mk, days, rows, samePhase: same('phase'), sameWeek: same('week'), empty: rows.every((r) => !r.phase && !r.week && r.cells.every((c) => !c.length)) };
 }

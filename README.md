@@ -151,7 +151,8 @@ in **Time not set**, anything outside the slots in **Other times**. The month ca
 whole organization is still the organization's own page.
 
 **All teams · S&C (only the admin of every organization, i.e. Josh):** in the team switcher under
-**Master schedules**. Every team's S&C sessions, games and events (no practices) on one sheet laid
+**Master schedules**. Built from each team's own schedule, the same items as that team's Master
+schedule (gym days with their gym time or the BCS rotation, games, events; no practices), on one sheet laid
 out like the S&C spreadsheet: a block per week (Date (Monday), Team, Periodization, Week, Monday
 to Sunday), teams in the sheet's order (Universel, Bishop's, BCS U16 / U18 / varsity / prep),
 cells coloured by the day's intensity, games in yellow, events in navy. Current week first, then
