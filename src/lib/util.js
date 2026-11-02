@@ -7,6 +7,7 @@ export const LEVELS = { 'high-school': 'High school', junior: 'Junior', college:
 export const SWATCHES = ['#1f5fbf', '#0e7a5a', '#b3261e', '#6b3fa0', '#c25e00', '#a8861b', '#1b1f27', '#0a7c8c', '#8a1538', '#2f6b2f'];
 export const MENUS = [
   { id: 'home', label: 'Home', icon: 'home' },
+  { id: 'master', label: 'Master schedule', icon: 'cal' },
   { id: 'coach', label: "Coach's report", icon: 'report', coach: true },
   { id: 'chat', label: 'Chat', icon: 'chat' },
   { id: 'league', label: 'League', icon: 'trophy' },
@@ -39,6 +40,7 @@ export const PAGE_INFO = {
   injury: ['Current injuries and return dates', 'Coach-only'],
   sc: ['Gym groups', 'Tests'],
   recruit: ['Recruiting list with contacts and social media', 'Graduating list: interested / committed, likely to play', 'Download with chosen columns: PDF, Excel or CSV'],
+  master: ['Every team in the organization on one week, by time slot'],
   profile: ['Your name, photo and contact', 'Coaching staff role'],
 };
 

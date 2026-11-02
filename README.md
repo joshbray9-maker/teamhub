@@ -142,6 +142,14 @@ trend chart of the team's median % change per test since its first session (a fa
 counts as an improvement), then one box per test with the team median over time and the middle
 half of the team.
 
+**Master schedule (team menu):** every team in the team's organization on one week (Mon–Sun),
+with the organization's time slots as rows: **Universel** 7:30 am–12 pm in 30-minute rows,
+**BCS** 3:30–4:30, 4:45–5:45 and 6–7 pm (`src/lib/slots.js`). Games, practices, events and gym
+days all show, coloured by team, with filters per team and per kind and a Print button. A gym day
+lands in a slot once its **gym time** is set in S&C (click the day); anything without a time sits
+in **Time not set**, anything outside the slots in **Other times**. The month calendar for the
+whole organization is still the organization's own page.
+
 **Athlete reports (admins and coaches only):** every rostered athlete with their testing days;
 open one for their full history over a time frame (this season, last 3 / 12 months, all testing,
 or custom dates): a summary per test (first, latest, change, best, latest team median), a chart

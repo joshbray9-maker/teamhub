@@ -59,7 +59,7 @@ export const api = {
     await load(); const d = D(teamId);
     return clone({ league: { groups: d.groups, updatedAt: d.updatedAt, games: d.games }, events: d.events, notifs: [...d.notifs].sort((a, b) => b.ts - a.ts), sc: d.sc, coach: canEdit ? d.coach : null, candidates: d.candidates.filter((c) => c.status !== 'added' && c.status !== 'dismissed'), lastRun: d.lastRun, injuries: canEdit ? (d.injuries || []) : [] });
   },
-  async loadOrgData(ids) { await load(); return clone(Object.fromEntries(ids.map((id) => [id, { games: D(id).games, events: D(id).events }]))); },
+  async loadOrgData(ids) { await load(); return clone(Object.fromEntries(ids.map((id) => [id, { games: D(id).games, events: D(id).events, sc: (D(id).sc || {}).days || {} }]))); },
   async saveGames(teamId, games) { const r = upsert(D(teamId).games, games, 'g'); save(); return clone(r); },
   async deleteGame(id) { Object.values(db.data).forEach((d) => { d.games = d.games.filter((g) => g.id !== id); }); save(); },
   async clearGameFlag(id) { Object.values(db.data).forEach((d) => d.games.forEach((g) => { if (g.id === id) { g.sync_flag = null; g.sync_changes = null; } })); save(); },

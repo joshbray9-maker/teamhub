@@ -66,7 +66,7 @@ export const api = {
       notifs: ok(notifs).map(notifIn),
       sc: {
         weeks: Object.fromEntries(ok(weeks).map((w) => [w.week_start, { phase: w.phase, week: w.season_week }])),
-        days: Object.fromEntries(ok(days).map((d) => [d.date, { theme: d.theme, intensity: d.intensity, ...(d.note ? { note: d.note } : {}), ...(d.pdf_color ? { pdfColor: d.pdf_color } : {}) }])),
+        days: Object.fromEntries(ok(days).map((d) => [d.date, { theme: d.theme, intensity: d.intensity, ...(d.time ? { time: d.time } : {}), ...(d.note ? { note: d.note } : {}), ...(d.pdf_color ? { pdfColor: d.pdf_color } : {}) }])),
         loads: set.sc_loads, band: set.sc_band,
       },
       coach: canEdit ? (c ? { notes: c.notes, todos: c.todos } : { notes: '', todos: [] }) : null,
@@ -77,10 +77,12 @@ export const api = {
   },
   async loadOrgData(teamIds) {
     if (!teamIds.length) return {};
-    const [g, e] = await Promise.all([supabase.from('games').select('*').in('team_id', teamIds), supabase.from('events').select('*').in('team_id', teamIds)]);
-    const out = Object.fromEntries(teamIds.map((id) => [id, { games: [], events: [] }]));
+    const [g, e, s] = await Promise.all([supabase.from('games').select('*').in('team_id', teamIds), supabase.from('events').select('*').in('team_id', teamIds),
+      supabase.from('sc_days').select('team_id,date,theme,intensity,time').in('team_id', teamIds)]);
+    const out = Object.fromEntries(teamIds.map((id) => [id, { games: [], events: [], sc: {} }]));
     ok(g).forEach((x) => out[x.team_id].games.push(gameIn(x)));
     ok(e).forEach((x) => out[x.team_id].events.push(x));
+    ok(s).forEach((x) => { out[x.team_id].sc[x.date] = { theme: x.theme, intensity: x.intensity, time: x.time || '' }; });
     return out;
   },
 
@@ -100,7 +102,7 @@ export const api = {
   /* ---------- S&C ---------- */
   async saveScDay(teamId, date, x) {
     if (!x) return ok(await supabase.from('sc_days').delete().eq('team_id', teamId).eq('date', date));
-    ok(await supabase.from('sc_days').upsert({ team_id: teamId, date, theme: x.theme || '', intensity: x.intensity || '', note: x.note || '', pdf_color: x.pdfColor || null }));
+    ok(await supabase.from('sc_days').upsert({ team_id: teamId, date, theme: x.theme || '', intensity: x.intensity || '', time: x.time || null, note: x.note || '', pdf_color: x.pdfColor || null }));
   },
   async saveScWeek(teamId, mk, w) { ok(await supabase.from('sc_weeks').upsert({ team_id: teamId, week_start: mk, phase: w.phase || '', season_week: w.week || '' })); },
   async removeScWeek(teamId, mk, lastDay) {
