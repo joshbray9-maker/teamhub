@@ -1,15 +1,17 @@
 // S&C testing: metrics, the two batteries, gym-group allocation and team trends. Pure functions.
 import { fieldFor, nameKey } from './rosterImport.js';
 //
-// Gym groups (Josh's model, 2026-10-31). Each athlete's latest FULL testing is compared with
-// the targets Josh sets per metric (no built-in targets: a metric without a target is ignored):
-//   force quality      = IMTP peak force, relative peak force (N/kg)
-//   expression quality = CMJ jump height, SJ jump height, RSImod
-// Each result becomes a ratio to its target (1 = on target; for the 10 m fly, lower is better,
-// so the ratio is target / time). The quality's index is the mean of its ratios.
-//   force index < 1                                → Force deficient     (GPP, get stronger and bigger)
-//   force ≥ 1, expression ≥ 1 and RSImod ≥ target  → Expression efficient (preserve, keep getting stronger and more explosive)
-//   force ≥ 1, otherwise                           → Expression deficient (improve expression and rate of force development)
+// Gym groups (Josh's model, revised 2026-11-04). Each athlete's latest FULL testing is compared
+// with the targets Josh sets per metric (no built-in targets). Each result becomes a ratio to
+// its target (1 = on target). The two main factors are CMJ jump height AND RSImod:
+//   CMJ and RSImod both at/above target → Expression efficient (preserve, keep getting stronger and more explosive)
+//   one of them below target            → Expression deficient (improve expression and rate of force development)
+//   both below target                   → Force deficient      (GPP, get stronger and bigger)
+// IMTP is a bonus that can change the placement (IMTP index = mean of IMTP peak force and
+// relative peak force ratios, whichever have a target; no IMTP result = no change):
+//   IMTP at/above target moves Force deficient up to Expression deficient;
+//   IMTP below target moves Expression deficient down to Force deficient;
+//   Expression efficient never moves.
 // A coach can move any player to another group by hand.
 
 export const METRICS = {
@@ -72,7 +74,8 @@ const LABELS = {
 /** METRICS with a team's own test names (label and long name) when it has them. */
 export const metricsFor = (profile) => (LABELS[profile] ? Object.fromEntries(Object.entries(METRICS).map(([k, m]) => [k, LABELS[profile][k] ? { ...m, label: LABELS[profile][k], long: LABELS[profile][k] } : m])) : METRICS);
 export const seasonSheet = (sport) => SPORT_SHEETS[sport] || ['Name', 'Date', ...batteryCols('full', sport).map((k) => `${METRICS[k].label}${METRICS[k].unit ? ` (${METRICS[k].unit})` : ''}`)];
-export const FORCE = ['imtp_pf', 'rel_pf'], EXPRESSION = ['cmj_jh', 'sj_jh', 'rsimod'];
+// MAIN = the two deciding tests; FORCE = the IMTP bonus. (EXPRESSION kept as the old name for MAIN.)
+export const MAIN = ['cmj_jh', 'rsimod'], FORCE = ['imtp_pf', 'rel_pf'], EXPRESSION = MAIN;
 export const GROUPS = {
   efficient: { label: 'Expression efficient', focus: 'Preserve qualities and keep getting stronger and more explosive.', color: 'green' },
   expression: { label: 'Expression deficient', focus: 'Improve expression and rate of force development.', color: 'yellow' },
@@ -91,18 +94,24 @@ export function ratio(k, value, target) {
 }
 const mean = (a) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : null);
 
-/** → { group, auto, force, expression, rsi, reason } or { group: null, reason } when it can't be placed. */
+/** → { group, auto, main, cmj, rsi, force, reason } or { group: null, reason } when it can't be
+ * placed. `main` is the CMJ + RSImod placement, `auto` after the IMTP bonus, `group` after a coach's move. */
 export function gymGroup(values, targets, override) {
   const r = (k) => ratio(k, values && values[k], targets && targets[k]);
-  const fr = FORCE.map(r).filter((x) => x !== null), er = EXPRESSION.map(r).filter((x) => x !== null);
-  const force = mean(fr), expression = mean(er), rsi = r('rsimod');
-  let auto = null, reason;
-  if (force === null || expression === null) reason = 'Needs a force result (IMTP or relative PF) and an expression result (CMJ, SJ or RSImod) with targets set';
-  else if (force < 1) { auto = 'force'; reason = `Force below target (${pct(force)})`; }
-  else if (expression >= 1 && (rsi === null || rsi >= 1)) { auto = 'efficient'; reason = `Force ${pct(force)} and expression ${pct(expression)} of target`; }
-  else { auto = 'expression'; reason = rsi !== null && rsi < 1 ? `Force on target (${pct(force)}) but RSImod below (${pct(rsi)})` : `Force on target (${pct(force)}) but expression below (${pct(expression)})`; }
+  const cmj = r('cmj_jh'), rsi = r('rsimod'), force = mean(FORCE.map(r).filter((x) => x !== null));
+  let main = null, auto = null, reason;
+  if (cmj === null || rsi === null) reason = 'Needs CMJ jump height and RSImod results, with a target set for both';
+  else {
+    const below = [cmj < 1 && 'CMJ', rsi < 1 && 'RSImod'].filter(Boolean);
+    main = auto = below.length === 0 ? 'efficient' : below.length === 1 ? 'expression' : 'force';
+    if (force !== null && main === 'force' && force >= 1) auto = 'expression';
+    if (force !== null && main === 'expression' && force < 1) auto = 'force';
+    const vals = `CMJ ${pct(cmj)}, RSImod ${pct(rsi)}`;
+    reason = (below.length ? `${below.join(' and ')} below target (${vals})` : `CMJ and RSImod on target (${vals})`)
+      + (auto !== main ? ` · IMTP ${pct(force)} ${force >= 1 ? 'on target: moved up' : 'below target: moved down'}` : force !== null ? ` · IMTP ${pct(force)}` : '');
+  }
   const group = override && GROUPS[override] ? override : auto;
-  return { group, auto, force, expression, rsi, reason: override && GROUPS[override] && override !== auto ? `Moved by a coach (formula: ${auto ? GROUPS[auto].label : 'not placed'})` : reason };
+  return { group, auto, main, cmj, rsi, force, expression: main && mean([cmj, rsi]), reason: override && GROUPS[override] && override !== auto ? `Moved by a coach (formula: ${auto ? GROUPS[auto].label : 'not placed'})` : reason };
 }
 const pct = (x) => `${Math.round(x * 100)}%`;
 

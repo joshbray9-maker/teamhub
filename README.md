@@ -181,11 +181,13 @@ of each test against the team median, and every result by date (individual testi
 **Print / PDF** makes a one-athlete report to send out. The team median uses team testing only.
 
 **S&C → Gym groups (admins and coaches only):** each athlete's latest full testing is compared
-with **targets you set** (Targets button; no built-in numbers). Force = IMTP peak force and
-relative peak force; expression = CMJ JH, SJ JH and RSImod. Below the force target →
-**Force deficient** (GPP, stronger and bigger); force on target with expression and RSImod on
-target → **Expression efficient** (preserve, keep getting stronger and more explosive);
-otherwise **Expression deficient** (expression and rate of force development). Each card shows
+with **targets you set** (Targets button; no built-in numbers). The two main factors are
+**CMJ jump height and RSImod**: both on target → **Expression efficient** (preserve, keep getting
+stronger and more explosive); one below → **Expression deficient** (expression and rate of force
+development); both below → **Force deficient** (GPP, stronger and bigger). **IMTP is a bonus**
+(IMTP peak force / relative PF, optional): on target moves Force deficient up to Expression
+deficient; below target moves Expression deficient down to Force deficient; Expression efficient
+never moves. SJ no longer counts. Each card shows
 why, with every result green/red against its target, and a coach can move a player by hand.
 The formula is in `src/lib/testing.js`.
 

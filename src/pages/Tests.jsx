@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useHub, useMetrics } from '../lib/hub.jsx';
 import { fmtDate, todayISO } from '../lib/util.js';
-import { METRICS, BATTERIES, batteryCols, metricOrder, seasonSheet, testProfile, cellValue, GROUPS, FORCE, EXPRESSION, num, fmt, ratio, gymGroup, metricSeries, changeSeries, teamSessions, metricField, rowsToTests, rowsToTestDays, leaderboards } from '../lib/testing.js';
+import { METRICS, BATTERIES, batteryCols, metricOrder, seasonSheet, testProfile, cellValue, GROUPS, FORCE, MAIN, num, fmt, ratio, gymGroup, metricSeries, changeSeries, teamSessions, metricField, rowsToTests, rowsToTestDays, leaderboards } from '../lib/testing.js';
 import { parseTsv } from '../lib/imports.js';
 import { byNumber } from './Roster.jsx';
 import Modal from '../components/Modal.jsx';
@@ -318,7 +318,7 @@ export function GymGroups() {
   for (const s of full) for (const r of d.results.filter((x) => x.session_id === s.id)) if (!latest[r.player_id]) latest[r.player_id] = { values: r.values || {}, date: s.tested_on };
   const players = d.players.filter((p) => p.active !== false);
   const placed = players.map((p) => ({ p, t: latest[p.id], g: latest[p.id] ? gymGroup(latest[p.id].values, cfg.targets, cfg.overrides[p.id]) : null }));
-  const hasTargets = [...FORCE, ...EXPRESSION].some((k) => num(cfg.targets[k]) !== null);
+  const hasTargets = MAIN.every((k) => num(cfg.targets[k]) !== null);
   const editTargets = () => H.openDialog((c) => <Targets targets={cfg.targets} close={c} onSave={(t) => saveCfg({ ...cfg, targets: t }, 'Targets saved')} />);
   const move = (pid, g) => { const o = { ...cfg.overrides }; if (g) o[pid] = g; else delete o[pid]; saveCfg({ ...cfg, overrides: o }); };
   const card = ({ p, t, g }) => <li key={p.id} className="gg-p">
@@ -326,14 +326,14 @@ export function GymGroups() {
       <select className="select gg-move" value={cfg.overrides[p.id] || ''} onChange={(e) => move(p.id, e.target.value)} aria-label={`Group for ${p.name}`}>
         <option value="">By formula</option>{Object.entries(GROUPS).map(([k, x]) => <option key={k} value={k}>{x.label}</option>)}</select></div>
     {g && <div className="muted small">{g.reason}</div>}
-    {t && <div className="gg-vals">{[...FORCE, ...EXPRESSION].filter((k) => num(t.values[k]) !== null).map((k) => { const r = ratio(k, t.values[k], cfg.targets[k]); return <span key={k} className={r === null ? '' : r >= 1 ? 'ok' : 'low'} title={cfg.targets[k] ? `Target ${cfg.targets[k]} ${M[k].unit}` : 'No target set'}>{M[k].label} {fmt(k, t.values[k])}</span>; })}</div>}
+    {t && <div className="gg-vals">{[...MAIN, ...FORCE].filter((k) => num(t.values[k]) !== null).map((k) => { const r = ratio(k, t.values[k], cfg.targets[k]); return <span key={k} className={r === null ? '' : r >= 1 ? 'ok' : 'low'} title={cfg.targets[k] ? `Target ${cfg.targets[k]} ${M[k].unit}` : 'No target set'}>{M[k].label} {fmt(k, t.values[k])}</span>; })}</div>}
   </li>;
   const notPlaced = placed.filter((x) => !x.g || !x.g.group);
   return <>
     <section className="card gg-top">
-      <div className="card-head"><div><h2>Gym groups</h2><span className="muted small">From each athlete's latest <b>full team testing</b>, compared with your targets. Force: IMTP peak force and relative peak force. Expression: CMJ JH, SJ JH and RSImod.</span></div>
+      <div className="card-head"><div><h2>Gym groups</h2><span className="muted small">From each athlete's latest <b>full team testing</b>, compared with your targets. Main factors: <b>CMJ JH and RSImod</b> (both on target → efficient, one below → expression deficient, both below → force deficient). <b>IMTP is a bonus</b>: on target moves force deficient up, below target moves expression deficient down.</span></div>
         <button className="btn" onClick={editTargets}><Icon n="gear" /> Targets</button></div>
-      {!hasTargets && <div className="hint">Set your targets first (<b>Targets</b>): groups appear once there's a target for at least one force test and one expression test.</div>}
+      {!hasTargets && <div className="hint">Set your targets first (<b>Targets</b>): groups appear once there's a target for both CMJ jump height and RSImod (IMTP targets are optional).</div>}
       {!full.length && <div className="hint">No full team testing yet. Add a session with the Full team testing battery in the Tests tab.</div>}
     </section>
     <div className="gg-grid">{Object.entries(GROUPS).map(([k, x]) => { const list = placed.filter((y) => y.g && y.g.group === k); return <section key={k} className={`card gg-col ${x.color}`}>
@@ -348,14 +348,14 @@ export function GymGroups() {
 
 function Targets({ targets, close, onSave }) {
   const M = useMetrics();
-  const keys = [...FORCE, ...EXPRESSION];
+  const keys = [...MAIN, ...FORCE];
   const [t, setT] = useState(Object.fromEntries(keys.map((k) => [k, targets[k] !== undefined && targets[k] !== null ? String(targets[k]) : ''])));
   const submit = () => { close(); onSave(Object.fromEntries(keys.map((k) => [k, num(t[k])]).filter(([, v]) => v !== null && v > 0))); };
   return <Modal title="Gym group targets" onClose={close} actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" onClick={submit}>Save</button></>}>
     <p className="muted small" style={{ margin: 0 }}>The value you consider good for this team, per test. Leave a test blank to leave it out of the formula. Athletes are compared with these numbers.</p>
     <div className="row2">{keys.map((k) => <label key={k} className="field"><span>{M[k].long}{M[k].unit && ` (${M[k].unit})`}</span>
       <input className="input tnum" inputMode="decimal" value={t[k]} onChange={(e) => setT({ ...t, [k]: e.target.value })} placeholder="No target" /></label>)}</div>
-    <div className="hint">Force deficient: force below target. Otherwise expression efficient when expression and RSImod meet target, else expression deficient.</div>
+    <div className="hint">CMJ and RSImod decide the group: both on target → expression efficient, one below → expression deficient, both below → force deficient. IMTP (peak force / relative PF, optional) can move someone: on target moves force deficient up to expression deficient; below target moves expression deficient down to force deficient.</div>
   </Modal>;
 }
 

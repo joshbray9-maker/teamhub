@@ -6,17 +6,25 @@ import { parseTsv } from '../src/lib/imports.js';
 
 const T = { cmj_jh: 40, sj_jh: 36, rsimod: 0.5, imtp_pf: 3000, rel_pf: 40 };
 
-test('gym groups follow force, then expression and RSImod, against the targets', () => {
-  assert.equal(gymGroup({ cmj_jh: 44, sj_jh: 40, rsimod: 0.55, imtp_pf: 3300, rel_pf: 42 }, T).group, 'efficient');
-  const slow = gymGroup({ cmj_jh: 42, sj_jh: 38, rsimod: 0.42, imtp_pf: 3200, rel_pf: 41 }, T);
-  assert.equal(slow.group, 'expression'); assert.match(slow.reason, /RSImod below/);
-  assert.equal(gymGroup({ cmj_jh: 35, sj_jh: 33, rsimod: 0.45, imtp_pf: 3100, rel_pf: 40 }, T).group, 'expression');
-  assert.equal(gymGroup({ cmj_jh: 45, rsimod: 0.6, imtp_pf: 2500, rel_pf: 33 }, T).group, 'force');
-  assert.equal(gymGroup({ cmj_jh: 30, rsimod: 0.3, imtp_pf: 2400 }, T).group, 'force');
-  // no targets / missing results: not placed; a coach's move wins and says so
-  assert.equal(gymGroup({ cmj_jh: 44, imtp_pf: 3300 }, {}).group, null);
-  assert.equal(gymGroup({ cmj_jh: 44 }, T).group, null);
-  const moved = gymGroup({ cmj_jh: 30, rsimod: 0.3, imtp_pf: 2400 }, T, 'efficient');
+test('gym groups: CMJ and RSImod decide, IMTP moves force deficient up / expression deficient down', () => {
+  const g = (v, o) => gymGroup(v, T, o);
+  // both on target → efficient, even with a low IMTP (efficient never moves)
+  assert.equal(g({ cmj_jh: 44, rsimod: 0.55 }).group, 'efficient');
+  assert.equal(g({ cmj_jh: 44, rsimod: 0.55, imtp_pf: 2000, rel_pf: 30 }).group, 'efficient');
+  // one below → expression deficient; with IMTP below target → force deficient
+  const one = g({ cmj_jh: 42, rsimod: 0.42 }); assert.equal(one.group, 'expression'); assert.match(one.reason, /RSImod below target/);
+  assert.equal(g({ cmj_jh: 35, rsimod: 0.6, imtp_pf: 3100, rel_pf: 41 }).group, 'expression');
+  const down = g({ cmj_jh: 35, rsimod: 0.6, imtp_pf: 2500, rel_pf: 33 }); assert.equal(down.main, 'expression'); assert.equal(down.group, 'force'); assert.match(down.reason, /moved down/);
+  // both below → force deficient; with IMTP on target → expression deficient
+  assert.equal(g({ cmj_jh: 30, rsimod: 0.3 }).group, 'force');
+  assert.equal(g({ cmj_jh: 30, rsimod: 0.3, imtp_pf: 2400 }).group, 'force');
+  const up = g({ cmj_jh: 30, rsimod: 0.3, imtp_pf: 3300, rel_pf: 42 }); assert.equal(up.main, 'force'); assert.equal(up.group, 'expression'); assert.match(up.reason, /moved up/);
+  // SJ no longer counts; CMJ and RSImod (with targets) are both required
+  assert.equal(g({ cmj_jh: 44, sj_jh: 20, rsimod: 0.55 }).group, 'efficient');
+  assert.equal(g({ cmj_jh: 44, imtp_pf: 3300 }).group, null);
+  assert.equal(gymGroup({ cmj_jh: 44, rsimod: 0.55 }, { cmj_jh: 40 }).group, null);
+  // a coach's move wins and says so
+  const moved = g({ cmj_jh: 30, rsimod: 0.3, imtp_pf: 2400 }, 'efficient');
   assert.equal(moved.group, 'efficient'); assert.equal(moved.auto, 'force'); assert.match(moved.reason, /Moved by a coach/);
   // the 10 m fly: lower is better
   assert.ok(ratio('fly10', 1.0, 1.1) > 1); assert.ok(ratio('fly10', 1.2, 1.1) < 1);
