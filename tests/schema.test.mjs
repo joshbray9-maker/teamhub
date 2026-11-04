@@ -155,6 +155,19 @@ test('migration + seed load, and access follows memberships', async () => {
   // a player from another team can't be attached, and bad statuses are refused
   await assert.rejects(as(db, U.coach, `insert into injuries (team_id, player_id) values ($1, $2)`, [bcsTeam, uniPlayer]));
   await assert.rejects(as(db, U.coach, `insert into injuries (team_id, player_id, status) values ($1, $2, 'maybe')`, [bcsTeam, pa.id]));
+  // IPPs: staff only, like injuries. One base IPP per team (player_id null) and one per athlete
+  await as(db, U.coach, `insert into ipps (team_id, data) values ($1, '{"coach":"Test Coach"}')`, [bcsTeam]);
+  await as(db, U.coach, `insert into ipps (team_id, player_id, data) values ($1, $2, '{"g.sleep":"4"}')`, [bcsTeam, pa.id]);
+  await as(db, U.coach, `insert into ipps (team_id, player_id, data) values ($1, $2, '{"g.sleep":"5"}') on conflict (team_id, player_key) do update set data = excluded.data`, [bcsTeam, pa.id]);
+  assert.equal((await as(db, U.coach, `select data->>'g.sleep' v from ipps where player_id=$1`, [pa.id]))[0].v, '5');
+  assert.equal((await as(db, U.coach, 'select count(*)::int c from ipps'))[0].c, 2);
+  await assert.rejects(as(db, U.coach, `insert into ipps (team_id) values ($1)`, [bcsTeam]));  // one base per team
+  assert.equal((await as(db, U.viewer, 'select count(*)::int c from ipps'))[0].c, 0);
+  assert.equal((await as(db, U.other, 'select count(*)::int c from ipps'))[0].c, 0);
+  assert.equal((await as(db, null, 'select count(*)::int c from ipps'))[0].c, 0);
+  await assert.rejects(as(db, U.viewer, `insert into ipps (team_id, player_id) values ($1, $2)`, [bcsTeam, pa.id]));
+  await assert.rejects(as(db, U.coach, `insert into ipps (team_id, player_id) values ($1, $2)`, [bcsTeam, uniPlayer]));
+  await assert.rejects(as(db, U.coach, `insert into ipps (team_id, data) values ($1, '[1]')`, [uniTeam]));
   // player photos: team members read, coaches write, only into their own team's folder
   await as(db, U.coach, `insert into storage.objects (bucket_id, name) values ('player-photos', $1)`, [`${bcsTeam}/p.jpg`]);
   await assert.rejects(as(db, U.coach, `insert into storage.objects (bucket_id, name) values ('player-photos', $1)`, [`${uniTeam}/p.jpg`]));

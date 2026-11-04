@@ -21,6 +21,7 @@ export const MENUS = [
   { id: 'injury', label: 'Injury report', icon: 'cross', coach: true },
   { id: 'sc', label: 'S&C', icon: 'dumbbell' },
   { id: 'athletes', label: 'Athlete reports', icon: 'report', coach: true },
+  { id: 'ipp', label: 'IPP', icon: 'target', coach: true },
   { id: 'recruit', label: 'Recruitment', icon: 'search', coach: true },
   { id: 'spectators', label: 'Spectators', icon: 'ext', admin: true },
   { id: 'profile', label: 'My Profile', icon: 'user' },

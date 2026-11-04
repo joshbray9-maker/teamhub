@@ -180,6 +180,17 @@ or custom dates): a summary per test (first, latest, change, best, latest team m
 of each test against the team median, and every result by date (individual testing days marked).
 **Print / PDF** makes a one-athlete report to send out. The team median uses team testing only.
 
+**IPP (admins and coaches only):** an individual performance pathway for every athlete, built
+from the BCS IPP template (`src/lib/ipp.js`; every label and box note in `src/lib/ippTemplate.js`,
+generated from the template tab). Same layout as the workbook: header (athlete, coach, position,
+evaluation date, team, province, age/YOB), the two legends, the pillars (Physical, Mental,
+Social/Emotional with Daily Training Environment) with a 1–5 scale and observations per box,
+Basketball four factors (range / open / balanced / comments), comments and the monthly notes.
+Every box that has a note in the template shows it on **hover or keyboard focus** (red corner
+marker, like a spreadsheet comment). The team's **Base IPP** holds the starting values (coach,
+province, the template's defaults); a new athlete IPP starts from it with their name, position and
+team filled in. Stored in `ipps` (staff-only RLS, moves with a player). Print / PDF per athlete.
+
 **S&C → Gym groups (admins and coaches only):** each athlete's latest full testing is compared
 with **targets you set** (Targets button; no built-in numbers). The two main factors are
 **CMJ jump height and RSImod**: both on target → **Expression efficient** (preserve, keep getting

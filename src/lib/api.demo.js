@@ -153,6 +153,9 @@ export const api = {
   async photoUrls(paths) { return Object.fromEntries(paths.filter(Boolean).map((p) => [p, p])); },
   async saveInjuries(teamId, list) { const l = (D(teamId).injuries = D(teamId).injuries || []); const r = upsert(l, list.map((i) => ({ team_id: teamId, updated_at: new Date().toISOString(), ...i })), 'i'); save(); return clone(r); },
   async deleteInjury(id) { Object.values(db.data).forEach((d) => { d.injuries = (d.injuries || []).filter((i) => i.id !== id); }); save(); },
+  async listIpps(teamId) { await load(); const x = D(teamId).ipps || {}; const { base, ...ps } = x; return clone({ base: base ? base.data : null, baseAt: base ? base.updated_at : null, players: ps }); },
+  async saveIpp(teamId, playerId, data) { const x = (D(teamId).ipps = D(teamId).ipps || {}); x[playerId || 'base'] = { data: clone(data), updated_at: new Date().toISOString() }; save(); },
+  async deleteIpp(teamId, playerId) { delete (D(teamId).ipps || {})[playerId || 'base']; save(); },
   async movePlayer(id, teamId) {
     await load(); let p = null, from = null;
     Object.entries(db.data).forEach(([tid, d]) => { const i = (d.players || []).findIndex((x) => x.id === id); if (i >= 0) { p = d.players.splice(i, 1)[0]; from = tid; } });
@@ -161,11 +164,12 @@ export const api = {
     const fd = db.data[from];
     to.injuries = [...(to.injuries || []), ...(fd.injuries || []).filter((x) => x.player_id === id).map((x) => ({ ...x, team_id: teamId }))];
     fd.injuries = (fd.injuries || []).filter((x) => x.player_id !== id);
+    if (fd.ipps && fd.ipps[id]) { to.ipps = { ...(to.ipps || {}), [id]: fd.ipps[id] }; delete fd.ipps[id]; }
     Object.values(fd.lineups || {}).forEach((l) => Object.keys(l.slots).forEach((k) => { if (l.slots[k].pid === id) delete l.slots[k]; }));
     if (fd.gym) delete fd.gym.overrides[id];
     save();
   },
-  async deletePlayer(id) { Object.values(db.data).forEach((d) => { d.players = (d.players || []).filter((p) => p.id !== id); }); save(); },
+  async deletePlayer(id) { Object.values(db.data).forEach((d) => { d.players = (d.players || []).filter((p) => p.id !== id); if (d.ipps) delete d.ipps[id]; }); save(); },
   async listLineups(teamId) { await load(); return clone(D(teamId).lineups || {}); },
   async saveLineup(teamId, key, slots, opponent = '') { (D(teamId).lineups = D(teamId).lineups || {})[key] = { slots: clone(slots), opponent, updatedAt: Date.now() }; save(); },
   async deleteLineup(teamId, key) { delete (D(teamId).lineups || {})[key]; save(); },

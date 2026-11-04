@@ -173,6 +173,17 @@ export const api = {
       ...Object.fromEntries(text.map((c) => [c, i[c] ?? ''])), ...Object.fromEntries(dates.map((c) => [c, i[c] || null])) })));
   },
   async deleteInjury(id) { ok(await supabase.from('injuries').delete().eq('id', id)); },
+
+  /* ---------- IPPs (staff only) ---------- */
+  /** The team's IPPs: { base: data|null, players: { [player_id]: { data, updated_at } } }. */
+  async listIpps(teamId) {
+    const rows = ok(await supabase.from('ipps').select('player_id,data,updated_at').eq('team_id', teamId));
+    const b = rows.find((r) => !r.player_id);
+    return { base: b ? b.data : null, baseAt: b ? b.updated_at : null, players: Object.fromEntries(rows.filter((r) => r.player_id).map((r) => [r.player_id, { data: r.data, updated_at: r.updated_at }])) };
+  },
+  /** Saves the base IPP (playerId null) or an athlete's IPP. */
+  async saveIpp(teamId, playerId, data) { ok(await supabase.from('ipps').upsert({ team_id: teamId, player_id: playerId || null, data }, { onConflict: 'team_id,player_key' })); },
+  async deleteIpp(teamId, playerId) { ok(await supabase.from('ipps').delete().eq('team_id', teamId).eq('player_key', playerId || 'base')); },
   /** Reads a public roster page through the roster-import function: { tables } or throws. */
   async fetchRosterPage(teamId, url) {
     const { data, error } = await supabase.functions.invoke('roster-import', { body: { team_id: teamId, url } });

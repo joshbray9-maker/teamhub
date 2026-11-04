@@ -9,6 +9,7 @@ import Roster from './pages/Roster.jsx';
 import Injury from './pages/Injury.jsx';
 import CoachReport from './pages/CoachReport.jsx';
 import AthleteReports from './pages/AthleteReports.jsx';
+import Ipp from './pages/Ipp.jsx';
 import DataCenter from './pages/DataCenter.jsx';
 import Practice from './pages/Practice.jsx';
 import Playbook from './pages/Playbook.jsx';
@@ -60,6 +61,7 @@ function Page() {
   if (H.page === 'injury') return <Injury key={t.id} />;
   if (H.page === 'coach') return <CoachReport key={t.id} />;
   if (H.page === 'athletes') return <AthleteReports key={t.id} />;
+  if (H.page === 'ipp') return <Ipp key={t.id} />;
   if (H.page === 'data') return <DataCenter key={t.id} />;
   if (H.page === 'practice') return <Practice key={t.id} />;
   if (H.page === 'playbook') return <Playbook key={t.id} />;

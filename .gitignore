@@ -11,3 +11,7 @@ seed/seed.sql
 
 # files dropped in for one-off imports (schedules etc.); never committed
 import/
+
+# coach spreadsheets with real athlete data: never commit (Josh, 2026-11-04)
+*.xlsx
+*.numbers
