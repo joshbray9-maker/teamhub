@@ -3,6 +3,7 @@
 // browser's localStorage. Only loaded in development builds (see api.js).
 import { clone, uid, slugify } from './util.js';
 import { METRICS } from './testing.js';
+import { openGames, opponentOf, cleanAnswers } from './selfAssess.js';
 
 const KEY = 'teamhub-demo-db';
 const files = import.meta.glob('../../seed/export/**/*.json');
@@ -42,9 +43,9 @@ function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch {
 const D = (teamId) => db.data[teamId] || (db.data[teamId] = { games: [], groups: [], events: [], notifs: [], sc: { weeks: {}, days: {} }, coach: { notes: '', todos: [] }, candidates: [], lastRun: null });
 const upsert = (list, rows, prefix) => rows.map((r) => { const x = { ...r, id: r.id || prefix + uid() }; const i = list.findIndex((y) => y.id === x.id); if (i >= 0) list[i] = x; else list.push(x); return x; });
 
-const chatSubs = new Set();
 // a member row: pending invites by id (a link-only invite has no email), members by email
 const same = (y, m) => (m.pending ? y.pending && y.id === m.id : !y.pending && y.email === m.email);
+const chatSubs = new Set();
 let authCb = null, signedIn = (() => { try { return localStorage.getItem(KEY + ':out') !== '1'; } catch { return true; } })();
 export const api = {
   demo: true,
@@ -63,7 +64,7 @@ export const api = {
   },
   async loadOrgData(ids) { await load(); return clone(Object.fromEntries(ids.map((id) => [id, { games: D(id).games, events: D(id).events, sc: (D(id).sc || {}).days || {}, weeks: (D(id).sc || {}).weeks || {} }]))); },
   async saveGames(teamId, games) { const r = upsert(D(teamId).games, games, 'g'); save(); return clone(r); },
-  async deleteGame(id) { Object.values(db.data).forEach((d) => { d.games = d.games.filter((g) => g.id !== id); }); save(); },
+  async deleteGame(id) { Object.values(db.data).forEach((d) => { d.games = d.games.filter((g) => g.id !== id); }); (db.selfAssess || []).forEach((a) => { if (a.game_id === id) a.game_id = null; }); save(); },
   async clearGameFlag(id) { Object.values(db.data).forEach((d) => d.games.forEach((g) => { if (g.id === id) { g.sync_flag = null; g.sync_changes = null; } })); save(); },
   async saveEvents(teamId, events) { const r = upsert(D(teamId).events, events, 'e'); save(); return clone(r); },
   async deleteEvent(id) { Object.values(db.data).forEach((d) => { d.events = d.events.filter((e) => e.id !== id); }); save(); },
@@ -158,6 +159,35 @@ export const api = {
   async listIpps(teamId) { await load(); const x = D(teamId).ipps || {}; const { base, ...ps } = x; return clone({ base: base ? base.data : null, baseAt: base ? base.updated_at : null, players: ps }); },
   async saveIpp(teamId, playerId, data) { const x = (D(teamId).ipps = D(teamId).ipps || {}); x[playerId || 'base'] = { data: clone(data), updated_at: new Date().toISOString() }; save(); },
   async deleteIpp(teamId, playerId) { delete (D(teamId).ipps || {})[playerId || 'base']; save(); },
+  async listAssessLinks(teamId) {
+    await load(); const l = (db.assessLinks = db.assessLinks || {});
+    (D(teamId).players || []).forEach((p) => { if (!l[p.id]) l[p.id] = uid() + uid() + uid() + uid(); }); save();
+    return Object.fromEntries((D(teamId).players || []).map((p) => [p.id, l[p.id]]));
+  },
+  async resetAssessLink(playerId) { await load(); (db.assessLinks = db.assessLinks || {})[playerId] = uid() + uid() + uid() + uid(); save(); return db.assessLinks[playerId]; },
+  async listSelfAssessments(teamId) {
+    await load(); const ids = new Set((D(teamId).players || []).map((p) => p.id));
+    return clone((db.selfAssess || []).filter((a) => ids.has(a.player_id)).sort((a, b) => b.game_date.localeCompare(a.game_date)));
+  },
+  async deleteSelfAssessment(id) { db.selfAssess = (db.selfAssess || []).filter((a) => a.id !== id); save(); },
+  async assessView(token) {
+    await load(); const pid = Object.keys(db.assessLinks || {}).find((k) => db.assessLinks[k] === token); if (!pid) return null;
+    const tid = Object.keys(db.data).find((k) => (db.data[k].players || []).some((p) => p.id === pid && p.active !== false)); if (!tid) return null;
+    const p = D(tid).players.find((x) => x.id === pid), t = db.teams.find((x) => x.id === tid), o = db.orgs.find((x) => x.id === t.org_id);
+    const open = openGames(D(tid).games), mine = (db.selfAssess || []).filter((a) => a.player_id === pid);
+    return clone({ player: { name: p.name, num: p.num || '', position: p.position || '' }, team: { name: t.name, sport: t.sport, color: t.color, logo_url: t.logo || o.logo_url }, org: { name: o.name, logo_url: o.logo_url },
+      open: open.map((g) => { const a = mine.find((x) => x.game_id === g.id); return { id: g.id, date: g.date, time: g.time || '', home: g.home, away: g.away, opponent: opponentOf(g, t), answers: a ? a.answers : null, submitted_at: a ? a.submitted_at : null }; }),
+      past: mine.filter((a) => !open.some((g) => g.id === a.game_id)).sort((a, b) => b.game_date.localeCompare(a.game_date)) });
+  },
+  async assessSubmit(token, gameId, answers) {
+    const v = await api.assessView(token); if (!v) throw new Error('This link is not valid');
+    const g = v.open.find((x) => x.id === gameId); if (!g) throw new Error('This game is closed for answers');
+    const a = cleanAnswers(answers); if (!Object.keys(a).length) throw new Error('Answer at least one question');
+    const pid = Object.keys(db.assessLinks).find((k) => db.assessLinks[k] === token), list = (db.selfAssess = db.selfAssess || []);
+    const now = new Date().toISOString(), ex = list.find((x) => x.player_id === pid && x.game_id === gameId);
+    if (ex) Object.assign(ex, { answers: a, updated_at: now }); else list.push({ id: 'sa' + uid(), player_id: pid, game_id: gameId, game_date: g.date, opponent: g.opponent, answers: a, submitted_at: now, updated_at: now });
+    save(); return ex ? ex.submitted_at : now;
+  },
   async movePlayer(id, teamId) {
     await load(); let p = null, from = null;
     Object.entries(db.data).forEach(([tid, d]) => { const i = (d.players || []).findIndex((x) => x.id === id); if (i >= 0) { p = d.players.splice(i, 1)[0]; from = tid; } });
@@ -171,7 +201,7 @@ export const api = {
     if (fd.gym) delete fd.gym.overrides[id];
     save();
   },
-  async deletePlayer(id) { Object.values(db.data).forEach((d) => { d.players = (d.players || []).filter((p) => p.id !== id); if (d.ipps) delete d.ipps[id]; }); save(); },
+  async deletePlayer(id) { Object.values(db.data).forEach((d) => { d.players = (d.players || []).filter((p) => p.id !== id); if (d.ipps) delete d.ipps[id]; }); db.selfAssess = (db.selfAssess || []).filter((a) => a.player_id !== id); save(); },
   async listLineups(teamId) { await load(); return clone(D(teamId).lineups || {}); },
   async saveLineup(teamId, key, slots, opponent = '') { (D(teamId).lineups = D(teamId).lineups || {})[key] = { slots: clone(slots), opponent, updatedAt: Date.now() }; save(); },
   async deleteLineup(teamId, key) { delete (D(teamId).lineups || {})[key]; save(); },

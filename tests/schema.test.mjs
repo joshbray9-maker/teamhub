@@ -380,6 +380,47 @@ test('invite links: whoever holds the link joins with its role and teams, once',
   assert.equal((await db.query(`select count(*)::int c from member_teams where user_id=$1`, [U.josh])).rows[0].c, 0);
 });
 
+test('self-assessments: a player answers open games through their link; only staff read the file', async () => {
+  const db = await setup();
+  const team = (await db.query(`select id from teams where legacy_id='t_hockey'`)).rows[0].id;
+  const day = (n) => `((now() at time zone 'America/Toronto')::date + ${n})::text`;
+  const [pl] = await as(db, U.josh, `insert into players (team_id, name, num) values ($1, 'Athlete HV01', '9') returning id`, [team]);
+  // the new player got a link; only staff can list links
+  const [{ token }] = await as(db, U.josh, 'select token from self_assess_links where player_id=$1', [pl.id]);
+  assert.equal(token.length, 64);
+  assert.equal((await as(db, U.viewer, 'select count(*)::int c from self_assess_links'))[0].c, 0);
+  assert.equal((await as(db, null, 'select count(*)::int c from self_assess_links'))[0].c, 0);
+  const g = async (n, time = '') => (await db.query(`insert into games (team_id, date, time, home, away) values ($1, ${day(n)}::date, $2, 'Opponent U18', 'BCS Hockey') returning id`, [team, time])).rows[0].id;
+  const old = await g(-40), prev = await g(-3), a1 = await g(-1, '10:00'), a2 = await g(-1, '18:00'), next = await g(2);
+  let v = (await as(db, null, 'select assess_view($1) v', [token]))[0].v;
+  assert.equal(v.player.name, 'Athlete HV01');
+  // the two games yesterday are open; the one before, the 40-day-old one and the future one aren't
+  assert.deepEqual(v.open.map((x) => x.id), [a1, a2]);
+  assert.equal(v.open[0].opponent, 'Opponent U18');
+  for (const x of [prev, old, next]) await assert.rejects(as(db, null, `select assess_submit($1, $2, '{"rating":"4"}')`, [token, x]));
+  await assert.rejects(as(db, null, `select assess_submit('nope', $1, '{"rating":"4"}')`, [a1]));
+  await assert.rejects(as(db, null, `select assess_submit($1, $2, '{"rating":"9","x":"y"}')`, [token, a1]));
+  await as(db, null, `select assess_submit($1, $2, $3)`, [token, a1, { rating: '4', fun: 'Yes', compete: '5', well: '  Talked on D  ', hack: 'x' }]);
+  await as(db, null, `select assess_submit($1, $2, $3)`, [token, a1, { rating: '3', fun: 'Maybe', well: 'Talked' }]);
+  v = (await as(db, null, 'select assess_view($1) v', [token]))[0].v;
+  assert.deepEqual(v.open[0].answers, { rating: '3', well: 'Talked' });
+  // staff read it; viewers and the public don't
+  assert.equal((await as(db, U.josh, 'select count(*)::int c from self_assessments'))[0].c, 1);
+  assert.equal((await as(db, U.viewer, 'select count(*)::int c from self_assessments'))[0].c, 0);
+  assert.equal((await as(db, null, 'select count(*)::int c from self_assessments'))[0].c, 0);
+  // removing the game keeps the answers, as past
+  await db.query('delete from games where id=$1', [a1]);
+  const [kept] = (await db.query('select game_id, opponent from self_assessments')).rows;
+  assert.equal(kept.game_id, null); assert.equal(kept.opponent, 'Opponent U18');
+  v = (await as(db, null, 'select assess_view($1) v', [token]))[0].v;
+  assert.equal(v.past.length, 1); assert.deepEqual(v.open.map((x) => x.id), [a2]);
+  // a new link replaces the old one; an inactive player's link shows nothing
+  await as(db, U.josh, `update self_assess_links set token = repeat('a', 64) where player_id = $1`, [pl.id]);
+  assert.equal((await as(db, null, 'select assess_view($1) v', [token]))[0].v, null);
+  await db.query('update players set active = false where id=$1', [pl.id]);
+  assert.equal((await as(db, null, `select assess_view(repeat('a', 64)) v`))[0].v, null);
+});
+
 test('link-only invites: no email, chosen role and teams, used once', async () => {
   const db = await setup();
   const bcs = (await db.query(`select id from organizations where slug='bcs'`)).rows[0].id;

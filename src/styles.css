@@ -1051,3 +1051,31 @@ span.gd-row{cursor:default}
   .ipp-pillar{break-inside:auto}.ipp-row{break-inside:avoid}
   .ipp .select{appearance:none;-webkit-appearance:none;background-image:none}
 }
+
+/* ---------- player self-assessment (/a/<token>) and staff views ---------- */
+.sa-wrap{max-width:680px}
+.sa-who{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.sa-who>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.sa-who b{font-size:16px;overflow-wrap:anywhere}
+.sa-form{gap:18px}
+.sa-q{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;min-width:0}
+.sa-q legend{font-weight:650;padding:0;margin-bottom:8px;line-height:1.35}
+.sa-scale{display:flex;gap:8px;flex-wrap:wrap}
+.sa-scale button{flex:1 1 0;min-width:52px;min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-weight:700;font-size:16px;cursor:pointer}
+.sa-scale button.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.sa-ends{display:flex;justify-content:space-between;gap:8px}
+.sa-send{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.sa-ok{color:var(--good);font-weight:600;font-size:14px}
+.sa-err{color:var(--bad);font-weight:600;font-size:14px}
+.sa-past{display:flex;flex-direction:column;gap:6px}
+.sa-past details{border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.sa-past summary{cursor:pointer}
+.sa-ans{margin:10px 0 0;display:flex;flex-direction:column;gap:10px}
+.sa-ans dt{font-size:12.5px;color:var(--muted);font-weight:600}
+.sa-ans dd{margin:2px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.sa-grid td{vertical-align:top;white-space:pre-wrap;min-width:120px;max-width:260px;overflow-wrap:anywhere}
+.sa-grid td.num{min-width:0}
+.sa-links td .btn{margin-right:6px}
+@media (max-width:520px){.sa-who{grid-template-columns:1fr 1fr}}
+.sa-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.sa-url{max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

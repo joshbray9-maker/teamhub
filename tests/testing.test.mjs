@@ -254,3 +254,19 @@ test('athlete editor: edits, removals, moves and new dates go to the right testi
   const m = athleteSave([...rows.map((x) => ({ sid: x.sid, date: x.date, values: x.values })), { sid: null, date: '2025-10-01', values: { rsimod: 0.6 } }], sessions, results, 'p', 'hockey');
   assert.deepEqual(m.save, [{ sid: 's2', values: { cmj_jh: 41, rsimod: 0.6 } }]);
 });
+
+test('self-assessments: open games and kept answers follow the database rule', async () => {
+  const { openGames, cleanAnswers, splitName } = await import('../src/lib/selfAssess.js');
+  const now = { date: '2026-11-05', time: '19:00' };
+  const g = (id, date, time = '') => ({ id, date, time });
+  // two games yesterday stay open together until a later date's game starts
+  assert.deepEqual(openGames([g('a', '2026-11-01'), g('b', '2026-11-04', '18:00'), g('c', '2026-11-04', '10:00'), g('d', '2026-11-07')], now).map((x) => x.id), ['c', 'b']);
+  // today's game opens once it starts; a TBA-time game opens on its day
+  assert.deepEqual(openGames([g('b', '2026-11-04'), g('t', '2026-11-05', '20:00')], now).map((x) => x.id), ['b']);
+  assert.deepEqual(openGames([g('b', '2026-11-04'), g('t', '2026-11-05', '18:30')], now).map((x) => x.id), ['t']);
+  assert.deepEqual(openGames([g('t', '2026-11-05')], now).map((x) => x.id), ['t']);
+  // nothing older than 30 days
+  assert.deepEqual(openGames([g('o', '2026-09-30')], now), []);
+  assert.deepEqual(cleanAnswers({ rating: '4', compete: '7', fun: 'Maybe', well: '  ok  ', hack: 1 }), { rating: '4', well: 'ok' });
+  assert.deepEqual(splitName('Athlete HV 01'), { first: 'Athlete', last: 'HV 01' });
+});

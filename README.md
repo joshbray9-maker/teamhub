@@ -184,6 +184,18 @@ test) to fix or add to in bulk: type, or paste rows from a spreadsheet (with the
 are matched by name: Date, CMJ, RSImod…). Each row goes into that day's testing session; a date with
 no session gets a new one, marked individual testing by default so it stays out of team averages.
 
+**Self-assessments (admins and coaches only):** game-by-game player self-assessments. Every
+rostered player has one permanent personal link (`/a/<token>`, **Player links** tab: copy one, or
+**Copy all links**); send it once. After each game on the team's schedule, that game's questions open
+on the link by themselves, with the player's name and jersey number filled in from the roster. A game
+opens once it starts (Eastern time; a game with no time opens on its day) and stays open until a game
+on a later date starts, so two games on one day are answered separately; nothing older than 30 days
+opens. **By game** shows every player's answers for one game and who hasn't answered; **By player**
+(and the athlete's report) shows their season file. Answers keep the game's date and opponent, so
+removing a game from the schedule keeps them. **New link** replaces a player's link (the old one
+stops working). Questions: `src/lib/selfAssess.js` (a new question also needs its id in
+`assess_submit()`, migration `20261124000000_self_assessments.sql`).
+
 **IPP (admins and coaches only):** an individual performance pathway for every athlete, built
 from the BCS IPP template (`src/lib/ipp.js`; every label and box note in `src/lib/ippTemplate.js`,
 generated from the template tab). Same layout as the workbook: header (athlete, coach, position,

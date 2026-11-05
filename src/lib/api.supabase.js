@@ -184,6 +184,28 @@ export const api = {
   /** Saves the base IPP (playerId null) or an athlete's IPP. */
   async saveIpp(teamId, playerId, data) { ok(await supabase.from('ipps').upsert({ team_id: teamId, player_id: playerId || null, data }, { onConflict: 'team_id,player_key' })); },
   async deleteIpp(teamId, playerId) { ok(await supabase.from('ipps').delete().eq('team_id', teamId).eq('player_key', playerId || 'base')); },
+  /* ---------- player self-assessments ---------- */
+  /** Staff: each player's personal link token, { [player_id]: token }. */
+  async listAssessLinks(teamId) {
+    const rows = ok(await supabase.from('self_assess_links').select('player_id, token, players!inner(team_id)').eq('players.team_id', teamId));
+    return Object.fromEntries(rows.map((r) => [r.player_id, r.token]));
+  },
+  /** Staff: a new link for a player (the old one stops working); returns the token. */
+  async resetAssessLink(playerId) {
+    const token = [...crypto.getRandomValues(new Uint8Array(32))].map((b) => b.toString(16).padStart(2, '0')).join('');
+    ok(await supabase.from('self_assess_links').upsert({ player_id: playerId, token }));
+    return token;
+  },
+  /** Staff: every self-assessment by the team's players, newest game first. */
+  async listSelfAssessments(teamId) {
+    const rows = ok(await supabase.from('self_assessments').select('id, player_id, game_id, game_date, opponent, answers, submitted_at, updated_at, players!inner(team_id)')
+      .eq('players.team_id', teamId).order('game_date', { ascending: false }));
+    return rows.map(({ players, ...r }) => r);
+  },
+  async deleteSelfAssessment(id) { ok(await supabase.from('self_assessments').delete().eq('id', id)); },
+  /** Public (no sign-in): what a player's link shows, or null. */
+  async assessView(token) { return ok(await supabase.rpc('assess_view', { p_token: token })); },
+  async assessSubmit(token, gameId, answers) { return ok(await supabase.rpc('assess_submit', { p_token: token, p_game: gameId, p_answers: answers })); },
   /** Reads a public roster page through the roster-import function: { tables } or throws. */
   async fetchRosterPage(teamId, url) {
     const { data, error } = await supabase.functions.invoke('roster-import', { body: { team_id: teamId, url } });

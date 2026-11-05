@@ -4,6 +4,7 @@
 // date. Print / PDF gives a one-athlete report to send out. Individual testing days count for the
 // athlete; the team median only uses team testing (lib/testing.js athleteHistory). Edit testing
 // opens the athlete's whole history as one grid to fix or add to in bulk (AthleteTesting.jsx).
+// Below the testing, the athlete's game-by-game self-assessments (SelfAssess.jsx).
 import { useEffect, useMemo, useState } from 'react';
 import { useHub, useMetrics } from '../lib/hub.jsx';
 import { fmtDate, todayISO } from '../lib/util.js';
@@ -14,20 +15,22 @@ import Avatar from '../components/Avatar.jsx';
 import Logo from '../components/Logo.jsx';
 import Icon from '../components/Icon.jsx';
 import AthleteTesting from './AthleteTesting.jsx';
+import { PlayerFile } from './SelfAssess.jsx';
 
 const PRESETS = [['season', 'This season'], ['3m', 'Last 3 months'], ['12m', 'Last 12 months'], ['all', 'All testing'], ['custom', 'Custom dates']];
 
 export default function AthleteReports() {
   const H = useHub(); const t = H.team;
   const { roster, photos } = useRoster();
-  const [tests, setTests] = useState(null), [pid, setPid] = useState(null), [q, setQ] = useState(''), [edit, setEdit] = useState(false);
+  const [tests, setTests] = useState(null), [pid, setPid] = useState(null), [q, setQ] = useState(''), [edit, setEdit] = useState(false), [assess, setAssess] = useState([]);
+  const loadAssess = () => H.api.listSelfAssessments(t.id).then(setAssess).catch(() => setAssess([]));
   const load = () => H.api.listTests(t.id).then(setTests).catch((e) => { setTests((x) => x || { sessions: [], results: [] }); H.toast('Could not load testing: ' + e.message); });
-  useEffect(() => { if (H.isCoach) load(); }, [t.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (H.isCoach) { load(); loadAssess(); } }, [t.id]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!H.isCoach) return <><PageHead title="Athlete reports" /><section className="card"><p className="muted" style={{ margin: 0 }}>Athlete reports are only visible to coaches and admins.</p></section></>;
   if (!roster || !tests) return <><PageHead title="Athlete reports" /><div className="loading">Loading…</div></>;
   const p = pid && roster.find((x) => x.id === pid);
   if (p && edit) return <AthleteTesting key={p.id} p={p} tests={tests} prof={testProfile(t, H.orgOf(t))} back={() => setEdit(false)} onSaved={load} />;
-  if (p) return <Report p={p} photo={photos[p.photo]} tests={tests} back={() => setPid(null)} onEdit={() => setEdit(true)} />;
+  if (p) return <Report p={p} photo={photos[p.photo]} tests={tests} assess={assess} reloadAssess={loadAssess} back={() => setPid(null)} onEdit={() => setEdit(true)} />;
   const when = Object.fromEntries(tests.sessions.map((s) => [s.id, s.tested_on]));
   const stats = (id) => { const d = tests.results.filter((r) => r.player_id === id && when[r.session_id]).map((r) => when[r.session_id]).sort(); return { n: d.length, last: d[d.length - 1] }; };
   const list = roster.filter((x) => !q.trim() || `${x.num} ${x.name} ${x.position}`.toLowerCase().includes(q.trim().toLowerCase()));
@@ -45,7 +48,7 @@ export default function AthleteReports() {
   </>;
 }
 
-function Report({ p, photo, tests, back, onEdit }) {
+function Report({ p, photo, tests, assess, reloadAssess, back, onEdit }) {
   const H = useHub(); const M = useMetrics(); const t = H.team; const prof = testProfile(t, H.orgOf(t)); const today = todayISO();
   const [preset, setPreset] = useState('season');
   const [custom, setCustom] = useState(() => reportRange('season', today, tests.teamFrom));
@@ -88,6 +91,10 @@ function Report({ p, photo, tests, back, onEdit }) {
       </section>
       <p className="muted small ar-foot">Team median: team testing days only. Individual testing days count for the athlete. Results are the athlete's own; nothing here is estimated.</p>
     </>}
+    <section className="card ar-sec">
+      <div className="card-head"><h2>Self-assessments</h2><span className="muted small">{p.name}'s own answers after each game</span></div>
+      <PlayerFile p={p} list={assess} reload={reloadAssess} />
+    </section>
   </>;
 }
 

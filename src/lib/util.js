@@ -22,6 +22,7 @@ export const MENUS = [
   { id: 'sc', label: 'S&C', icon: 'dumbbell' },
   { id: 'athletes', label: 'Athlete reports', icon: 'report', coach: true },
   { id: 'ipp', label: 'IPP', icon: 'target', coach: true },
+  { id: 'selfassess', label: 'Self-assessments', icon: 'clipboard', coach: true },
   { id: 'recruit', label: 'Recruitment', icon: 'search', coach: true },
   { id: 'spectators', label: 'Spectators', icon: 'ext', admin: true },
   { id: 'profile', label: 'My Profile', icon: 'user' },
