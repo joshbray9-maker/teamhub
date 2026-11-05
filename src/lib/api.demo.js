@@ -43,6 +43,8 @@ const D = (teamId) => db.data[teamId] || (db.data[teamId] = { games: [], groups:
 const upsert = (list, rows, prefix) => rows.map((r) => { const x = { ...r, id: r.id || prefix + uid() }; const i = list.findIndex((y) => y.id === x.id); if (i >= 0) list[i] = x; else list.push(x); return x; });
 
 const chatSubs = new Set();
+// a member row: pending invites by id (a link-only invite has no email), members by email
+const same = (y, m) => (m.pending ? y.pending && y.id === m.id : !y.pending && y.email === m.email);
 let authCb = null, signedIn = (() => { try { return localStorage.getItem(KEY + ':out') !== '1'; } catch { return true; } })();
 export const api = {
   demo: true,
@@ -183,9 +185,10 @@ export const api = {
   async createOrg(name, slug) { const o = { id: 'o_' + slug, slug, name, public_schedule: false, role: 'admin' }; db.orgs.push(o); db.members[o.id] = [{ user_id: USER.id, email: USER.email, role: 'admin' }]; save(); return clone(o); },
   async updateOrg(id, patch) { Object.assign(db.orgs.find((o) => o.id === id), patch); save(); },
   async listMembers(orgId) { return clone(db.members[orgId] || []); },
-  async inviteMember(orgId, email, role, teams = null) { (db.members[orgId] = db.members[orgId] || []).push({ email: email.toLowerCase(), role, pending: true, token: 'demo-' + uid(), teams: teams && teams.length ? teams : null }); save(); return 'invited'; },
+  async inviteMember(orgId, email, role, teams = null, label = '') { (db.members[orgId] = db.members[orgId] || []).push({ id: 'inv' + uid(), email: email.toLowerCase(), label: label.trim().slice(0, 80), role, pending: true, token: 'demo-' + uid(), teams: teams && teams.length ? teams : null }); save(); return 'invited'; },
+  async createInviteLink(orgId, { label = '', role, teams = null }) { const token = 'demo-' + uid(); (db.members[orgId] = db.members[orgId] || []).push({ id: 'inv' + uid(), email: '', label: label.trim().slice(0, 80), role, pending: true, token, teams: role !== 'admin' && teams && teams.length ? teams : null }); save(); return token; },
   async inviteInfo(token) {
-    await load(); for (const o of db.orgs) { const m = (db.members[o.id] || []).find((x) => x.pending && x.token === token); if (m) return { org_name: o.name, role: m.role, email: m.email }; }
+    await load(); for (const o of db.orgs) { const m = (db.members[o.id] || []).find((x) => x.pending && x.token === token); if (m) return { org_name: o.name, role: m.role, email: m.email || null, label: m.label || '', teams: m.role === 'admin' || !m.teams ? null : db.teams.filter((t) => m.teams.includes(t.id)).map((t) => t.name) }; }
     return null;
   },
   // demo: the one demo user is already in every organization, so joining just uses the link up
@@ -193,9 +196,9 @@ export const api = {
     await load(); for (const o of db.orgs) { const l = db.members[o.id] || []; const i = l.findIndex((x) => x.pending && x.token === token); if (i >= 0) { l.splice(i, 1); save(); return o.id; } }
     return null;
   },
-  async setMemberTeams(orgId, m, teams) { const x = (db.members[orgId] || []).find((y) => y.email === m.email); if (x) x.teams = teams && teams.length ? teams : null; save(); },
-  async setMemberRole(orgId, m, role) { const x = (db.members[orgId] || []).find((y) => y.email === m.email); if (x) x.role = role; save(); },
-  async removeMember(orgId, m) { db.members[orgId] = (db.members[orgId] || []).filter((y) => y.email !== m.email); save(); },
+  async setMemberTeams(orgId, m, teams) { const x = (db.members[orgId] || []).find((y) => same(y, m)); if (x) x.teams = teams && teams.length ? teams : null; save(); },
+  async setMemberRole(orgId, m, role) { const x = (db.members[orgId] || []).find((y) => same(y, m)); if (x) x.role = role; save(); },
+  async removeMember(orgId, m) { db.members[orgId] = (db.members[orgId] || []).filter((y) => !same(y, m)); save(); },
 
   async publicSchedule(slug) {
     await load(); const o = db.orgs.find((x) => x.slug === slug && x.public_schedule); if (!o) return null;

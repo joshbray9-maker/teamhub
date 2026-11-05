@@ -379,3 +379,24 @@ test('invite links: whoever holds the link joins with its role and teams, once',
   assert.equal((await db.query(`select role from memberships where user_id=$1 and org_id=$2`, [U.josh, bcs])).rows[0].role, 'admin');
   assert.equal((await db.query(`select count(*)::int c from member_teams where user_id=$1`, [U.josh])).rows[0].c, 0);
 });
+
+test('link-only invites: no email, chosen role and teams, used once', async () => {
+  const db = await setup();
+  const bcs = (await db.query(`select id from organizations where slug='bcs'`)).rows[0].id;
+  const bcsTeam = (await db.query(`select id from teams where legacy_id='t_hockey'`)).rows[0].id;
+  // an admin makes two links with no email; a coach can't make one
+  const [{ token }] = await as(db, U.josh, `insert into invites (org_id, label, role, team_ids) values ($1, 'Coach Martin', 'viewer', $2) returning token`, [bcs, [bcsTeam]]);
+  await as(db, U.josh, `insert into invites (org_id, label, role) values ($1, 'Second link', 'coach')`, [bcs]);
+  await as(db, U.josh, `select invite_member($1, 'Coach@x.test', 'coach')`, [bcs]);
+  await assert.rejects(as(db, U.coach, `insert into invites (org_id, role) values ($1, 'admin')`, [bcs]));
+  const [info] = await as(db, null, 'select * from invite_info($1)', [token]);
+  assert.equal(info.label, 'Coach Martin'); assert.equal(info.email, null);
+  assert.deepEqual(info.teams, [(await db.query('select name from teams where id=$1', [bcsTeam])).rows[0].name]);
+  await db.exec(`insert into auth.users values ('${U.other}', 'martin@x.test')`);
+  assert.equal((await as(db, U.other, 'select accept_invite($1) r', [token]))[0].r, bcs);
+  assert.equal((await db.query(`select role from memberships where user_id=$1`, [U.other])).rows[0].role, 'viewer');
+  assert.deepEqual((await as(db, U.other, 'select id from teams')).map((r) => r.id), [bcsTeam]);
+  // only that link is used up
+  assert.equal((await as(db, null, 'select * from invite_info($1)', [token])).length, 0);
+  assert.equal((await db.query(`select count(*)::int c from invites where org_id=$1`, [bcs])).rows[0].c, 2);
+});

@@ -6,24 +6,31 @@ import Modal from './Modal.jsx';
 import Icon from './Icon.jsx';
 
 const ROLES = { admin: 'Admin', coach: 'Coach', viewer: 'Viewer' };
+// what each access level can do (enforced in the database, see the RLS policies)
+const ROLE_INFO = {
+  coach: 'Edits schedules, the S&C plan, team notes, injuries, testing and IPPs for their teams.',
+  viewer: 'Looks only: schedules and plans. No notes, injuries, test results or IPPs.',
+  admin: 'Everything on every team, plus members, invite links and settings.',
+};
 
-/** "All teams" or a chosen set. value: null (all) or [team ids]. */
+/** Team access as switches: "All teams" on = null; off = only the teams switched on ([ids]). */
 function TeamPick({ teams, value, onChange }) {
-  const some = value !== null;
+  const all = value === null;
   const flip = (id) => { const s = new Set(value || []); if (s.has(id)) s.delete(id); else s.add(id); onChange([...s]); };
   return <div className="tp">
-    <label className="tp-opt"><input type="radio" checked={!some} onChange={() => onChange(null)} /> All teams in the organization</label>
-    <label className="tp-opt"><input type="radio" checked={some} onChange={() => onChange([])} /> Only these teams:</label>
-    {some && <div className="tp-list">{teams.map((t) => <label key={t.id}><input type="checkbox" className="cb" checked={value.includes(t.id)} onChange={() => flip(t.id)} /> {t.name}</label>)}</div>}
+    <label className="tp-opt"><input type="checkbox" role="switch" className="sw" checked={all} onChange={(e) => onChange(e.target.checked ? null : [])} /> <b>All teams</b><span className="muted small">including teams added later</span></label>
+    {!all && <div className="tp-list">{teams.map((t) => <label key={t.id}><input type="checkbox" role="switch" className="sw" checked={value.includes(t.id)} onChange={() => flip(t.id)} /> {t.name}</label>)}</div>}
   </div>;
 }
+const who = (m) => (m.pending ? m.label || m.email || 'this invite' : m.email);
 const teamsLabel = (m, teams) => (m.role === 'admin' || !m.teams ? 'All teams' : m.teams.length === 1 ? (teams.find((t) => t.id === m.teams[0]) || {}).name || '1 team' : `${m.teams.length} teams`);
 
 export default function MembersDialog({ org, close }) {
   const H = useHub();
   const teams = H.orgTeams(org.id);
   const [list, setList] = useState(null);
-  const [email, setEmail] = useState(''); const [role, setRole] = useState('coach'); const [pick, setPick] = useState(null);
+  const [label, setLabel] = useState(''); const [email, setEmail] = useState(''); const [role, setRole] = useState('coach'); const [pick, setPick] = useState(null);
+  const [made, setMade] = useState(null); // the link just created: { url, label }
   const [pub, setPub] = useState(!!org.public_schedule);
   const load = () => H.api.listMembers(org.id).then(setList).catch((e) => H.toast('Could not load members: ' + e.message));
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -37,30 +44,49 @@ export default function MembersDialog({ org, close }) {
     try { await H.api.updateOrg(org.id, { public_schedule: on }); H.setHub((h) => ({ ...h, orgs: h.orgs.map((o) => (o.id === org.id ? { ...o, public_schedule: on } : o)) })); }
     catch (e) { setPub(!on); H.toast(e.message); }
   };
-  const add = (e) => {
+  // With an email: the person is added now if they have an account, else an invite tied to that
+  // email. Without one: a link-only invite. Either way the link is shown, ready to copy.
+  const add = async (e) => {
     e.preventDefault(); const em = email.trim();
-    if (!/^\S+@\S+\.\S+$/.test(em)) { H.toast('Enter an email address.'); return; }
-    if (role !== 'admin' && pick && !pick.length) { H.toast('Tick at least one team, or choose All teams.'); return; }
+    if (em && !/^\S+@\S+\.\S+$/.test(em)) { H.toast('That email doesn\'t look right. Fix it or leave it empty.'); return; }
+    if (role !== 'admin' && pick && !pick.length) { H.toast('Switch on at least one team, or All teams.'); return; }
     const teamIds = role === 'admin' ? null : pick;
-    setEmail(''); setPick(null);
-    act(() => H.api.inviteMember(org.id, em, role, teamIds), (r) => (r === 'added' ? 'Added: they already have an account' : 'Invite saved: copy their link below and send it to them'));
+    try {
+      if (em) {
+        const r = await H.api.inviteMember(org.id, em, role, teamIds, label);
+        if (r === 'added') { H.toast(`Added ${em}: they already have an account, so no link is needed`); setMade(null); }
+        else { const fresh = await H.api.listMembers(org.id); setList(fresh); const m = fresh.find((x) => x.pending && x.email === em.toLowerCase()); if (m) show({ url: joinLink(m), label: label.trim() || em }); }
+      } else show({ url: `${location.origin}/join/${await H.api.createInviteLink(org.id, { label, role, teams: teamIds })}`, label: label.trim() });
+      setLabel(''); setEmail(''); setPick(null); load();
+    } catch (x) { H.toast(x.message); }
   };
+  const show = (m) => { setMade(m); navigator.clipboard.writeText(m.url).then(() => H.toast('Invite link created and copied'), () => H.toast('Invite link created: copy it below')); };
   const editTeams = (m) => H.openDialog((c) => <MemberTeams m={m} teams={teams} close={c} onSave={(v) => act(() => H.api.setMemberTeams(org.id, m, v), 'Team access updated')} />);
   return <Modal title={`${org.name} · members`} wide onClose={close} actions={<button className="btn primary" onClick={close}>Done</button>}>
-    <p className="muted small" style={{ margin: 0 }}><b>Coaches</b> can edit schedules, the S&C plan, team notes, injuries and testing; <b>viewers</b> can only look (no notes, injuries or test results). Coaches and viewers see <b>all teams</b> in {org.name} or only the teams you choose; <b>admins</b> always see every team. People who already have an account are added right away. For anyone else, TeamHub makes a private <b>invite link</b>: copy it and send it to them yourself (text or email). The link works once.</p>
-    <form className="mem-add" onSubmit={add}>
-      <div className="todo-add">
-        <input className="input" type="email" placeholder="coach@school.ca" value={email} onChange={(e) => setEmail(e.target.value)} aria-label="Email" />
-        <select className="select" style={{ width: 120, flex: 'none' }} value={role} onChange={(e) => setRole(e.target.value)}>{Object.entries(ROLES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
-        <button className="btn primary" type="submit">Add</button>
-      </div>
-      {role !== 'admin' && teams.length > 1 && <TeamPick teams={teams} value={pick} onChange={setPick} />}
+    <p className="muted small" style={{ margin: 0 }}>Make an <b>invite link</b>, choose what it opens, then copy it and send it yourself (text or email). Whoever opens it creates an account (or signs in) and gets that access. Each link works once; you can change a person's access or remove them any time below.</p>
+    <form className="mem-add card" onSubmit={add}>
+      <div className="mem-h">New invite link</div>
+      <label className="small">Who is it for? <span className="muted">(optional, just so you know which link is whose)</span>
+        <input className="input" value={label} maxLength={80} placeholder="e.g. Coach Martin" onChange={(e) => setLabel(e.target.value)} /></label>
+      <div className="small">Access level</div>
+      <div className="role-pick" role="radiogroup" aria-label="Access level">{['coach', 'viewer', 'admin'].map((k) => <label key={k} className={role === k ? 'on' : ''}>
+        <span><input type="radio" name="inv-role" checked={role === k} onChange={() => setRole(k)} /> <b>{ROLES[k]}</b></span><span className="muted small">{ROLE_INFO[k]}</span></label>)}</div>
+      {teams.length > 1 && <><div className="small">Teams they can see</div>
+        {role === 'admin' ? <div className="muted small">Admins always see every team.</div> : <TeamPick teams={teams} value={pick} onChange={setPick} />}</>}
+      <label className="small">Their email <span className="muted">(optional: if they already have a TeamHub account they're added right away, no link needed)</span>
+        <input className="input" type="email" value={email} placeholder="coach@school.ca" onChange={(e) => setEmail(e.target.value)} /></label>
+      <div><button className="btn primary" type="submit"><Icon n="plus" /> Create invite link</button></div>
+      {made && <div className="mem-made">
+        <div className="small"><b>Link ready{made.label ? ` for ${made.label}` : ''}.</b> Send it to them: it works once.</div>
+        <div className="todo-add"><input className="input" readOnly value={made.url} onFocus={(e) => e.target.select()} aria-label="Invite link" /><button type="button" className="btn primary" onClick={() => copy(made.url, 'Invite link')}>Copy</button></div>
+      </div>}
     </form>
-    {!list ? <div className="muted small">Loading…</div> : <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>{list.map((m) => { const me = m.user_id === H.user.id; return <div key={m.email + (m.user_id || '')} className="mem-row">
-      <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{m.email} {m.pending && <span className="pill">Invited</span>}{m.pending && m.token && <button className="btn sm" style={{ marginLeft: 6 }} onClick={() => copy(joinLink(m), 'Invite link')} title="Copy the link to send to this person">Copy invite link</button>}{me && <span className="pill">You</span>}</span>
+    <div className="mem-h">People and links</div>
+    {!list ? <div className="muted small">Loading…</div> : <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>{list.map((m) => { const me = m.user_id === H.user.id; return <div key={m.id || m.email + (m.user_id || '')} className="mem-row">
+      <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{m.pending ? (m.label || m.email || 'Invite link') : m.email} {m.pending && m.label && m.email && <span className="muted small">{m.email} </span>}{m.pending && <span className="pill">{m.email ? 'Invited' : 'Link not used yet'}</span>}{m.pending && m.token && <button className="btn sm" style={{ marginLeft: 6 }} onClick={() => copy(joinLink(m), 'Invite link')} title="Copy the link to send to this person">Copy invite link</button>}{me && <span className="pill">You</span>}</span>
       <select className="select" value={m.role} disabled={me} onChange={(e) => act(() => H.api.setMemberRole(org.id, m, e.target.value))}>{Object.entries(ROLES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
       <button className="btn sm mem-teams" disabled={m.role === 'admin' || teams.length < 2} onClick={() => editTeams(m)} title={m.role === 'admin' ? 'Admins see every team' : 'Choose which teams they see'}>{teamsLabel(m, teams)}</button>
-      {me ? <span /> : <button className="icon-btn" aria-label={`Remove ${m.email}`} onClick={async () => { if (await H.confirm('Remove access?', `${m.email} will no longer see ${org.name}.`, 'Remove')) act(() => H.api.removeMember(org.id, m), 'Removed'); }}><Icon n="x" /></button>}
+      {me ? <span /> : <button className="icon-btn" aria-label={`Remove ${who(m)}`} onClick={async () => { if (await H.confirm(m.pending ? 'Delete this invite link?' : 'Remove access?', m.pending ? `The link for ${who(m)} will stop working.` : `${who(m)} will no longer see ${org.name}.`, m.pending ? 'Delete link' : 'Remove')) act(() => H.api.removeMember(org.id, m), 'Removed'); }}><Icon n="x" /></button>}
     </div>; })}</div>}
     <div className="card" style={{ padding: 14 }}>
       <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontWeight: 600 }}><input type="checkbox" className="cb" checked={pub} onChange={(e) => togglePub(e.target.checked)} /> Public master schedule link</label>
@@ -73,7 +99,7 @@ export default function MembersDialog({ org, close }) {
 function MemberTeams({ m, teams, close, onSave }) {
   const H = useHub();
   const [v, setV] = useState(m.teams ? [...m.teams] : null);
-  return <Modal title={`Teams for ${m.email}`} onClose={close} actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" onClick={() => { if (v && !v.length) { H.toast('Tick at least one team, or choose All teams.'); return; } close(); onSave(v); }}>Save</button></>}>
+  return <Modal title={`Teams for ${who(m)}`} onClose={close} actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" onClick={() => { if (v && !v.length) { H.toast('Switch on at least one team, or All teams.'); return; } close(); onSave(v); }}>Save</button></>}>
     <TeamPick teams={teams} value={v} onChange={setV} />
   </Modal>;
 }

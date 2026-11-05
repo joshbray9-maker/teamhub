@@ -1,6 +1,9 @@
 // Email + password sign-in, sign-up and password reset (Supabase Auth).
 import { useState } from 'react';
 
+/** Which teams an invite opens, in words. */
+export const inviteTeams = (inv) => (!inv.teams ? 'every team' : inv.teams.length ? inv.teams.join(', ') : 'no teams yet');
+
 // invite: { org_name, role, email, back } from an invite link (pages/Join.jsx): the form starts on
 // Create account with the invited email, and a confirmation email returns to the link.
 export default function Login({ api, mode: initial = 'in', invite = null }) {
@@ -21,7 +24,7 @@ export default function Login({ api, mode: initial = 'in', invite = null }) {
   return <div className="auth">
     <div className="eyebrow">TeamHub</div>
     <form className="card" onSubmit={submit}>
-      {invite && <div className="okmsg" style={{ color: 'inherit' }}>You're invited to <b>{invite.org_name}</b> as {invite.role === 'admin' ? 'an admin' : `a ${invite.role}`}. Create your account below, or sign in if you already have one.</div>}
+      {invite && <div className="okmsg" style={{ color: 'inherit' }}>You're invited to <b>{invite.org_name}</b> as {invite.role === 'admin' ? 'an admin' : `a ${invite.role}`} ({inviteTeams(invite)}). Create your account below, or sign in if you already have one.</div>}
       <div className="card-head"><h2>{title}</h2></div>
       {mode !== 'reset' && <label className="field"><span>Email</span><input className="input" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></label>}
       {mode !== 'forgot' && <label className="field"><span>{mode === 'reset' ? 'New password' : 'Password'}</span><input className="input" type="password" autoComplete={mode === 'in' ? 'current-password' : 'new-password'} required value={pw} onChange={(e) => setPw(e.target.value)} /></label>}
