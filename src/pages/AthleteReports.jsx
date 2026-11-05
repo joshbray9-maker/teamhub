@@ -2,7 +2,8 @@
 // history over a chosen time frame (this season, last 3 / 12 months, everything, or custom
 // dates): a summary per test, a chart of each test against the team median, and every result by
 // date. Print / PDF gives a one-athlete report to send out. Individual testing days count for the
-// athlete; the team median only uses team testing (lib/testing.js athleteHistory).
+// athlete; the team median only uses team testing (lib/testing.js athleteHistory). Edit testing
+// opens the athlete's whole history as one grid to fix or add to in bulk (AthleteTesting.jsx).
 import { useEffect, useMemo, useState } from 'react';
 import { useHub, useMetrics } from '../lib/hub.jsx';
 import { fmtDate, todayISO } from '../lib/util.js';
@@ -12,18 +13,21 @@ import PageHead from '../components/PageHead.jsx';
 import Avatar from '../components/Avatar.jsx';
 import Logo from '../components/Logo.jsx';
 import Icon from '../components/Icon.jsx';
+import AthleteTesting from './AthleteTesting.jsx';
 
 const PRESETS = [['season', 'This season'], ['3m', 'Last 3 months'], ['12m', 'Last 12 months'], ['all', 'All testing'], ['custom', 'Custom dates']];
 
 export default function AthleteReports() {
   const H = useHub(); const t = H.team;
   const { roster, photos } = useRoster();
-  const [tests, setTests] = useState(null), [pid, setPid] = useState(null), [q, setQ] = useState('');
-  useEffect(() => { if (H.isCoach) H.api.listTests(t.id).then(setTests).catch((e) => { setTests({ sessions: [], results: [] }); H.toast('Could not load testing: ' + e.message); }); }, [t.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [tests, setTests] = useState(null), [pid, setPid] = useState(null), [q, setQ] = useState(''), [edit, setEdit] = useState(false);
+  const load = () => H.api.listTests(t.id).then(setTests).catch((e) => { setTests((x) => x || { sessions: [], results: [] }); H.toast('Could not load testing: ' + e.message); });
+  useEffect(() => { if (H.isCoach) load(); }, [t.id]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!H.isCoach) return <><PageHead title="Athlete reports" /><section className="card"><p className="muted" style={{ margin: 0 }}>Athlete reports are only visible to coaches and admins.</p></section></>;
   if (!roster || !tests) return <><PageHead title="Athlete reports" /><div className="loading">Loading…</div></>;
   const p = pid && roster.find((x) => x.id === pid);
-  if (p) return <Report p={p} photo={photos[p.photo]} tests={tests} back={() => setPid(null)} />;
+  if (p && edit) return <AthleteTesting key={p.id} p={p} tests={tests} prof={testProfile(t, H.orgOf(t))} back={() => setEdit(false)} onSaved={load} />;
+  if (p) return <Report p={p} photo={photos[p.photo]} tests={tests} back={() => setPid(null)} onEdit={() => setEdit(true)} />;
   const when = Object.fromEntries(tests.sessions.map((s) => [s.id, s.tested_on]));
   const stats = (id) => { const d = tests.results.filter((r) => r.player_id === id && when[r.session_id]).map((r) => when[r.session_id]).sort(); return { n: d.length, last: d[d.length - 1] }; };
   const list = roster.filter((x) => !q.trim() || `${x.num} ${x.name} ${x.position}`.toLowerCase().includes(q.trim().toLowerCase()));
@@ -41,7 +45,7 @@ export default function AthleteReports() {
   </>;
 }
 
-function Report({ p, photo, tests, back }) {
+function Report({ p, photo, tests, back, onEdit }) {
   const H = useHub(); const M = useMetrics(); const t = H.team; const prof = testProfile(t, H.orgOf(t)); const today = todayISO();
   const [preset, setPreset] = useState('season');
   const [custom, setCustom] = useState(() => reportRange('season', today, tests.teamFrom));
@@ -51,7 +55,7 @@ function Report({ p, photo, tests, back }) {
   const span = range.from || range.to ? `${range.from ? fmtDate(range.from, true) : 'First test'} to ${range.to ? fmtDate(range.to, true) : 'today'}` : 'All testing';
   const pct = (c) => `${c > 0 ? '▲' : c < 0 ? '▼' : ''} ${Math.abs(c * 100).toFixed(1)}%`;
   return <>
-    <PageHead title="Athlete reports" actions={<><button className="btn" onClick={back}>← All athletes</button><button className="btn primary" onClick={() => window.print()}><Icon n="clipboard" /> Print / PDF</button></>} />
+    <PageHead title="Athlete reports" actions={<><button className="btn" onClick={back}>← All athletes</button><button className="btn" onClick={onEdit}><Icon n="edit" /> Edit testing</button><button className="btn primary" onClick={() => window.print()}><Icon n="clipboard" /> Print / PDF</button></>} />
     <header className="print-only gp-head"><Logo t={t} cls="gp-logo" /><div className="gp-title"><div className="gp-team">{t.name}</div><div className="gp-meta">Athlete testing report · {span}</div></div><div className="gp-tag">Athlete report</div></header>
     <section className="card ar-head">
       <Avatar p={p} url={photo} size={72} />
@@ -63,7 +67,7 @@ function Report({ p, photo, tests, back }) {
           <input type="date" className="input" value={custom.to} onChange={(e) => setCustom({ ...custom, to: e.target.value })} aria-label="To" /></>}
       </div>
     </section>
-    {!h.days.length ? <section className="card"><p className="muted" style={{ margin: 0 }}>No testing for {p.name} in this time frame. Try <b>All testing</b>.</p></section> : <>
+    {!h.days.length ? <section className="card"><p className="muted" style={{ margin: 0 }}>No testing for {p.name} in this time frame. Try <b>All testing</b>, or add results with <b>Edit testing</b>.</p></section> : <>
       <section className="card ar-sec">
         <div className="card-head"><h2>Summary</h2><span className="muted small">Change: latest vs first in this time frame (up is better; a faster time counts as up)</span></div>
         <div className="tbl-wrap"><table className="tbl ar-sum"><thead><tr><th>Test</th><th className="num">First</th><th className="num">Latest</th><th className="num">Change</th><th className="num">Best</th><th className="num">Team median</th><th className="num">Tests</th></tr></thead>

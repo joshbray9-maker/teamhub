@@ -350,3 +350,49 @@ export function leaderboards(rows) {
   overall.forEach((s, i) => { s.rank = i && Math.abs(overall[i - 1].score - s.score) < 1e-9 ? overall[i - 1].rank : i + 1; });
   return { byMetric, overall, need };
 }
+
+/* ---------- one athlete's testing, edited in bulk (Athlete reports → Edit testing) ---------- */
+/** A row per testing session the athlete has results in, oldest first. */
+export function athleteRows(sessions, results, playerId) {
+  const byId = Object.fromEntries(sessions.map((s) => [s.id, s]));
+  return results.filter((r) => r.player_id === playerId && byId[r.session_id]).map((r) => { const s = byId[r.session_id];
+    return { sid: s.id, date: s.tested_on, battery: s.battery, individual: !!s.individual, values: r.values || {} }; })
+    .sort((a, b) => a.date.localeCompare(b.date) || (a.battery === 'full') - (b.battery === 'full'));
+}
+const sameValues = (a, b) => { const ka = Object.keys(a || {}), kb = Object.keys(b || {}); return ka.length === kb.length && ka.every((k) => String(a[k]) === String((b || {})[k])); };
+/** What saving the athlete editor writes. rows: [{sid (an existing row, or null for a new one),
+ *  date: 'YYYY-MM-DD', values: {metric: value}}] with values already read (cellValue).
+ *  - An existing row on its own date: its values replace the athlete's results in that session
+ *    (no values left = the athlete's results there are removed; the session stays).
+ *  - A row taken out, or moved to another date: removed from its session.
+ *  - A new or moved row: goes into the session already on that date (the one this athlete is in
+ *    first, then full team testing when it has tests outside weekly readiness, then any), merged
+ *    with what the athlete already has there; with no session that day one is made: full team
+ *    testing when it has a test outside weekly readiness, else weekly readiness. A readiness
+ *    session that gets full-testing results becomes full team testing (as bulk import does).
+ *  → { save: [{sid, values}], create: [{date, battery, values}], full: [sid], bad: [row index] } */
+export function athleteSave(rows, sessions, results, playerId, sport) {
+  const READY = new Set(batteryCols('readiness', sport));
+  const isFull = (v) => Object.keys(v).some((k) => !READY.has(k));
+  const cur = Object.fromEntries(results.filter((r) => r.player_id === playerId).map((r) => [r.session_id, r.values || {}]));
+  const byId = Object.fromEntries(sessions.map((s) => [s.id, s]));
+  const out = {}, create = {}, full = new Set(), bad = [];
+  // rows still on their session's date keep it; every other session the athlete was in is cleared first
+  rows.forEach((r) => { if (r.sid && byId[r.sid] && r.date === byId[r.sid].tested_on) out[r.sid] = { ...r.values }; });
+  Object.keys(cur).forEach((sid) => { if (byId[sid] && !out[sid]) out[sid] = {}; });
+  rows.forEach((r, i) => {
+    if (r.sid && byId[r.sid] && r.date === byId[r.sid].tested_on) return;
+    if (!Object.keys(r.values).length) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(r.date || '')) { bad.push(i); return; }
+    const day = sessions.filter((s) => s.tested_on === r.date);
+    const s = day.find((x) => out[x.id] && Object.keys(out[x.id]).length) || (isFull(r.values) && day.find((x) => x.battery === 'full')) || day[0];
+    if (s) { out[s.id] = { ...(out[s.id] || cur[s.id] || {}), ...r.values }; if (s.battery !== 'full' && isFull(out[s.id])) full.add(s.id); return; }
+    const c = create[r.date] = create[r.date] || { date: r.date, values: {} };
+    Object.assign(c.values, r.values);
+  });
+  return {
+    save: Object.entries(out).filter(([sid, v]) => !sameValues(v, cur[sid] || {})).map(([sid, values]) => ({ sid, values })),
+    create: Object.values(create).sort((a, b) => a.date.localeCompare(b.date)).map((c) => ({ ...c, battery: isFull(c.values) ? 'full' : 'readiness' })),
+    full: [...full], bad,
+  };
+}

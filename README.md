@@ -179,6 +179,10 @@ open one for their full history over a time frame (this season, last 3 / 12 mont
 or custom dates): a summary per test (first, latest, change, best, latest team median), a chart
 of each test against the team median, and every result by date (individual testing days marked).
 **Print / PDF** makes a one-athlete report to send out. The team median uses team testing only.
+**Edit testing** opens the athlete's whole history as one grid (a row per testing day, a column per
+test) to fix or add to in bulk: type, or paste rows from a spreadsheet (with the heading row, columns
+are matched by name: Date, CMJ, RSImod…). Each row goes into that day's testing session; a date with
+no session gets a new one, marked individual testing by default so it stays out of team averages.
 
 **IPP (admins and coaches only):** an individual performance pathway for every athlete, built
 from the BCS IPP template (`src/lib/ipp.js`; every label and box note in `src/lib/ippTemplate.js`,

@@ -218,3 +218,37 @@ test('athlete reports: one athlete over a time frame, team median from team days
   const season = athleteHistory(S, R, '2026-09-01', 'p', '2026-09-01', '2026-11-01', 'bcs:hockey');
   assert.deepEqual(season.days.map((d) => d.date), ['2026-09-02', '2026-09-23', '2026-10-14']);
 });
+
+test('athlete editor: edits, removals, moves and new dates go to the right testing sessions', async () => {
+  const { athleteRows, athleteSave } = await import('../src/lib/testing.js');
+  const sessions = [{ id: 's1', tested_on: '2025-09-10', battery: 'full' }, { id: 's2', tested_on: '2025-10-01', battery: 'readiness' },
+    { id: 's3', tested_on: '2025-11-05', battery: 'readiness', individual: true }, { id: 's4', tested_on: '2026-01-15', battery: 'readiness' }];
+  const results = [{ session_id: 's1', player_id: 'p', values: { cmj_jh: 40, imtp_pf: 3000 } }, { session_id: 's2', player_id: 'p', values: { cmj_jh: 41 } },
+    { session_id: 's3', player_id: 'p', values: { cmj_jh: 42 } }, { session_id: 's1', player_id: 'q', values: { cmj_jh: 30 } }];
+  const rows = athleteRows(sessions, results, 'p');
+  assert.deepEqual(rows.map((r) => [r.sid, r.date]), [['s1', '2025-09-10'], ['s2', '2025-10-01'], ['s3', '2025-11-05']]);
+  assert.equal(rows[2].individual, true);
+  // nothing changed: nothing to write
+  const same = athleteSave(rows.map((r) => ({ sid: r.sid, date: r.date, values: r.values })), sessions, results, 'p', 'hockey');
+  assert.deepEqual([same.save, same.create, same.full, same.bad], [[], [], [], []]);
+  const r = athleteSave([
+    { sid: 's1', date: '2025-09-10', values: { cmj_jh: 40.5, imtp_pf: 3000 } },  // edited
+    { sid: 's3', date: '2025-12-01', values: { cmj_jh: 42 } },                  // moved to a new date
+    // s2 taken out
+    { sid: null, date: '2026-01-15', values: { cmj_jh: 43, imtp_pf: 3100 } },   // into s4, which becomes full testing
+    { sid: null, date: '2026-02-01', values: { cmj_jh: 44 } },                  // new readiness day
+    { sid: null, date: '2026-02-01', values: { rsimod: 0.5 } },                 // same new day: merged
+    { sid: null, date: '2026-03-01', values: { sj_jh: 35 } },                   // new full day
+    { sid: null, date: 'nope', values: { cmj_jh: 1 } },                         // bad date
+    { sid: null, date: '', values: {} },                                        // empty row: ignored
+  ], sessions, results, 'p', 'hockey');
+  const save = Object.fromEntries(r.save.map((x) => [x.sid, x.values]));
+  assert.deepEqual(save, { s1: { cmj_jh: 40.5, imtp_pf: 3000 }, s2: {}, s3: {}, s4: { cmj_jh: 43, imtp_pf: 3100 } });
+  assert.deepEqual(r.full, ['s4']);
+  assert.deepEqual(r.create, [{ date: '2025-12-01', values: { cmj_jh: 42 }, battery: 'readiness' }, { date: '2026-02-01', values: { cmj_jh: 44, rsimod: 0.5 }, battery: 'readiness' },
+    { date: '2026-03-01', values: { sj_jh: 35 }, battery: 'full' }]);
+  assert.deepEqual(r.bad, [6]);
+  // a new row on a date the athlete already has merges with it (new numbers win)
+  const m = athleteSave([...rows.map((x) => ({ sid: x.sid, date: x.date, values: x.values })), { sid: null, date: '2025-10-01', values: { rsimod: 0.6 } }], sessions, results, 'p', 'hockey');
+  assert.deepEqual(m.save, [{ sid: 's2', values: { cmj_jh: 41, rsimod: 0.6 } }]);
+});
