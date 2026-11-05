@@ -10,7 +10,7 @@ import InjuryFlag from './InjuryFlag.jsx';
 export default function InjuredCard() {
   const H = useHub();
   const { roster } = useRoster();
-  if (!H.isCoach || !roster) return null;
+  if (!H.seesMed || !roster) return null;
   const today = todayISO();
   const hurt = roster.map((p) => ({ p, i: currentInjury(p.id, H.tdata.injuries) })).filter((x) => x.i)
     .sort((a, b) => (a.i.status === b.i.status ? 0 : a.i.status === 'out' ? -1 : 1));

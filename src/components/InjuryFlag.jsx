@@ -6,7 +6,7 @@ import { injuryStatus } from '../lib/injury.js';
 
 export default function InjuryFlag({ p, label }) {
   const H = useHub();
-  if (!H.isCoach) return null;
+  if (!H.seesMed) return null;
   const s = injuryStatus(p, H.tdata.injuries);
   if (!s) return null;
   return <span className={`inj-flag ${s.level}`} title={s.label} role="img" aria-label={s.label}>

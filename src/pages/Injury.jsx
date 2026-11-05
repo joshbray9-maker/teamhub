@@ -50,7 +50,7 @@ export default function Injury() {
   const { roster, photos } = useRoster();
   const injuries = H.tdata.injuries || [];
   const today = todayISO();
-  if (!H.isCoach) return <><PageHead title="Injury report" /><section className="card"><p className="muted" style={{ margin: 0 }}>The injury report is only visible to coaches and admins.</p></section></>;
+  if (!H.seesMed) return <><PageHead title="Injury report" /><section className="card"><p className="muted" style={{ margin: 0 }}>The injury report is only visible to coaches, sports med and admins.</p></section></>;
 
   const save = async (list, msg) => { try { await H.api.saveInjuries(H.teamId, list); if (msg) H.toast(msg); } catch (e) { H.toast('Could not save. ' + e.message); } H.reloadTeam(); };
   const remove = async (i) => { try { await H.api.deleteInjury(i.id); } catch (e) { H.toast(e.message); } H.reloadTeam(); };

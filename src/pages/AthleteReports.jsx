@@ -25,8 +25,8 @@ export default function AthleteReports() {
   const [tests, setTests] = useState(null), [pid, setPid] = useState(null), [q, setQ] = useState(''), [edit, setEdit] = useState(false), [assess, setAssess] = useState([]);
   const loadAssess = () => H.api.listSelfAssessments(t.id).then(setAssess).catch(() => setAssess([]));
   const load = () => H.api.listTests(t.id).then(setTests).catch((e) => { setTests((x) => x || { sessions: [], results: [] }); H.toast('Could not load testing: ' + e.message); });
-  useEffect(() => { if (H.isCoach) { load(); loadAssess(); } }, [t.id]); // eslint-disable-line react-hooks/exhaustive-deps
-  if (!H.isCoach) return <><PageHead title="Athlete reports" /><section className="card"><p className="muted" style={{ margin: 0 }}>Athlete reports are only visible to coaches and admins.</p></section></>;
+  useEffect(() => { if (H.seesMed) load(); if (H.isCoach) loadAssess(); }, [t.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!H.seesMed) return <><PageHead title="Athlete reports" /><section className="card"><p className="muted" style={{ margin: 0 }}>Athlete reports are only visible to coaches, sports med and admins.</p></section></>;
   if (!roster || !tests) return <><PageHead title="Athlete reports" /><div className="loading">Loading…</div></>;
   const p = pid && roster.find((x) => x.id === pid);
   if (p && edit) return <AthleteTesting key={p.id} p={p} tests={tests} prof={testProfile(t, H.orgOf(t))} back={() => setEdit(false)} onSaved={load} />;
@@ -58,7 +58,7 @@ function Report({ p, photo, tests, assess, reloadAssess, back, onEdit }) {
   const span = range.from || range.to ? `${range.from ? fmtDate(range.from, true) : 'First test'} to ${range.to ? fmtDate(range.to, true) : 'today'}` : 'All testing';
   const pct = (c) => `${c > 0 ? '▲' : c < 0 ? '▼' : ''} ${Math.abs(c * 100).toFixed(1)}%`;
   return <>
-    <PageHead title="Athlete reports" actions={<><button className="btn" onClick={back}>← All athletes</button><button className="btn" onClick={onEdit}><Icon n="edit" /> Edit testing</button><button className="btn primary" onClick={() => window.print()}><Icon n="clipboard" /> Print / PDF</button></>} />
+    <PageHead title="Athlete reports" actions={<><button className="btn" onClick={back}>← All athletes</button>{H.isCoach && <button className="btn" onClick={onEdit}><Icon n="edit" /> Edit testing</button>}<button className="btn primary" onClick={() => window.print()}><Icon n="clipboard" /> Print / PDF</button></>} />
     <header className="print-only gp-head"><Logo t={t} cls="gp-logo" /><div className="gp-title"><div className="gp-team">{t.name}</div><div className="gp-meta">Athlete testing report · {span}</div></div><div className="gp-tag">Athlete report</div></header>
     <section className="card ar-head">
       <Avatar p={p} url={photo} size={72} />
@@ -91,10 +91,10 @@ function Report({ p, photo, tests, assess, reloadAssess, back, onEdit }) {
       </section>
       <p className="muted small ar-foot">Team median: team testing days only. Individual testing days count for the athlete. Results are the athlete's own; nothing here is estimated.</p>
     </>}
-    <section className="card ar-sec">
+    {H.isCoach && <section className="card ar-sec">
       <div className="card-head"><h2>Self-assessments</h2><span className="muted small">{p.name}'s own answers after each game</span></div>
       <PlayerFile p={p} list={assess} reload={reloadAssess} />
-    </section>
+    </section>}
   </>;
 }
 

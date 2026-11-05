@@ -5,10 +5,11 @@ import { useHub } from '../lib/hub.jsx';
 import Modal from './Modal.jsx';
 import Icon from './Icon.jsx';
 
-const ROLES = { admin: 'Admin', coach: 'Coach', viewer: 'Viewer' };
+const ROLES = { admin: 'Admin', coach: 'Coach', sportsmed: 'Sports med', viewer: 'Viewer' };
 // what each access level can do (enforced in the database, see the RLS policies)
 const ROLE_INFO = {
   coach: 'Edits schedules, the S&C plan, team notes, injuries, testing and IPPs for their teams.',
+  sportsmed: 'Only the Injury report (can edit), S&C, Athlete reports and Master schedule (view only).',
   viewer: 'Looks only: schedules and plans. No notes, injuries, test results or IPPs.',
   admin: 'Everything on every team, plus members, invite links and settings.',
 };
@@ -69,7 +70,7 @@ export default function MembersDialog({ org, close }) {
       <label className="small">Who is it for? <span className="muted">(optional, just so you know which link is whose)</span>
         <input className="input" value={label} maxLength={80} placeholder="e.g. Coach Martin" onChange={(e) => setLabel(e.target.value)} /></label>
       <div className="small">Access level</div>
-      <div className="role-pick" role="radiogroup" aria-label="Access level">{['coach', 'viewer', 'admin'].map((k) => <label key={k} className={role === k ? 'on' : ''}>
+      <div className="role-pick" role="radiogroup" aria-label="Access level">{['coach', 'sportsmed', 'viewer', 'admin'].map((k) => <label key={k} className={role === k ? 'on' : ''}>
         <span><input type="radio" name="inv-role" checked={role === k} onChange={() => setRole(k)} /> <b>{ROLES[k]}</b></span><span className="muted small">{ROLE_INFO[k]}</span></label>)}</div>
       {teams.length > 1 && <><div className="small">Teams they can see</div>
         {role === 'admin' ? <div className="muted small">Admins always see every team.</div> : <TeamPick teams={teams} value={pick} onChange={setPick} />}</>}

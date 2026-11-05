@@ -58,9 +58,9 @@ export const api = {
 
   async loadHub() { await load(); const lg = Object.fromEntries(db.orgs.map((o) => [o.id, o.logo_url || null])); return clone({ orgs: db.orgs, teams: [...db.teams].sort((a, b) => a.sort_order - b.sort_order).map((t) => ({ ...t, orgLogo: lg[t.org_id] })), prefs: db.prefs }); },
   async savePrefs(_u, v) { db.prefs = clone(v); save(); },
-  async loadTeamData(teamId, canEdit) {
+  async loadTeamData(teamId, canEdit, med = false) {
     await load(); const d = D(teamId);
-    return clone({ league: { groups: d.groups, updatedAt: d.updatedAt, games: d.games }, events: d.events, notifs: [...d.notifs].sort((a, b) => b.ts - a.ts), sc: d.sc, coach: canEdit ? d.coach : null, candidates: d.candidates.filter((c) => c.status !== 'added' && c.status !== 'dismissed'), lastRun: d.lastRun, injuries: canEdit ? (d.injuries || []) : [] });
+    return clone({ league: { groups: d.groups, updatedAt: d.updatedAt, games: d.games }, events: d.events, notifs: [...d.notifs].sort((a, b) => b.ts - a.ts), sc: d.sc, coach: canEdit ? d.coach : null, candidates: d.candidates.filter((c) => c.status !== 'added' && c.status !== 'dismissed'), lastRun: d.lastRun, injuries: canEdit || med ? (d.injuries || []) : [] });
   },
   async loadOrgData(ids) { await load(); return clone(Object.fromEntries(ids.map((id) => [id, { games: D(id).games, events: D(id).events, sc: (D(id).sc || {}).days || {}, weeks: (D(id).sc || {}).weeks || {} }]))); },
   async saveGames(teamId, games) { const r = upsert(D(teamId).games, games, 'g'); save(); return clone(r); },

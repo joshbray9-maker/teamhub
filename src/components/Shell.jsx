@@ -96,7 +96,7 @@ function Side({ onNavigate }) {
     </>}
     <div className="side-foot">
       <div className="sync">{H.pending ? <><span className="dot warn" />Saving…</> : H.api.demo ? <><span className="dot warn" />Demo data on this device</> : <><span className="dot" />Synced</>}</div>
-      <div>{H.role === 'admin' ? 'Admin view' : H.isCoach ? 'Coach view' : 'Viewer'}{H.user && H.user.email ? ` · ${H.user.email}` : ''}</div>
+      <div>{H.role === 'admin' ? 'Admin view' : H.isCoach ? 'Coach view' : H.isMed ? 'Sports med view' : 'Viewer'}{H.user && H.user.email ? ` · ${H.user.email}` : ''}</div>
     </div>
   </>);
 }
@@ -129,7 +129,7 @@ function MenuList({ items, onNavigate }) {
   };
   return <ul className="menu" ref={list}>{order.filter((id) => byId[id]).map((id) => { const m = byId[id]; return (
     <li key={id} data-id={id} className={`${H.page === id ? 'on' : ''} ${drag === id ? 'dragging' : ''}`}>
-      <a href="#" onClick={(e) => { e.preventDefault(); H.go(id); onNavigate(); }}><Icon n={m.icon} /><span>{menuLabel(m, H.team)}</span>{m.coach && <em className="tag">Coach</em>}</a>
+      <a href="#" onClick={(e) => { e.preventDefault(); H.go(id); onNavigate(); }}><Icon n={m.icon} /><span>{menuLabel(m, H.team)}</span>{m.coach && !H.isMed && <em className="tag">Coach</em>}</a>
       {H.isCoach && <span className="grip" title="Drag to reorder" aria-label={`Drag to reorder ${m.label}`} onPointerDown={(e) => start(e, id)} onPointerMove={move} onPointerUp={end} onPointerCancel={end}><Icon n="grip" /></span>}
     </li>); })}</ul>;
 }

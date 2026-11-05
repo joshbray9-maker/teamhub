@@ -21,7 +21,7 @@ const COLORS = { cmj_jh: '#2563eb', rsimod: '#d97706', sj_jh: '#7c3aed', imtp_pf
   bw: '#64748b', abalakov: '#4f46e5', eur: '#a16207', t505: '#0d9488', cassivi: '#c026d3', sprint20: '#ea580c' };
 const sessLabel = (s) => `${fmtDate(s.tested_on, true)} · ${BATTERIES[s.battery].label}${s.individual ? ' · individual' : ''}`;
 const tp = (H) => testProfile(H.team, H.orgOf(H.team)); // which test setup this team uses
-const StaffOnly = ({ what }) => <section className="card"><p className="muted" style={{ margin: 0 }}>{what} are only visible to coaches and admins.</p></section>;
+const StaffOnly = ({ what }) => <section className="card"><p className="muted" style={{ margin: 0 }}>{what} are only visible to coaches, sports med and admins.</p></section>;
 
 function useTestData() {
   const H = useHub();
@@ -32,7 +32,7 @@ function useTestData() {
       setD({ ...tests, players: players.sort(byNumber) });
     } catch (e) { setD({ sessions: [], results: [], players: [] }); H.toast('Could not load tests: ' + e.message); }
   };
-  useEffect(() => { if (H.isCoach) load(); }, [H.teamId]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (H.seesMed) load(); }, [H.teamId]); // eslint-disable-line react-hooks/exhaustive-deps
   return [d, load];
 }
 
@@ -41,10 +41,11 @@ export default function Tests() {
   const M = useMetrics();
   const H = useHub();
   const [d, reload] = useTestData();
-  const [view, setView] = useState('enter');
+  const [pick, setView] = useState('enter');
+  const view = H.isCoach ? pick : 'trends'; // sports med: read-only Coaches view
   const [sid, setSid] = useState(null);
   useEffect(() => { if (d && (!sid || !d.sessions.some((s) => s.id === sid)) && d.sessions.length) setSid(d.sessions[d.sessions.length - 1].id); }, [d]); // eslint-disable-line react-hooks/exhaustive-deps
-  if (!H.isCoach) return <StaffOnly what="Test results" />;
+  if (!H.seesMed) return <StaffOnly what="Test results" />;
   if (!d) return <div className="loading">Loading…</div>;
   const session = d.sessions.find((s) => s.id === sid);
   const newSession = () => H.openDialog((c) => <NewSession close={c} onSave={async (date, battery) => {
@@ -57,7 +58,7 @@ export default function Tests() {
   const bulk = () => H.openDialog((c) => <BulkImport d={d} close={c} onDone={async () => { await reload(); setView('enter'); }} />);
   return <>
     <div className="ts-bar">
-      <div className="seg" role="tablist">{[['enter', 'Enter results'], ['trends', 'Coaches view']].map(([k, l]) => <button key={k} role="tab" aria-selected={view === k} className={view === k ? 'on' : ''} onClick={() => setView(k)}>{l}</button>)}</div>
+      {H.isCoach && <div className="seg" role="tablist">{[['enter', 'Enter results'], ['trends', 'Coaches view']].map(([k, l]) => <button key={k} role="tab" aria-selected={view === k} className={view === k ? 'on' : ''} onClick={() => setView(k)}>{l}</button>)}</div>}
       {view === 'enter' && <>
         <select className="select ts-pick" value={sid || ''} onChange={(e) => setSid(e.target.value)} aria-label="Testing session" disabled={!d.sessions.length}>
           {!d.sessions.length && <option value="">No sessions yet</option>}
@@ -246,7 +247,7 @@ function Trends({ d, onReload }) {
   const series = useMemo(() => metricSeries(counted, d.results), [counted, d.results]);
   const left = d.sessions.length - counted.length;
   const setFrom = async (v) => { try { await H.api.setTeamAveragesFrom(H.teamId, v); H.toast(v ? `Team averages from ${fmtDate(v, true)}` : 'Team averages use all testing'); await onReload(); } catch (e) { H.toast('Could not save. ' + e.message); } };
-  const fromBar = <section className="card ts-from"><label className="small">Team averages from <input type="date" className="input" value={d.teamFrom || ''} onChange={(e) => setFrom(e.target.value)} /></label>
+  const fromBar = !H.isCoach ? null : <section className="card ts-from"><label className="small">Team averages from <input type="date" className="input" value={d.teamFrom || ''} onChange={(e) => setFrom(e.target.value)} /></label>
     {d.teamFrom && <button className="btn sm ghost" onClick={() => setFrom('')}>Use all dates</button>}
     <span className="muted small">{left ? `${plural(left, 'session')} left out: individual testing days${d.teamFrom ? ' and testing before that date' : ''}. They still show in each athlete's profile.` : 'Every testing session counts.'}</span></section>;
   const change = useMemo(() => changeSeries(series), [series]);

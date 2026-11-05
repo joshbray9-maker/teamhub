@@ -50,7 +50,7 @@ export const api = {
   },
   async savePrefs(user, value) { ok(await supabase.from('user_settings').upsert({ user_id: user.id, value })); },
 
-  async loadTeamData(teamId, canEdit) {
+  async loadTeamData(teamId, canEdit, med = false) {
     const q = (t) => supabase.from(t).select('*').eq('team_id', teamId);
     const [games, events, standings, notifs, weeks, days, settings, coach, cands, run, inj] = await Promise.all([
       q('games').order('date'), q('events').order('date'), q('standings').maybeSingle(),
@@ -59,8 +59,8 @@ export const api = {
       canEdit ? q('coach_notes').maybeSingle() : Promise.resolve({ data: null }),
       canEdit ? q('sync_candidates').eq('status', 'open').order('found_at') : Promise.resolve({ data: [] }),
       supabase.from('sync_runs').select('*').eq('team_id', teamId).order('ran_at', { ascending: false }).limit(1).maybeSingle(),
-      // injuries are staff-only (RLS); everyone else gets none
-      canEdit ? q('injuries').order('updated_at', { ascending: false }) : Promise.resolve({ data: [] }),
+      // injuries: admins, coaches and sports med only (RLS); everyone else gets none
+      canEdit || med ? q('injuries').order('updated_at', { ascending: false }) : Promise.resolve({ data: [] }),
     ]);
     const st = ok(standings), set = Object.fromEntries(ok(settings).map((s) => [s.key, s.value])), c = ok(coach), r = ok(run);
     return {

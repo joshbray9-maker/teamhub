@@ -24,7 +24,7 @@ export default function SC() {
   return <>
     <PageHead title="S&C" actions={H.isCoach && (tab === 'cal' || tab === 'load') && <button className="btn" onClick={() => H.openDialog((c) => <ScImport close={c} />)}><Icon n="refresh" /> Import: file or paste</button>} />
     <InjuredCard />
-    <div className="seg" role="tablist">{[['cal', 'Calendar'], ['load', 'Workload'], ['gym', 'Gym groups'], ['tests', 'Tests'], ['board', 'Leaderboard']].map(([k, l]) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
+    <div className="seg" role="tablist">{[['cal', 'Calendar'], ['load', 'Workload'], ['gym', 'Gym groups'], ['tests', 'Tests'], ['board', 'Leaderboard']].filter(([k]) => !(H.isMed && k === 'gym')).map(([k, l]) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div>
     {tab === 'cal' ? <ScCalendar /> : tab === 'load' ? <Workload /> : tab === 'gym' ? <GymGroups key={H.teamId} /> : tab === 'board' ? <Leaderboard key={H.teamId} /> : <Tests key={H.teamId} />}
   </>;
 }

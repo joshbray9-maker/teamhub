@@ -3,7 +3,7 @@
 // is also kept in this browser, so a confirmation email that lands on the home page still joins.
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import Login, { inviteTeams } from './Login.jsx';
+import Login, { inviteTeams, roleWords } from './Login.jsx';
 
 export const JOIN_KEY = 'teamhub-join';
 
@@ -31,7 +31,7 @@ export default function Join({ api, user }) {
   if (!user) return <Login api={api} mode="up" invite={{ ...inv, back: `/join/${token}` }} />;
   return <div className="auth"><div className="eyebrow">TeamHub</div><div className="card">
     <div className="card-head"><h2>Join {inv.org_name}</h2></div>
-    <p style={{ margin: 0 }}>You're invited as {inv.role === 'admin' ? 'an admin' : `a ${inv.role}`} ({inviteTeams(inv)}). You're signed in as <b>{user.email}</b>.</p>
+    <p style={{ margin: 0 }}>You're invited as {roleWords(inv.role)} ({inviteTeams(inv)}). You're signed in as <b>{user.email}</b>.</p>
     {err && <div className="err">{err}</div>}
     <button className="btn primary" disabled={busy} onClick={join}>{busy ? 'Joining…' : `Join ${inv.org_name}`}</button>
     <a className="small" href="#" onClick={async (e) => { e.preventDefault(); await api.signOut(); }}>Use a different account</a>

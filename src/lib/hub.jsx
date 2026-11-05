@@ -2,7 +2,7 @@
 // selected team's data, plus toasts and dialogs. Components call `save(...)` for writes:
 // they update local state first, then the backend; a failed write shows a toast and reloads.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { applyTheme, store, SWATCHES, MENUS, SISTER } from './util.js';
+import { applyTheme, store, SWATCHES, MENUS, SISTER, MED_PAGES } from './util.js';
 import Modal from '../components/Modal.jsx';
 import { metricsFor, testProfile } from './testing.js';
 
@@ -41,6 +41,9 @@ export function HubProvider({ api, user, children }) {
   const role = roleOf(team);
   const isCoach = role === 'admin' || role === 'coach';
   const isAdmin = role === 'admin';
+  // sports med: Injury report (edit), S&C, Athlete reports and Master schedule only (read)
+  const isMed = role === 'sportsmed';
+  const seesMed = isCoach || isMed; // injuries and testing results
 
   const teamList = useMemo(() => {
     const order = prefs.teamOrder || [];
@@ -64,7 +67,7 @@ export function HubProvider({ api, user, children }) {
     if (!teamId || !hub) return;
     const t = hub.teams.find((x) => x.id === teamId); if (!t) return;
     const r = (hub.orgs.find((o) => o.id === t.org_id) || {}).role;
-    const d = await api.loadTeamData(teamId, r === 'admin' || r === 'coach');
+    const d = await api.loadTeamData(teamId, r === 'admin' || r === 'coach', r === 'sportsmed');
     if (curTeam.current === teamId) setTdata(d); // ignore a late answer for a team we've left
   }, [api, teamId, hub]);
   useEffect(() => { setTdata({ ...EMPTY, _loading: true }); reloadTeam().catch((e) => toast('Could not load team: ' + e.message)); }, [teamId, hub && hub.teams.length]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -97,11 +100,18 @@ export function HubProvider({ api, user, children }) {
 
   const menuAvailable = useCallback((m, t = team) => {
     const r = roleOf(t); const coach = r === 'admin' || r === 'coach';
+    if (r === 'sportsmed') return MED_PAGES.includes(m.id);
     if (m.coach && !coach) return false;
     if (m.admin && r !== 'admin') return false;
     if (m.sports && !(t && m.sports.includes(t.sport))) return false;
     return true;
   }, [team, orgs]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // a page this role can't open (e.g. sports med landing on Home) goes to the first one it can
+  useEffect(() => {
+    if (!team) return; const m = MENUS.find((x) => x.id === page);
+    if (m && !menuAvailable(m)) { const first = MENUS.find((x) => menuAvailable(x)); if (first) setPage(first.id); }
+  }, [team, page, menuAvailable]);
 
   const selectTeam = useCallback((id) => {
     const t = teams.find((x) => x.id === id);
@@ -126,7 +136,7 @@ export function HubProvider({ api, user, children }) {
 
   const value = {
     api, user, hub, orgs, teams, teamList, orgTeams, prefs, savePrefs, reloadHub, setHub,
-    team, teamId, role, isCoach, isAdmin, isOwner, orgOf, roleOf, selectTeam, menuAvailable,
+    team, teamId, role, isCoach, isAdmin, isMed, seesMed, isOwner, orgOf, roleOf, selectTeam, menuAvailable,
     viewOrg, openOrg: (id) => setOrgId(id), closeOrg: () => setOrgId(null), orgData, reloadOrg,
     page, go: (p) => { setPage(p); window.scrollTo(0, 0); },
     tdata, setTdata, reloadTeam, save, pending,

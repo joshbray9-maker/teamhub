@@ -441,3 +441,40 @@ test('link-only invites: no email, chosen role and teams, used once', async () =
   assert.equal((await as(db, null, 'select * from invite_info($1)', [token])).length, 0);
   assert.equal((await db.query(`select count(*)::int c from invites where org_id=$1`, [bcs])).rows[0].c, 2);
 });
+
+test('sports med: edits injuries, reads testing, never coach notes, IPPs or test edits', async () => {
+  const db = await setup();
+  const bcs = (await db.query(`select id from organizations where slug='bcs'`)).rows[0].id;
+  const bcsTeam = (await db.query(`select id from teams where legacy_id='t_hockey'`)).rows[0].id;
+  const [{ id: pid }] = (await db.query(`insert into players (team_id, name) values ($1, 'Athlete HV01') returning id`, [bcsTeam])).rows;
+  const [{ id: sid }] = (await db.query(`insert into test_sessions (team_id, tested_on, battery) values ($1, '2026-10-01', 'readiness') returning id`, [bcsTeam])).rows;
+  await db.query(`insert into test_results (session_id, player_id, team_id, values) values ($1, $2, $3, '{"cmj_jh": 40}')`, [sid, pid, bcsTeam]);
+  await db.query(`insert into coach_notes (team_id) values ($1) on conflict do nothing`, [bcsTeam]);
+  await db.query(`insert into ipps (team_id, player_id, data) values ($1, $2, '{}')`, [bcsTeam, pid]);
+  // a link-only sports med invite for one team
+  const [{ token }] = await as(db, U.josh, `insert into invites (org_id, label, role, team_ids) values ($1, 'Physio', 'sportsmed', $2) returning token`, [bcs, [bcsTeam]]);
+  assert.equal((await as(db, null, 'select role from invite_info($1)', [token]))[0].role, 'sportsmed');
+  assert.equal((await as(db, U.josh, `select invite_member($1, 'med@x.test', 'sportsmed') r`, [bcs]))[0].r, 'invited');
+  await db.exec(`insert into auth.users values ('${U.other}', 'physio@x.test')`);
+  await as(db, U.other, 'select accept_invite($1)', [token]);
+  const me = (sql, p) => as(db, U.other, sql, p);
+  // injuries: read and write
+  await me(`insert into injuries (team_id, player_id, injury) values ($1, $2, 'Ankle sprain')`, [bcsTeam, pid]);
+  assert.equal((await me('select count(*)::int c from injuries'))[0].c, 1);
+  await me(`update injuries set status = 'limited'`);
+  assert.equal((await db.query('select status from injuries')).rows[0].status, 'limited');
+  // testing: read only
+  assert.equal((await me('select count(*)::int c from test_results'))[0].c, 1);
+  assert.equal((await me('select count(*)::int c from test_sessions'))[0].c, 1);
+  await assert.rejects(me(`insert into test_sessions (team_id, tested_on, battery) values ($1, '2026-10-02', 'readiness')`, [bcsTeam]));
+  await me(`update test_results set values = '{"cmj_jh": 99}'`);
+  assert.equal((await db.query('select values from test_results')).rows[0].values.cmj_jh, 40);
+  // schedules and players like a viewer; coach-only data stays hidden
+  assert.equal((await me('select count(*)::int c from players where id = $1', [pid]))[0].c, 1);
+  await assert.rejects(me(`insert into players (team_id, name) values ($1, 'X')`, [bcsTeam]));
+  assert.equal((await me('select count(*)::int c from coach_notes'))[0].c, 0);
+  assert.equal((await me('select count(*)::int c from ipps'))[0].c, 0);
+  // only the team the link opened
+  assert.deepEqual((await me('select id from teams')).map((r) => r.id), [bcsTeam]);
+  await assert.rejects(as(db, U.josh, `select invite_member($1, 'x@x.test', 'medic')`, [bcs]), /Unknown role/);
+});

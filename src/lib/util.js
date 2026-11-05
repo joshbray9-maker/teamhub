@@ -27,6 +27,8 @@ export const MENUS = [
   { id: 'spectators', label: 'Spectators', icon: 'ext', admin: true },
   { id: 'profile', label: 'My Profile', icon: 'user' },
 ];
+/** The only pages a sports med member sees (Josh, 2026-11-05). */
+export const MED_PAGES = ['master', 'injury', 'sc', 'athletes', 'profile'];
 export const SISTER = { gameday: 'playbook', playbook: 'gameday' };
 // per-team colours inside a master schedule (teams in one org often share a brand colour)
 export const ORG_PAL = ['#1f5fbf', '#c2410c', '#0e8a62', '#7c3aed', '#be123c', '#0a7c8c', '#a16207', '#c026d3'];
