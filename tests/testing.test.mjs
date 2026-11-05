@@ -83,7 +83,9 @@ test('bulk import: a season sheet in the basketball heading order', async () => 
   assert.deepEqual(r.days[0].values.a, { bw: 78.2, cmj_jh: 45.1, rsimod: 0.52, abalakov: 52.3, sj_jh: 41, eur: 1.1, t505: 2.41, cassivi: 31.8, sprint20: 3.12 });
   assert.equal(r.days[0].values.b.bw, 84.5); assert.deepEqual(r.unmatched, ['Nobody Here']);
   assert.deepEqual(batteryCols('full', 'basketball'), ['bw', 'cmj_jh', 'rsimod', 'abalakov', 'sj_jh', 'eur', 't505', 'cassivi', 'sprint20']);
-  assert.deepEqual(batteryCols('full', 'hockey'), ['cmj_jh', 'rsimod', 'sj_jh', 'imtp_pf', 'rel_pf', 'fly10', 'cooper']);
+  assert.deepEqual(batteryCols('full', 'hockey'), ['bw', 'cmj_jh', 'rsimod', 'sj_jh', 'imtp_pf', 'rel_pf', 'fly10', 'cooper']);
+  // bodyweight (lb) is the first column of every battery
+  for (const sp of ['hockey', 'basketball', 'bcs:hockey', 'rugby']) for (const b of ['readiness', 'full']) assert.equal(batteryCols(b, sp)[0], 'bw', `${sp} ${b}`);
   // timed drills rank fastest first; bodyweight and EUR are never ranked
   const L = leaderboards([{ player_id: 'a', name: 'A', metric: 't505', value: 2.41 }, { player_id: 'b', name: 'B', metric: 't505', value: 2.55 }, { player_id: 'a', name: 'A', metric: 'bw', value: 78 }, { player_id: 'b', name: 'B', metric: 'bw', value: 84 }]);
   assert.equal(L.byMetric.t505[0].player_id, 'a'); assert.equal(L.byMetric.bw, undefined);
@@ -164,7 +166,7 @@ test('BCS hockey: its own test columns in the sheet order, text columns, bodywei
   assert.equal(testProfile({ sport: 'hockey' }, bcs), 'bcs:hockey');
   assert.equal(testProfile({ sport: 'hockey' }, uni), 'hockey');
   assert.equal(testProfile({ sport: 'basketball' }, bcs), 'basketball');
-  assert.deepEqual(batteryCols('full', 'hockey'), ['cmj_jh', 'rsimod', 'sj_jh', 'imtp_pf', 'rel_pf', 'fly10', 'cooper']); // Universel unchanged
+  assert.deepEqual(batteryCols('full', 'hockey'), ['bw', 'cmj_jh', 'rsimod', 'sj_jh', 'imtp_pf', 'rel_pf', 'fly10', 'cooper']); // Universel: its own battery
   const head = seasonSheet('bcs:hockey');
   assert.deepEqual(head, ['Athlete Name', 'Date', 'Team', 'Bodyweight', 'CMJ', 'RSI Mod', '10m Sprint', 'IMTP', 'N/kg', 'Links', 'SJ', 'Chin-up', 'Cooper(laps)', 'Cooper(distance)', 'Archetype', 'TTPF', 'Est. VO2max', 'On Ice 5-10-5 best', 'On Ice 5-10-5 Stdv', 'Peak power']);
   const order = ['bw', 'cmj_jh', 'rsimod', 'sprint10', 'imtp_pf', 'rel_pf', 'links', 'sj_jh', 'chinup', 'cooper_laps', 'cooper', 'archetype', 'ttpf', 'vo2max', 'ice5105', 'ice5105_sd', 'peak_power'];

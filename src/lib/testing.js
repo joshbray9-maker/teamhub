@@ -24,7 +24,7 @@ export const METRICS = {
   cooper: { label: 'Cooper', unit: 'm', long: 'Cooper test distance', dp: 0 },
   // basketball battery (Josh's sheet headings, 2026-11-01). bw and eur are recorded and charted but
   // never ranked or counted as "better/worse" (neutral); the timed drills rank fastest first.
-  bw: { label: 'BW', unit: 'lb', long: 'Bodyweight', dp: 1, neutral: true },   // pounds, as on Josh's sheet; a heading saying kg is converted
+  bw: { label: 'Bodyweight', unit: 'lb', long: 'Bodyweight', dp: 1, neutral: true },   // pounds, as on Josh's sheet; a heading saying kg is converted
   abalakov: { label: 'Abalakov', unit: 'cm', long: 'Abalakov jump height', dp: 1 },
   eur: { label: 'EUR', unit: '', long: 'Eccentric utilization ratio (CMJ / SJ)', dp: 2, neutral: true },
   t505: { label: '5-0-5', unit: 's', long: '5-0-5 drill', dp: 2, lower: true },
@@ -43,15 +43,16 @@ export const METRICS = {
   ice5105_sd: { label: '5-10-5 SD', unit: 's', long: 'On-ice 5-10-5 standard deviation', dp: 3, neutral: true },
   peak_power: { label: 'Peak power', unit: 'W', long: 'Peak power', dp: 0 },
 };
+// Bodyweight (pounds) is the first column of every battery (Josh, 2026-11-05).
 export const BATTERIES = {
-  readiness: { label: 'Weekly readiness', metrics: ['cmj_jh', 'rsimod', 'fly10'] },
-  full: { label: 'Full team testing', metrics: ['cmj_jh', 'rsimod', 'sj_jh', 'imtp_pf', 'rel_pf', 'fly10', 'cooper'] },
+  readiness: { label: 'Weekly readiness', metrics: ['bw', 'cmj_jh', 'rsimod', 'fly10'] },
+  full: { label: 'Full team testing', metrics: ['bw', 'cmj_jh', 'rsimod', 'sj_jh', 'imtp_pf', 'rel_pf', 'fly10', 'cooper'] },
 };
 // teams with their own test columns (in the order of the coach's sheet), by "<org slug>:<sport>"
 // (one organization's teams of a sport) or by sport; everything else uses BATTERIES
 const SPORT_BATTERIES = {
-  basketball: { readiness: ['cmj_jh', 'rsimod'], full: ['bw', 'cmj_jh', 'rsimod', 'abalakov', 'sj_jh', 'eur', 't505', 'cassivi', 'sprint20'] },
-  'bcs:hockey': { readiness: ['cmj_jh', 'rsimod', 'sprint10'],
+  basketball: { readiness: ['bw', 'cmj_jh', 'rsimod'], full: ['bw', 'cmj_jh', 'rsimod', 'abalakov', 'sj_jh', 'eur', 't505', 'cassivi', 'sprint20'] },
+  'bcs:hockey': { readiness: ['bw', 'cmj_jh', 'rsimod', 'sprint10'],
     full: ['bw', 'cmj_jh', 'rsimod', 'sprint10', 'imtp_pf', 'rel_pf', 'links', 'sj_jh', 'chinup', 'cooper_laps', 'cooper', 'archetype', 'ttpf', 'vo2max', 'ice5105', 'ice5105_sd', 'peak_power'] },
 };
 /** Which test setup a team uses: "<org slug>:<sport>" when that organization has its own for the
