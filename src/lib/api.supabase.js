@@ -29,7 +29,7 @@ export const api = {
   async getUser() { const { data } = await supabase.auth.getSession(); return data.session ? data.session.user : null; },
   onAuthChange(cb) { const { data } = supabase.auth.onAuthStateChange((_e, s) => cb(s ? s.user : null)); return () => data.subscription.unsubscribe(); },
   async signIn(email, password) { ok(await supabase.auth.signInWithPassword({ email, password })); },
-  async signUp(email, password) { return ok(await supabase.auth.signUp({ email, password, options: { emailRedirectTo: location.origin } })); },
+  async signUp(email, password, back) { return ok(await supabase.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + (back || '') } })); },
   async signOut() { await supabase.auth.signOut(); },
   async resetPassword(email) { ok(await supabase.auth.resetPasswordForEmail(email, { redirectTo: location.origin + '/reset' })); },
   async updatePassword(password) { ok(await supabase.auth.updateUser({ password })); },
@@ -306,7 +306,7 @@ export const api = {
   async createOrg(name, slug) { const id = ok(await supabase.rpc('create_org', { p_name: name, p_slug: slug })); return { id, name, slug, public_schedule: false, role: 'admin' }; },
   async updateOrg(id, patch) { ok(await supabase.from('organizations').update(patch).eq('id', id)); },
   async listMembers(orgId) {
-    const [m, inv, mt] = await Promise.all([supabase.from('memberships').select('user_id, role').eq('org_id', orgId), supabase.from('invites').select('email, role, team_ids').eq('org_id', orgId),
+    const [m, inv, mt] = await Promise.all([supabase.from('memberships').select('user_id, role').eq('org_id', orgId), supabase.from('invites').select('email, role, team_ids, token').eq('org_id', orgId),
       supabase.from('member_teams').select('user_id, team_id').eq('org_id', orgId)]);
     const mem = ok(m); const ids = mem.map((x) => x.user_id);
     const prof = ids.length ? ok(await supabase.from('profiles').select('id, email').in('id', ids)) : [];
@@ -314,7 +314,7 @@ export const api = {
     // teams: the teams a member is limited to, or null for every team
     const lim = {}; ok(mt).forEach((r) => { (lim[r.user_id] = lim[r.user_id] || []).push(r.team_id); });
     return [...mem.map((x) => ({ user_id: x.user_id, email: em[x.user_id] || '(unknown)', role: x.role, teams: lim[x.user_id] || null })),
-      ...(ok(inv) || []).map((x) => ({ email: x.email, role: x.role, pending: true, teams: x.team_ids && x.team_ids.length ? x.team_ids : null }))];
+      ...(ok(inv) || []).map((x) => ({ email: x.email, role: x.role, pending: true, token: x.token, teams: x.team_ids && x.team_ids.length ? x.team_ids : null }))];
   },
   async inviteMember(orgId, email, role, teams = null) { return ok(await supabase.rpc('invite_member', { p_org: orgId, p_email: email, p_role: role, p_teams: teams && teams.length ? teams : null })); },
   /** Limits a member to these teams (null = every team). */
@@ -331,6 +331,11 @@ export const api = {
     if (m.pending) ok(await supabase.from('invites').delete().eq('org_id', orgId).eq('email', m.email));
     else ok(await supabase.from('memberships').delete().eq('org_id', orgId).eq('user_id', m.user_id));
   },
+
+  /** An invite link: { org_name, role, email }, or null when it was used or removed. */
+  async inviteInfo(token) { const r = ok(await supabase.rpc('invite_info', { p_token: token })); return (r && r[0]) || null; },
+  /** Joins with an invite link; returns the organization id, or null when it was already used. */
+  async acceptInvite(token) { return ok(await supabase.rpc('accept_invite', { p_token: token })); },
 
   /* ---------- public ---------- */
   async publicSchedule(slug) { return ok(await supabase.rpc('public_schedule', { p_slug: slug })); },

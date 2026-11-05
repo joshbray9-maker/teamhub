@@ -29,6 +29,9 @@ export default function MembersDialog({ org, close }) {
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const act = async (fn, msg) => { try { const r = await fn(); if (msg) H.toast(typeof msg === 'function' ? msg(r) : msg); load(); } catch (e) { H.toast(e.message); } };
   const link = `${location.origin}/schedule/${org.slug}`;
+  // each pending invite's own join link: the admin copies it and sends it (TeamHub sends no email)
+  const joinLink = (m) => `${location.origin}/join/${m.token}`;
+  const copy = (text, what) => navigator.clipboard.writeText(text).then(() => H.toast(what + ' copied'), () => window.prompt('Copy this link:', text));
   const togglePub = async (on) => {
     setPub(on);
     try { await H.api.updateOrg(org.id, { public_schedule: on }); H.setHub((h) => ({ ...h, orgs: h.orgs.map((o) => (o.id === org.id ? { ...o, public_schedule: on } : o)) })); }
@@ -40,11 +43,11 @@ export default function MembersDialog({ org, close }) {
     if (role !== 'admin' && pick && !pick.length) { H.toast('Tick at least one team, or choose All teams.'); return; }
     const teamIds = role === 'admin' ? null : pick;
     setEmail(''); setPick(null);
-    act(() => H.api.inviteMember(org.id, em, role, teamIds), (r) => (r === 'added' ? 'Added' : 'Invite saved: they get access when they sign up'));
+    act(() => H.api.inviteMember(org.id, em, role, teamIds), (r) => (r === 'added' ? 'Added: they already have an account' : 'Invite saved: copy their link below and send it to them'));
   };
   const editTeams = (m) => H.openDialog((c) => <MemberTeams m={m} teams={teams} close={c} onSave={(v) => act(() => H.api.setMemberTeams(org.id, m, v), 'Team access updated')} />);
   return <Modal title={`${org.name} · members`} wide onClose={close} actions={<button className="btn primary" onClick={close}>Done</button>}>
-    <p className="muted small" style={{ margin: 0 }}><b>Coaches</b> can edit schedules, the S&C plan, team notes, injuries and testing; <b>viewers</b> can only look (no notes, injuries or test results). Coaches and viewers see <b>all teams</b> in {org.name} or only the teams you choose; <b>admins</b> always see every team. People without an account get access as soon as they sign up with that email.</p>
+    <p className="muted small" style={{ margin: 0 }}><b>Coaches</b> can edit schedules, the S&C plan, team notes, injuries and testing; <b>viewers</b> can only look (no notes, injuries or test results). Coaches and viewers see <b>all teams</b> in {org.name} or only the teams you choose; <b>admins</b> always see every team. People who already have an account are added right away. For anyone else, TeamHub makes a private <b>invite link</b>: copy it and send it to them yourself (text or email). The link works once.</p>
     <form className="mem-add" onSubmit={add}>
       <div className="todo-add">
         <input className="input" type="email" placeholder="coach@school.ca" value={email} onChange={(e) => setEmail(e.target.value)} aria-label="Email" />
@@ -54,7 +57,7 @@ export default function MembersDialog({ org, close }) {
       {role !== 'admin' && teams.length > 1 && <TeamPick teams={teams} value={pick} onChange={setPick} />}
     </form>
     {!list ? <div className="muted small">Loading…</div> : <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>{list.map((m) => { const me = m.user_id === H.user.id; return <div key={m.email + (m.user_id || '')} className="mem-row">
-      <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{m.email} {m.pending && <span className="pill">Invited</span>}{me && <span className="pill">You</span>}</span>
+      <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{m.email} {m.pending && <span className="pill">Invited</span>}{m.pending && m.token && <button className="btn sm" style={{ marginLeft: 6 }} onClick={() => copy(joinLink(m), 'Invite link')} title="Copy the link to send to this person">Copy invite link</button>}{me && <span className="pill">You</span>}</span>
       <select className="select" value={m.role} disabled={me} onChange={(e) => act(() => H.api.setMemberRole(org.id, m, e.target.value))}>{Object.entries(ROLES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
       <button className="btn sm mem-teams" disabled={m.role === 'admin' || teams.length < 2} onClick={() => editTeams(m)} title={m.role === 'admin' ? 'Admins see every team' : 'Choose which teams they see'}>{teamsLabel(m, teams)}</button>
       {me ? <span /> : <button className="icon-btn" aria-label={`Remove ${m.email}`} onClick={async () => { if (await H.confirm('Remove access?', `${m.email} will no longer see ${org.name}.`, 'Remove')) act(() => H.api.removeMember(org.id, m), 'Removed'); }}><Icon n="x" /></button>}
@@ -62,7 +65,7 @@ export default function MembersDialog({ org, close }) {
     <div className="card" style={{ padding: 14 }}>
       <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontWeight: 600 }}><input type="checkbox" className="cb" checked={pub} onChange={(e) => togglePub(e.target.checked)} /> Public master schedule link</label>
       <div className="muted small">Anyone with the link sees {org.name}'s games and calendar events, read-only. No S&C plan, notes or member list.</div>
-      {pub && <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><a href={link} target="_blank" rel="noopener noreferrer" style={{ overflowWrap: 'anywhere' }}>{link}</a><button className="btn sm" onClick={() => navigator.clipboard.writeText(link).then(() => H.toast('Link copied'))}>Copy</button></div>}
+      {pub && <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><a href={link} target="_blank" rel="noopener noreferrer" style={{ overflowWrap: 'anywhere' }}>{link}</a><button className="btn sm" onClick={() => copy(link, 'Link')}>Copy</button></div>}
     </div>
   </Modal>;
 }

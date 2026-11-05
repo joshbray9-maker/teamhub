@@ -183,7 +183,16 @@ export const api = {
   async createOrg(name, slug) { const o = { id: 'o_' + slug, slug, name, public_schedule: false, role: 'admin' }; db.orgs.push(o); db.members[o.id] = [{ user_id: USER.id, email: USER.email, role: 'admin' }]; save(); return clone(o); },
   async updateOrg(id, patch) { Object.assign(db.orgs.find((o) => o.id === id), patch); save(); },
   async listMembers(orgId) { return clone(db.members[orgId] || []); },
-  async inviteMember(orgId, email, role, teams = null) { (db.members[orgId] = db.members[orgId] || []).push({ email: email.toLowerCase(), role, pending: true, teams: teams && teams.length ? teams : null }); save(); return 'invited'; },
+  async inviteMember(orgId, email, role, teams = null) { (db.members[orgId] = db.members[orgId] || []).push({ email: email.toLowerCase(), role, pending: true, token: 'demo-' + uid(), teams: teams && teams.length ? teams : null }); save(); return 'invited'; },
+  async inviteInfo(token) {
+    await load(); for (const o of db.orgs) { const m = (db.members[o.id] || []).find((x) => x.pending && x.token === token); if (m) return { org_name: o.name, role: m.role, email: m.email }; }
+    return null;
+  },
+  // demo: the one demo user is already in every organization, so joining just uses the link up
+  async acceptInvite(token) {
+    await load(); for (const o of db.orgs) { const l = db.members[o.id] || []; const i = l.findIndex((x) => x.pending && x.token === token); if (i >= 0) { l.splice(i, 1); save(); return o.id; } }
+    return null;
+  },
   async setMemberTeams(orgId, m, teams) { const x = (db.members[orgId] || []).find((y) => y.email === m.email); if (x) x.teams = teams && teams.length ? teams : null; save(); },
   async setMemberRole(orgId, m, role) { const x = (db.members[orgId] || []).find((y) => y.email === m.email); if (x) x.role = role; save(); },
   async removeMember(orgId, m) { db.members[orgId] = (db.members[orgId] || []).filter((y) => y.email !== m.email); save(); },

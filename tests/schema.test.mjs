@@ -349,3 +349,33 @@ test('BCS team overviews count testing from Sept 2026', async () => {
   assert.equal((await db.query(fix)).rows[0].teams_set, want); assert.equal((await db.query(fix)).rows[0].teams_set, want);
   assert.deepEqual((await db.query(`select distinct team_from::text f from gym_config`)).rows.map((r) => r.f), ['2026-09-01']);
 });
+
+test('invite links: whoever holds the link joins with its role and teams, once', async () => {
+  const db = await setup();
+  const bcs = (await db.query(`select id from organizations where slug='bcs'`)).rows[0].id;
+  const bcsTeam = (await db.query(`select id from teams where legacy_id='t_hockey'`)).rows[0].id;
+  await as(db, U.josh, `select invite_member($1, 'newcoach@x.test', 'coach', $2)`, [bcs, [bcsTeam]]);
+  const [{ token }] = await as(db, U.josh, `select token from invites where email = 'newcoach@x.test'`);
+  // other people can't list invites or their tokens; anyone with the link sees what it's for
+  assert.equal((await as(db, U.coach, 'select count(*)::int c from invites'))[0].c, 0);
+  assert.equal((await as(db, null, 'select count(*)::int c from invites'))[0].c, 0);
+  const [info] = await as(db, null, 'select * from invite_info($1)', [token]);
+  assert.equal(info.org_name, (await db.query('select name from organizations where id=$1', [bcs])).rows[0].name);
+  assert.equal(info.role, 'coach');
+  assert.equal((await as(db, null, 'select * from invite_info(gen_random_uuid())')).length, 0);
+  // signed out can't accept; an account with a different email accepts with the link
+  await assert.rejects(as(db, null, 'select accept_invite($1)', [token]));
+  await db.exec(`insert into auth.users values ('${U.other}', 'personal@x.test')`);
+  assert.equal((await as(db, U.other, 'select accept_invite($1) r', [token]))[0].r, bcs);
+  assert.deepEqual((await as(db, U.other, 'select id from teams')).map((r) => r.id), [bcsTeam]);
+  assert.equal((await db.query(`select role from memberships where user_id=$1`, [U.other])).rows[0].role, 'coach');
+  // used up
+  assert.equal((await as(db, U.other, 'select accept_invite($1) r', [token]))[0].r, null);
+  assert.equal((await as(db, null, 'select * from invite_info($1)', [token])).length, 0);
+  // never downgrades an existing member: Josh (admin) accepting a viewer link stays admin with every team
+  await as(db, U.josh, `select invite_member($1, 'v2@x.test', 'viewer', $2)`, [bcs, [bcsTeam]]);
+  const [{ token: t2 }] = await as(db, U.josh, `select token from invites where email = 'v2@x.test'`);
+  await as(db, U.josh, 'select accept_invite($1)', [t2]);
+  assert.equal((await db.query(`select role from memberships where user_id=$1 and org_id=$2`, [U.josh, bcs])).rows[0].role, 'admin');
+  assert.equal((await db.query(`select count(*)::int c from member_teams where user_id=$1`, [U.josh])).rows[0].c, 0);
+});
