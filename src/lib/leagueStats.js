@@ -44,8 +44,11 @@ export function parseLeagueStats(text) {
 export function planLeagueStats(players, rows) {
   const byName = new Map(players.map((p) => [nameKey(p.name), p]));
   const matched = [], missing = [], updates = [];
+  // a near miss (a misread letter, a nickname): same last name, and the only such player
+  const last = (n) => nameKey(String(n).trim().split(/\s+/).pop());
+  const byLast = (r) => { const l = players.filter((p) => last(p.name) === last(r.name)); return l.length === 1 ? l[0] : null; };
   for (const r of rows) {
-    const p = byName.get(nameKey(r.name));
+    const p = byName.get(nameKey(r.name)) || byLast(r);
     if (!p) { missing.push(r); continue; }
     matched.push({ player: p, row: r });
     const patch = {}; if (r.num && r.num !== p.num) patch.num = r.num; if (r.position && r.position !== p.position) patch.position = r.position;

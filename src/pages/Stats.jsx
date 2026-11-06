@@ -7,6 +7,8 @@ import { fmtDate, todayISO, gameView, ourGames, hasScore, leagueLabel, ago } fro
 import { colsFor, derivedFor, seasonTotals, statOf, leadCol } from '../lib/stats.js';
 import { parseTsv } from '../lib/imports.js';
 import { parseLeagueStats, planLeagueStats, mergeSeason } from '../lib/leagueStats.js';
+import { readStatsImage, skippedLines } from '../lib/ocrStats.js';
+import { nameKey } from '../lib/rosterImport.js';
 import { docToText } from '../../supabase/functions/_shared/leagueParse.js';
 import Modal from '../components/Modal.jsx';
 import { byNumber } from './Roster.jsx';
@@ -87,9 +89,26 @@ function StatsGrid({ game, players, rows, sport, onSaved }) {
 function LeagueStatsImport({ close, players, onSaved }) {
   const H = useHub(); const t = H.team; const src = leagueLabel(t);
   const [text, setText] = useState(''), [addNew, setAddNew] = useState(true), [busy, setBusy] = useState(false);
-  const rows = useMemo(() => (text.trim() ? parseLeagueStats(text) : []), [text]);
+  const [shot, setShot] = useState(null); // {rows} read from a screenshot, or {progress} while reading
+  const rows = useMemo(() => (shot && shot.rows ? shot.rows : text.trim() ? parseLeagueStats(text) : []), [text, shot]);
   const plan = useMemo(() => planLeagueStats(players, rows), [players, rows]);
-  const onPaste = (e) => { const html = e.clipboardData && e.clipboardData.getData('text/html'); if (html) { e.preventDefault(); setText(docToText(new DOMParser().parseFromString(html, 'text/html'))); } };
+  // a screenshot is read in this browser (nothing is uploaded); rows from several screenshots add up
+  const readImage = async (file) => {
+    if (!file || !/^image\//.test(file.type)) return;
+    const prev = shot && shot.rows ? shot.rows : [];
+    setShot({ progress: 0 });
+    try {
+      const got = await readStatsImage(file, (p) => setShot({ progress: p }));
+      const by = new Map(prev.map((r) => [r.name, r])); got.forEach((r) => by.set(r.name, { ...by.get(r.name), ...r, stats: { ...(by.get(r.name) || {}).stats, ...r.stats } }));
+      setShot(by.size ? { rows: [...by.values()], skipped: [...((shot && shot.skipped) || []), ...skippedLines(got)] } : null);
+      if (!got.length) H.toast("Couldn't find the player table in that screenshot. Include the heading row (Name, Pos, GP, G, A…) and take it at full size.");
+    } catch (e) { setShot(null); H.toast('Could not read the screenshot. ' + e.message); }
+  };
+  const onPaste = (e) => {
+    const img = [...((e.clipboardData && e.clipboardData.files) || [])].find((f) => /^image\//.test(f.type));
+    if (img) { e.preventDefault(); readImage(img); return; }
+    const html = e.clipboardData && e.clipboardData.getData('text/html'); if (html) { e.preventDefault(); setShot(null); setText(docToText(new DOMParser().parseFromString(html, 'text/html'))); }
+  };
   const apply = async () => {
     setBusy(true);
     try {
@@ -106,21 +125,29 @@ function LeagueStatsImport({ close, players, onSaved }) {
   const n = plan.matched.length + (addNew ? plan.missing.length : 0);
   return <Modal title={`Import stats from ${src}`} wide onClose={close} actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" disabled={!n || busy} onClick={apply}>{busy ? 'Saving…' : `Update ${n} player${n === 1 ? '' : 's'}`}</button></>}>
     <ol className="steps"><li>Open the team's player stats page on {src} (skaters, or skaters and goalies one after the other).</li>
-      <li>Select the whole page (Ctrl/Cmd + A), copy and paste it below.</li>
+      <li>Paste a <b>screenshot</b> of the table (with its heading row) into the box below, or select the whole page (Ctrl/Cmd + A), copy and paste it. Several screenshots add up.</li>
       <li>Check the list. Season totals replace the leaderboard numbers; jersey numbers and positions on the roster are updated to match. The team is left as it is.</li></ol>
-    <textarea className="input" rows="5" placeholder="Paste the stats page here" value={text} onChange={(e) => setText(e.target.value)} onPaste={onPaste} />
-    {text.trim() && !rows.length && <div className="small" style={{ color: 'var(--warn)' }}>No player table found. Copy the whole page, including the heading row (Name, Pos, GP, G, A…).</div>}
+    <textarea className="input" rows="5" placeholder="Paste a screenshot or the stats page here" value={shot && shot.rows ? `Read from screenshot: ${shot.rows.length} players` : text} readOnly={!!shot}
+      onChange={(e) => setText(e.target.value)} onPaste={onPaste} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { const f = e.dataTransfer.files[0]; if (f && /^image\//.test(f.type)) { e.preventDefault(); readImage(f); } }} />
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+      <label className="btn sm"><Icon n="plus" /> Choose screenshot<input type="file" accept="image/*" hidden onChange={(e) => { readImage(e.target.files[0]); e.target.value = ''; }} /></label>
+      {shot && shot.rows && <button className="btn sm ghost" onClick={() => { setShot(null); setText(''); }}>Clear</button>}
+      {shot && shot.progress !== undefined && <span className="small muted">Reading screenshot… {Math.round(shot.progress * 100)}% (the first time takes a little longer)</span>}
+      {shot && shot.skipped && shot.skipped.length > 0 && <span className="small" style={{ color: 'var(--bad)' }}>Line{shot.skipped.length > 1 ? 's' : ''} {shot.skipped.join(', ')} on the screenshot couldn't be read. Those players aren't in the list below.</span>}
+      {shot && shot.rows && <span className="small" style={{ color: 'var(--warn)' }}>Read from a screenshot: check the numbers against the league page before saving{shot.rows.some((r) => r.check) ? ', especially rows marked Check' : ''}.</span>}
+    </div>
+    {text.trim() && !shot && !rows.length && <div className="small" style={{ color: 'var(--warn)' }}>No player table found. Copy the whole page, including the heading row (Name, Pos, GP, G, A…).</div>}
     {rows.length > 0 && <>
       <div className="small"><b>{rows.length} players found</b>: {plan.matched.length} on the roster{plan.updates.length ? `, ${plan.updates.length} with a new number or position` : ''}{plan.missing.length ? `, ${plan.missing.length} not on the roster` : ''}.</div>
       <div className="tbl-wrap" style={{ maxHeight: 340, overflow: 'auto' }}><table className="tbl">
         <thead><tr><th /><th className="num">#</th><th>Name</th><th>Pos</th><th className="num">GP</th><th className="num">G</th><th className="num">A</th><th className="num">PTS</th><th className="num">PIM</th></tr></thead>
         <tbody>{rows.map((r) => { const m = plan.matched.find((x) => x.row === r), u = m && plan.updates.find((x) => x.id === m.player.id);
           const chg = (f) => u && u.was[f] !== u[f] ? <span className="muted small"> (was {u.was[f] || '–'})</span> : null;
-          return <tr key={r.name}><td><span className={`pill ${m ? '' : 'new'}`}>{m ? (u ? 'Update' : 'Stats') : addNew ? 'New' : 'Skip'}</span></td>
-            <td className="num tnum">{r.num}{chg('num')}</td><td>{r.name}</td><td>{r.position}{chg('position')}</td>
+          return <tr key={r.name}><td><span className={`pill ${m ? '' : 'new'}`}>{m ? (u ? 'Update' : 'Stats') : addNew ? 'New' : 'Skip'}</span>{r.check && <span className="pill warn" title="G + A doesn't match PTS on the screenshot">Check</span>}</td>
+            <td className="num tnum">{r.num}{chg('num')}</td><td>{r.name}{m && nameKey(m.player.name) !== nameKey(r.name) && <span className="muted small"> → {m.player.name}</span>}</td><td>{r.position}{chg('position')}</td>
             <td className="num tnum">{r.gp}</td><td className="num tnum">{r.stats.g ?? '–'}</td><td className="num tnum">{r.stats.a ?? '–'}</td><td className="num tnum">{(r.stats.g || 0) + (r.stats.a || 0)}</td><td className="num tnum">{r.stats.pim ?? '–'}</td></tr>; })}</tbody>
       </table></div>
-      {plan.missing.length > 0 && <label className="small" style={{ display: 'flex', gap: 8, alignItems: 'center' }}><input type="checkbox" className="cb" checked={addNew} onChange={(e) => setAddNew(e.target.checked)} /> Add the {plan.missing.length} player{plan.missing.length === 1 ? '' : 's'} not on the roster ({plan.missing.map((r) => r.name).join(', ')}). Untick if a name is spelled differently on the roster; fix the spelling there and import again.</label>}
+      {plan.missing.length > 0 && <label className="small" style={{ display: 'flex', gap: 8, alignItems: 'center' }}><input type="checkbox" className="cb" checked={addNew} onChange={(e) => setAddNew(e.target.checked)} /> Add the {plan.missing.length} player{plan.missing.length === 1 ? '' : 's'} not on the roster{plan.missing.length <= 5 ? ` (${plan.missing.map((r) => r.name).join(', ')})` : ''}. Untick if a name is spelled differently on the roster; fix the spelling there and import again.</label>}
     </>}
   </Modal>;
 }
