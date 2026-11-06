@@ -1084,3 +1084,11 @@ span.gd-row{cursor:default}
 @media (max-width:520px){.sa-who{grid-template-columns:1fr 1fr}}
 .sa-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
 .sa-url{max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* league stats import table: CSSHL's 22 columns, scrolls sideways */
+.ls-drop{flex:1;min-width:220px;resize:none;min-height:40px}
+.ls-grid{max-height:min(420px,calc(100dvh - 380px))}
+.ls-grid .ts-cell{min-width:54px}
+.ls-grid .ts-cell.ts-text input{min-width:54px}
+.ls-grid .ts-cell.ls-name{min-width:180px}
+.ls-grid .ts-cell.ls-name input{min-width:170px}
+.ls-grid th{white-space:nowrap}

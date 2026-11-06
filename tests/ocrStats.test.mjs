@@ -10,10 +10,10 @@ const head = [W('Jersey', 110, 10, 40), W('#', 140, 10), W('Name', 250, 10, 30),
 const row = (y, rank, num, name, pos, gp, g, a, pts, ppg, pim) => [W(rank, 60, y), W(num, 117, y), ...name.split(' ').map((t, i) => W(t, 290 + i * 60, y, 50)),
   W(pos, 488, y), W('BCS', 555, y, 30), W(gp, 610, y), W(g, 641, y), W(a, 667, y), W(pts, 700, y), W(ppg, 790, y), W(pim, 1231, y)];
 
-test('rebuilds rows from word positions; unkept columns (PPG) are ignored', () => {
+test('rebuilds rows from word positions; every column is read', () => {
   const rows = wordsToStatRows([...head, ...row(60, '1', '23', 'Athlete Zed Hannon', 'F', '5', '2', '5', '7', '1', '8'), ...row(113, '2', '41', 'Athlete Max Stoll', 'G', '1', 'O', '0', '0', '0', '©')]);
-  assert.deepEqual(rows[0], { num: '23', name: 'Athlete Zed Hannon', position: 'F', gp: 5, stats: { g: 2, a: 5, pim: 8 }, pts: 7, rank: 1 });
-  assert.deepEqual(rows[1].stats, { g: 0, a: 0, pim: 0 });
+  assert.deepEqual(rows[0], { num: '23', name: 'Athlete Zed Hannon', position: 'F', gp: 5, stats: { g: 2, a: 5, pts: 7, ppg: 1, pim: 8 }, pts: 7, rank: 1 });
+  assert.deepEqual(rows[1].stats, { g: 0, a: 0, pts: 0, ppg: 0, pim: 0 });
 });
 
 test('no heading row: nothing read', () => {

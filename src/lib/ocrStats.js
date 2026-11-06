@@ -3,11 +3,13 @@
 // wordsToStatRows rebuilds the table from where each word sits: the heading row gives each
 // column's position, every player line is a row, and numbers go to the nearest column. The coach
 // checks the preview before anything is saved, since a screenshot can be misread.
-import { STAT_KEYS } from './leagueStats.js';
+import { STAT_KEYS, fieldOf } from './leagueStats.js';
 
 const k = (h) => String(h || '').toLowerCase().replace(/[^a-z0-9+/-]/g, '');
-const COL = { pts: ['pts'], gp: ['gp'], g: ['g'], a: ['a'], pim: ['pim'], pm: ['+/-', '+/', '+-'], ga: ['ga'], sa: ['sa'], sv: ['sv'] };
-const colOf = (w) => { const x = k(w); for (const [f, l] of Object.entries(COL)) if (l.includes(x)) return f; return null; };
+// a screenshot loses decimal points (1.40 reads as 140), so those columns only anchor positions;
+// Pt/G, PIM/G and SO% are worked out from the totals instead
+const DECIMAL = new Set(['ptg', 'pimpg', 'so_pct', 'sh_pct']);
+const colOf = (w) => { const t = String(w).replace(/^S0/i, 'SO'); const f = /^\+\/?-?$/.test(t) ? 'pm' : fieldOf(t); return f && !DECIMAL.has(f) ? f : null; };
 const POS = { f: 'F', c: 'C', lw: 'LW', rw: 'RW', d: 'D', g: 'G' };
 const isNum = (s) => /^[-+]?\d+(\.\d+)?$/.test(s);
 const mid = (w) => (w.x0 + w.x1) / 2;
