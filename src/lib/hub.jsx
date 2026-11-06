@@ -72,6 +72,15 @@ export function HubProvider({ api, user, children }) {
   }, [api, teamId, hub]);
   useEffect(() => { setTdata({ ...EMPTY, _loading: true }); reloadTeam().catch((e) => toast('Could not load team: ' + e.message)); }, [teamId, hub && hub.teams.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // "who's on TeamHub": a heartbeat about once a minute while the app is open and visible
+  useEffect(() => {
+    if (!user) return;
+    const beat = () => { if (document.visibilityState === 'visible') api.touchSeen().catch(() => {}); };
+    beat(); const id = setInterval(beat, 60000);
+    document.addEventListener('visibilitychange', beat);
+    return () => { clearInterval(id); document.removeEventListener('visibilitychange', beat); };
+  }, [api, user]);
+
   const reloadOrg = useCallback(async () => {
     if (!orgId) return; const ids = orgTeams(orgId).map((t) => t.id);
     setOrgData(await api.loadOrgData(ids));

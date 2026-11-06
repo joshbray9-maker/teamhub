@@ -214,7 +214,8 @@ export const api = {
   async uploadLogo(_teamId, blob) { return new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(blob); }); },
   async createOrg(name, slug) { const o = { id: 'o_' + slug, slug, name, public_schedule: false, role: 'admin' }; db.orgs.push(o); db.members[o.id] = [{ user_id: USER.id, email: USER.email, role: 'admin' }]; save(); return clone(o); },
   async updateOrg(id, patch) { Object.assign(db.orgs.find((o) => o.id === id), patch); save(); },
-  async listMembers(orgId) { return clone(db.members[orgId] || []); },
+  async listMembers(orgId) { return clone((db.members[orgId] || []).map((m) => (m.user_id ? { ...m, seen_at: (db.seen || {})[m.user_id] || null } : m))); },
+  async touchSeen() { await load(); (db.seen = db.seen || {})[USER.id] = new Date().toISOString(); save(); },
   async inviteMember(orgId, email, role, teams = null, label = '') { (db.members[orgId] = db.members[orgId] || []).push({ id: 'inv' + uid(), email: email.toLowerCase(), label: label.trim().slice(0, 80), role, pending: true, token: 'demo-' + uid(), teams: teams && teams.length ? teams : null }); save(); return 'invited'; },
   async createInviteLink(orgId, { label = '', role, teams = null }) { const token = 'demo-' + uid(); (db.members[orgId] = db.members[orgId] || []).push({ id: 'inv' + uid(), email: '', label: label.trim().slice(0, 80), role, pending: true, token, teams: role !== 'admin' && teams && teams.length ? teams : null }); save(); return token; },
   async inviteInfo(token) {

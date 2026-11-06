@@ -478,3 +478,22 @@ test('sports med: edits injuries, reads testing, never coach notes, IPPs or test
   assert.deepEqual((await me('select id from teams')).map((r) => r.id), [bcsTeam]);
   await assert.rejects(as(db, U.josh, `select invite_member($1, 'x@x.test', 'medic')`, [bcs]), /Unknown role/);
 });
+
+test('activity: people record their own last-seen time; only their org admins read it', async () => {
+  const db = await setup();
+  const bcs = (await db.query(`select id from organizations where slug='bcs'`)).rows[0].id;
+  await db.exec(`insert into auth.users values ('${U.other}', 'coach2@x.test')`);
+  await db.query(`insert into memberships (org_id, user_id, role) values ($1, $2, 'coach')`, [bcs, U.other]);
+  await as(db, U.other, 'select touch_seen()');
+  await as(db, U.other, 'select touch_seen()');
+  assert.equal((await db.query('select count(*)::int c from user_activity')).rows[0].c, 1);
+  // can't fake a time or write someone else's
+  await as(db, U.other, `update user_activity set seen_at = now() - interval '1 day'`).catch(() => {});
+  assert.ok((await db.query(`select seen_at > now() - interval '1 hour' ok from user_activity`)).rows[0].ok);
+  await assert.rejects(as(db, U.other, `insert into user_activity (user_id) values ($1)`, [U.josh]));
+  // Josh (BCS admin) sees it; a signed-out visitor doesn't
+  assert.equal((await as(db, U.josh, 'select count(*)::int c from user_activity where user_id = $1', [U.other]))[0].c, 1);
+  assert.equal((await as(db, null, 'select count(*)::int c from user_activity'))[0].c, 0);
+  await as(db, null, 'select touch_seen()').catch(() => {});
+  assert.equal((await db.query('select count(*)::int c from user_activity')).rows[0].c, 1);
+});

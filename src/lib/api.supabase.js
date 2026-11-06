@@ -331,11 +331,11 @@ export const api = {
     const [m, inv, mt] = await Promise.all([supabase.from('memberships').select('user_id, role').eq('org_id', orgId), supabase.from('invites').select('id, email, label, role, team_ids, token').eq('org_id', orgId),
       supabase.from('member_teams').select('user_id, team_id').eq('org_id', orgId)]);
     const mem = ok(m); const ids = mem.map((x) => x.user_id);
-    const prof = ids.length ? ok(await supabase.from('profiles').select('id, email').in('id', ids)) : [];
-    const em = Object.fromEntries(prof.map((p) => [p.id, p.email]));
+    const [prof, act] = ids.length ? await Promise.all([supabase.from('profiles').select('id, email').in('id', ids).then(ok), supabase.from('user_activity').select('user_id, seen_at').in('user_id', ids).then(ok)]) : [[], []];
+    const em = Object.fromEntries(prof.map((p) => [p.id, p.email])), seen = Object.fromEntries(act.map((a) => [a.user_id, a.seen_at]));
     // teams: the teams a member is limited to, or null for every team
     const lim = {}; ok(mt).forEach((r) => { (lim[r.user_id] = lim[r.user_id] || []).push(r.team_id); });
-    return [...mem.map((x) => ({ user_id: x.user_id, email: em[x.user_id] || '(unknown)', role: x.role, teams: lim[x.user_id] || null })),
+    return [...mem.map((x) => ({ user_id: x.user_id, email: em[x.user_id] || '(unknown)', role: x.role, teams: lim[x.user_id] || null, seen_at: seen[x.user_id] || null })),
       ...(ok(inv) || []).map((x) => ({ id: x.id, email: x.email || '', label: x.label || '', role: x.role, pending: true, token: x.token, teams: x.team_ids && x.team_ids.length ? x.team_ids : null }))];
   },
   async inviteMember(orgId, email, role, teams = null, label = '') {
@@ -362,6 +362,8 @@ export const api = {
     else ok(await supabase.from('memberships').delete().eq('org_id', orgId).eq('user_id', m.user_id));
   },
 
+  /** Records that the signed-in person has TeamHub open (see user_activity); admins see it in Members. */
+  async touchSeen() { ok(await supabase.rpc('touch_seen')); },
   /** An invite link: { org_name, role, email, label, teams (names, null = every team) }, or null when it was used or removed. */
   async inviteInfo(token) { const r = ok(await supabase.rpc('invite_info', { p_token: token })); return (r && r[0]) || null; },
   /** Joins with an invite link; returns the organization id, or null when it was already used. */

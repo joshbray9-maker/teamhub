@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useHub } from '../lib/hub.jsx';
 import Modal from './Modal.jsx';
 import Icon from './Icon.jsx';
+import { ago } from '../lib/util.js';
 
 const ROLES = { admin: 'Admin', coach: 'Coach', sportsmed: 'Sports med', viewer: 'Viewer' };
 // what each access level can do (enforced in the database, see the RLS policies)
@@ -23,6 +24,14 @@ function TeamPick({ teams, value, onChange }) {
     {!all && <div className="tp-list">{teams.map((t) => <label key={t.id}><input type="checkbox" role="switch" className="sw" checked={value.includes(t.id)} onChange={() => flip(t.id)} /> {t.name}</label>)}</div>}
   </div>;
 }
+// online = the app sent its once-a-minute heartbeat recently (user_activity)
+const ONLINE_MS = 150000;
+const isOnline = (m) => !!m.seen_at && Date.now() - Date.parse(m.seen_at) < ONLINE_MS;
+function Seen({ m }) {
+  if (m.pending) return null;
+  if (isOnline(m)) return <span className="seen on"><i />Online now</span>;
+  return <span className="seen">{m.seen_at ? `Last active ${ago(Date.parse(m.seen_at))}` : 'Not active since this was added'}</span>;
+}
 const who = (m) => (m.pending ? m.label || m.email || 'this invite' : m.email);
 const teamsLabel = (m, teams) => (m.role === 'admin' || !m.teams ? 'All teams' : m.teams.length === 1 ? (teams.find((t) => t.id === m.teams[0]) || {}).name || '1 team' : `${m.teams.length} teams`);
 
@@ -34,7 +43,8 @@ export default function MembersDialog({ org, close }) {
   const [made, setMade] = useState(null); // the link just created: { url, label }
   const [pub, setPub] = useState(!!org.public_schedule);
   const load = () => H.api.listMembers(org.id).then(setList).catch((e) => H.toast('Could not load members: ' + e.message));
-  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // reload each minute so "Online now" stays current while the dialog is open
+  useEffect(() => { load(); const id = setInterval(load, 60000); return () => clearInterval(id); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const act = async (fn, msg) => { try { const r = await fn(); if (msg) H.toast(typeof msg === 'function' ? msg(r) : msg); load(); } catch (e) { H.toast(e.message); } };
   const link = `${location.origin}/schedule/${org.slug}`;
   // each pending invite's own join link: the admin copies it and sends it (TeamHub sends no email)
@@ -82,9 +92,9 @@ export default function MembersDialog({ org, close }) {
         <div className="todo-add"><input className="input" readOnly value={made.url} onFocus={(e) => e.target.select()} aria-label="Invite link" /><button type="button" className="btn primary" onClick={() => copy(made.url, 'Invite link')}>Copy</button></div>
       </div>}
     </form>
-    <div className="mem-h">People and links</div>
+    <div className="mem-h">People and links{list && <span className="seen on" style={{ marginLeft: 10 }}><i />{list.filter(isOnline).length} online now</span>}</div>
     {!list ? <div className="muted small">Loading…</div> : <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>{list.map((m) => { const me = m.user_id === H.user.id; return <div key={m.id || m.email + (m.user_id || '')} className="mem-row">
-      <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{m.pending ? (m.label || m.email || 'Invite link') : m.email} {m.pending && m.label && m.email && <span className="muted small">{m.email} </span>}{m.pending && <span className="pill">{m.email ? 'Invited' : 'Link not used yet'}</span>}{m.pending && m.token && <button className="btn sm" style={{ marginLeft: 6 }} onClick={() => copy(joinLink(m), 'Invite link')} title="Copy the link to send to this person">Copy invite link</button>}{me && <span className="pill">You</span>}</span>
+      <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{m.pending ? (m.label || m.email || 'Invite link') : m.email} {m.pending && m.label && m.email && <span className="muted small">{m.email} </span>}{m.pending && <span className="pill">{m.email ? 'Invited' : 'Link not used yet'}</span>}{m.pending && m.token && <button className="btn sm" style={{ marginLeft: 6 }} onClick={() => copy(joinLink(m), 'Invite link')} title="Copy the link to send to this person">Copy invite link</button>}{me && <span className="pill">You</span>}<Seen m={m} /></span>
       <select className="select" value={m.role} disabled={me} onChange={(e) => act(() => H.api.setMemberRole(org.id, m, e.target.value))}>{Object.entries(ROLES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
       <button className="btn sm mem-teams" disabled={m.role === 'admin' || teams.length < 2} onClick={() => editTeams(m)} title={m.role === 'admin' ? 'Admins see every team' : 'Choose which teams they see'}>{teamsLabel(m, teams)}</button>
       {me ? <span /> : <button className="icon-btn" aria-label={`Remove ${who(m)}`} onClick={async () => { if (await H.confirm(m.pending ? 'Delete this invite link?' : 'Remove access?', m.pending ? `The link for ${who(m)} will stop working.` : `${who(m)} will no longer see ${org.name}.`, m.pending ? 'Delete link' : 'Remove')) act(() => H.api.removeMember(org.id, m), 'Removed'); }}><Icon n="x" /></button>}
