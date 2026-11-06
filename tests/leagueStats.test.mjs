@@ -94,3 +94,15 @@ test('headings doubled without a space (copied as HTML) are read too', () => {
   assert.equal(g.filter((x) => x.name).length, 1);
   assert.deepEqual([g[0].num, g[0].name, g[0].gp, g[0].a], ['23', 'Athlete HV01', '5', '5']);
 });
+
+test('"+" after a name is ignored; a last-name-only roster entry is matched and gets the full name', () => {
+  const players = [{ id: 'p1', name: 'Hannon', num: '', position: 'Forward' }, { id: 'p2', name: 'Pelt', num: '21', position: 'F' }, { id: 'p3', name: 'Jake Ulm', num: '8', position: 'D' }];
+  const g = pasteBlock([blankRow()], [['1', '23', '', 'Zed Hannon +', 'Z. Hannon +', 'F', 'BCS', '5', '2'], ['2', '21', '', 'Ray Pelt', 'R. Pelt', 'F', 'BCS', '4', '1'], ['3', '9', '', 'John Ulm +', 'J. Ulm', 'D', 'BCS', '3', '0']], 0, 0);
+  assert.equal(g[0].name, 'Zed Hannon');
+  const plan = planLeagueStats(players, fromGrid(g));
+  const u1 = plan.updates.find((u) => u.id === 'p1');
+  assert.deepEqual([u1.name, u1.num, u1.position], ['Zed Hannon', '23', 'F']);
+  assert.equal(plan.updates.find((u) => u.id === 'p2').name, 'Ray Pelt');
+  // a different first name is a different player
+  assert.deepEqual(plan.missing.map((r) => r.name), ['John Ulm']);
+});

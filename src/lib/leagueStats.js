@@ -38,10 +38,13 @@ const POS = { f: 'F', fwd: 'F', forward: 'F', c: 'C', lw: 'LW', rw: 'RW', d: 'D'
 const numOf = (v) => { const s = String(v ?? '').trim().replace(/%$/, ''); const x = Number(s); return s !== '' && Number.isFinite(x) ? x : undefined; };
 
 /** One row's cells by field → {num, name, position, gp, stats} or null without a name and GP. */
+/** A name as the league prints it, without its markers: CSSHL adds "+" (and some sites "*") after
+ *  a name. */
+export const cleanName = (s) => String(s || '').replace(/[+*†‡]/g, ' ').replace(/\s+/g, ' ').trim();
 /** A usable player name: two or more letters with at least one lowercase (not "F", "BCS", "LW"). */
 export const isName = (s) => { const t = String(s || '').trim(); return (t.match(/[a-zà-ÿ]/gi) || []).length >= 2 && /[a-zà-ÿ]/.test(t); };
 function rowOf(v) {
-  const name = String(v.name || '').replace(/\s+/g, ' ').trim(), gp = numOf(v.gp);
+  const name = cleanName(v.name), gp = numOf(v.gp);
   if (!isName(name) || gp === undefined) return null;
   const stats = {};
   for (const s of STAT_KEYS) { const x = numOf(v[s]); if (x !== undefined) stats[s] = x; }
@@ -103,7 +106,7 @@ export function readCsshlRow(cells) {
   const c = cells.map((x) => String(x ?? '').trim());
   const ni = c.findIndex(isName); if (ni < 0) return null;
   const before = c.slice(0, ni), nums = before.filter((x) => /^\d{1,3}$/.test(x));
-  const out = { ...blankCells(), name: c[ni].replace(/\s+/g, ' '), num: nums.length ? nums[nums.length - 1] : '' };
+  const out = { ...blankCells(), name: cleanName(c[ni]), num: nums.length ? nums[nums.length - 1] : '' };
   const ji = before.lastIndexOf(out.num); out.flags = before.slice(ji + 1).filter((x) => x && !/^\d+$/.test(x)).join(' ');
   // the position code within the next few cells (past the phone Name cell, which may be shortened)
   const pi = c.findIndex((x, i) => i > ni && i <= ni + 4 && isPos(x));
@@ -149,19 +152,25 @@ export function pasteBlock(grid, block, r, c) {
   return n;
 }
 
-/** Matches league rows to the roster. updates: roster players whose number or position changes.
- *  Each roster player is matched once: exact names first, then a near miss (a misread letter, a
- *  nickname: same last name, and the only such player still unmatched). A name that appears
- *  twice in the table counts once (the first row). */
+/** Matches league rows to the roster. updates: roster players whose name, number or position
+ *  changes. Each roster player is matched once: exact names first, then a near miss (same last
+ *  name, and the only such player still unmatched and the only such row): a misread letter, a
+ *  nickname, or a roster that only has last names. A matched roster name that is shorter than the
+ *  league's ("Smith", "J. Smith") takes the league's full name. A name that appears twice in the
+ *  table counts once (the first row). */
 export function planLeagueStats(players, rows) {
-  const byName = new Map(players.map((p) => [nameKey(p.name), p]));
-  const last = (n) => nameKey(String(n).trim().split(/\s+/).pop());
+  const byName = new Map(players.map((p) => [nameKey(cleanName(p.name)), p]));
+  const words = (n) => cleanName(n).split(' ').filter(Boolean);
+  const last = (n) => nameKey(words(n).pop() || '');
   const seen = new Set(), list = rows.filter((r) => { const k2 = nameKey(r.name); if (seen.has(k2)) return false; seen.add(k2); return true; });
   const used = new Set(), pick = new Map();
   for (const r of list) { const p = byName.get(nameKey(r.name)); if (p && !used.has(p.id)) { used.add(p.id); pick.set(r, p); } }
   for (const r of list) {
     if (pick.has(r)) continue;
-    const l = players.filter((p) => !used.has(p.id) && last(p.name) === last(r.name));
+    // a roster name with a different first name is someone else ("Jake Smith" is not "John Smith")
+    const first = (n) => { const w = words(n); return w.length > 1 ? nameKey(w[0]) : ''; };
+    const fits = (p) => { const a = first(p.name), b = first(r.name); return !a || !b || a === b || (a.length === 1 && b.startsWith(a)) || (b.length === 1 && a.startsWith(b)); };
+    const l = players.filter((p) => !used.has(p.id) && last(p.name) === last(r.name) && fits(p));
     if (l.length === 1 && list.filter((x) => !pick.has(x) && last(x.name) === last(r.name)).length === 1) { used.add(l[0].id); pick.set(r, l[0]); }
   }
   const matched = [], missing = [], updates = [];
@@ -169,8 +178,11 @@ export function planLeagueStats(players, rows) {
     const p = pick.get(r);
     if (!p) { missing.push(r); continue; }
     matched.push({ player: p, row: r });
-    const patch = {}; if (r.num && r.num !== p.num) patch.num = r.num; if (r.position && r.position !== p.position) patch.position = r.position;
-    if (Object.keys(patch).length || p.active === false) updates.push({ ...p, ...patch, active: true, was: { num: p.num, position: p.position } });
+    const patch = {};
+    const fuller = words(r.name).length > words(p.name).length || (words(r.name).length === words(p.name).length && cleanName(r.name).length > cleanName(p.name).length && nameKey(r.name) !== nameKey(p.name) && last(r.name) === last(p.name));
+    if (cleanName(p.name) !== p.name || fuller) patch.name = fuller ? r.name : cleanName(p.name);
+    if (r.num && r.num !== p.num) patch.num = r.num; if (r.position && r.position !== p.position) patch.position = r.position;
+    if (Object.keys(patch).length || p.active === false) updates.push({ ...p, ...patch, active: true, was: { name: p.name, num: p.num, position: p.position } });
   }
   return { matched, missing, updates, repeated: rows.length - list.length };
 }

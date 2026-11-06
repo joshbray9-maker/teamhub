@@ -60,6 +60,7 @@ export function rowsToPlayers(rows, source = 'csv') {
 /** Normalise one player's raw fields; null when there's no usable name. */
 export function clean(raw, source) {
   let name = raw.name || [raw.first, raw.last].filter(Boolean).join(' ');
+  name = String(name || '').replace(/[+*†‡]/g, ' '); // league markers after a name ("Smith +")
   name = String(name || '').replace(/\s+/g, ' ').trim();
   const m = name.match(/^([^,]+),\s*([^,]+)$/); if (m) name = `${m[2]} ${m[1]}`; // "Last, First"
   if (!name || name.length > 80 || !/[a-zA-Zà-ÿÀ-ß]/.test(name)) return null;

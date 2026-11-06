@@ -153,7 +153,7 @@ function LeagueStatsImport({ close, players, onSaved }) {
     const r = rows.find((x) => nameKey(x.name) === nameKey(g.name) && g.name.trim()); if (!r) return null;
     const m = plan.matched.find((x) => x.row === r), u = m && plan.updates.find((x) => x.id === m.player.id);
     return { m, u, label: m ? (u ? 'Update' : 'Stats') : addNew ? 'New' : 'Skip',
-      title: m ? [nameKey(m.player.name) !== nameKey(g.name) && `Roster: ${m.player.name}`, u && u.was.num !== u.num && `# was ${u.was.num || '–'}`, u && u.was.position !== u.position && `Pos was ${u.was.position || '–'}`].filter(Boolean).join(' · ') : 'Not on the roster' };
+      title: m ? [u && u.was.name !== u.name ? `Roster name ${u.was.name} → ${u.name}` : nameKey(m.player.name) !== nameKey(g.name) && `Roster: ${m.player.name}`, u && u.was.num !== u.num && `# was ${u.was.num || '–'}`, u && u.was.position !== u.position && `Pos was ${u.was.position || '–'}`].filter(Boolean).join(' · ') : 'Not on the roster' };
   };
   const n = plan.matched.length + (addNew ? plan.missing.length : 0);
   const incomplete = grid.filter((g) => filled(g) && !rows.some((r) => nameKey(r.name) === nameKey(g.name) && g.name.trim())).length;
