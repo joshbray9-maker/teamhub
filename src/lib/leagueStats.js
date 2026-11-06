@@ -116,21 +116,30 @@ export function pasteBlock(grid, block, r, c) {
   return n;
 }
 
-/** Matches league rows to the roster. updates: roster players whose number or position changes. */
+/** Matches league rows to the roster. updates: roster players whose number or position changes.
+ *  Each roster player is matched once: exact names first, then a near miss (a misread letter, a
+ *  nickname: same last name, and the only such player still unmatched). A name that appears
+ *  twice in the table counts once (the first row). */
 export function planLeagueStats(players, rows) {
   const byName = new Map(players.map((p) => [nameKey(p.name), p]));
-  const matched = [], missing = [], updates = [];
-  // a near miss (a misread letter, a nickname): same last name, and the only such player
   const last = (n) => nameKey(String(n).trim().split(/\s+/).pop());
-  const byLast = (r) => { const l = players.filter((p) => last(p.name) === last(r.name)); return l.length === 1 ? l[0] : null; };
-  for (const r of rows) {
-    const p = byName.get(nameKey(r.name)) || byLast(r);
+  const seen = new Set(), list = rows.filter((r) => { const k2 = nameKey(r.name); if (seen.has(k2)) return false; seen.add(k2); return true; });
+  const used = new Set(), pick = new Map();
+  for (const r of list) { const p = byName.get(nameKey(r.name)); if (p && !used.has(p.id)) { used.add(p.id); pick.set(r, p); } }
+  for (const r of list) {
+    if (pick.has(r)) continue;
+    const l = players.filter((p) => !used.has(p.id) && last(p.name) === last(r.name));
+    if (l.length === 1 && list.filter((x) => !pick.has(x) && last(x.name) === last(r.name)).length === 1) { used.add(l[0].id); pick.set(r, l[0]); }
+  }
+  const matched = [], missing = [], updates = [];
+  for (const r of list) {
+    const p = pick.get(r);
     if (!p) { missing.push(r); continue; }
     matched.push({ player: p, row: r });
     const patch = {}; if (r.num && r.num !== p.num) patch.num = r.num; if (r.position && r.position !== p.position) patch.position = r.position;
     if (Object.keys(patch).length || p.active === false) updates.push({ ...p, ...patch, active: true, was: { num: p.num, position: p.position } });
   }
-  return { matched, missing, updates };
+  return { matched, missing, updates, repeated: rows.length - list.length };
 }
 
 /** Decimal places the league shows for its per-game and % columns. */

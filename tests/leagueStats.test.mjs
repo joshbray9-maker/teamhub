@@ -57,3 +57,14 @@ test('table paste: a block without headings fills from the clicked cell', () => 
   const g = pasteBlock([blankRow(), blankRow()], [['5', '2'], ['4', '1']], 1, LEAGUE_COLS.findIndex(([c]) => c === 'gp'));
   assert.equal(g[1].gp, '5'); assert.equal(g[1].g, '2'); assert.equal(g[2].gp, '4');
 });
+
+test('each roster player is matched once (repeated rows, shared last names)', () => {
+  const players = [{ id: 'p1', name: 'Athlete Bo Smith', num: '4', position: 'D' }];
+  const rows = [{ name: 'Athlete Al Smith', num: '7', position: 'F', gp: 5, stats: {} }, { name: 'Athlete Bo Smith', num: '4', position: 'D', gp: 5, stats: {} },
+    { name: 'Athlete Bo Smith', num: '4', position: 'D', gp: 5, stats: {} }];
+  const plan = planLeagueStats(players, rows);
+  assert.deepEqual(plan.matched.map((m) => m.row.name), ['Athlete Bo Smith']);
+  assert.deepEqual(plan.missing.map((r) => r.name), ['Athlete Al Smith']);
+  assert.equal(plan.repeated, 1);
+  assert.equal(new Set(plan.updates.map((u) => u.id)).size, plan.updates.length);
+});

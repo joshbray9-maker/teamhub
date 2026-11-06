@@ -181,6 +181,7 @@ function LeagueStatsImport({ close, players, onSaved }) {
     <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
       <button className="btn sm" onClick={() => setGrid((g) => [...g, ...Array.from({ length: 5 }, blankRow)])}><Icon n="plus" /> Add 5 rows</button>
       {rows.length > 0 && <span className="small"><b>{rows.length} player{rows.length === 1 ? '' : 's'}</b>: {plan.matched.length} on the roster{plan.updates.length ? `, ${plan.updates.length} with a new number or position (hover Update to see)` : ''}{plan.missing.length ? `, ${plan.missing.length} not on the roster` : ''}.</span>}
+      {plan.repeated > 0 && <span className="small" style={{ color: 'var(--warn)' }}>{plan.repeated} name{plan.repeated === 1 ? ' is' : 's are'} in the table twice; only the first row is saved.</span>}
       {incomplete > 0 && <span className="small" style={{ color: 'var(--warn)' }}>{incomplete} row{incomplete === 1 ? '' : 's'} need{incomplete === 1 ? 's' : ''} a name and GP to be saved.</span>}
     </div>
     {plan.missing.length > 0 && <label className="small" style={{ display: 'flex', gap: 8, alignItems: 'center' }}><input type="checkbox" className="cb" checked={addNew} onChange={(e) => setAddNew(e.target.checked)} /> Add the {plan.missing.length} player{plan.missing.length === 1 ? '' : 's'} not on the roster{plan.missing.length <= 5 ? ` (${plan.missing.map((r) => r.name).join(', ')})` : ''}. Untick if a name is spelled differently on the roster; fix the spelling there and import again.</label>}
