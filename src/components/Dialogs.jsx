@@ -1,7 +1,7 @@
 // Game, event, league-paste and .ics dialogs (ported from the TeamHub artifact).
 import { useState } from 'react';
 import { useHub } from '../lib/hub.jsx';
-import { fmtDate, fmtTime, todayISO, hasScore, isUsT, schoolName, leagueLabel } from '../lib/util.js';
+import { fmtDate, fmtTime, todayISO, hasScore, isUsT, schoolName, leagueLabel, standingsUrl } from '../lib/util.js';
 import { parseLeague, gameKey, docToText, parseIcs, planIcs, cleanTeam } from '../../supabase/functions/_shared/leagueParse.js';
 import Modal from './Modal.jsx';
 import Icon from './Icon.jsx';
@@ -112,7 +112,7 @@ export function EventView({ e, close }) {
 
 /* ---------- league paste ---------- */
 export function LeagueUpdate({ close }) {
-  const H = useHub(); const t = H.team; const url = t.leagueUrl;
+  const H = useHub(); const t = H.team; const url = t.leagueUrl, stUrl = standingsUrl(t);
   const [text, setText] = useState('');
   const parsed = text.trim() ? parseLeague(text) : null;
   const ours = parsed ? parsed.games.filter((g) => isUsT(g.home, t) || isUsT(g.away, t)) : [];
@@ -139,7 +139,7 @@ export function LeagueUpdate({ close }) {
   };
   return <Modal title={`Update from ${leagueLabel(t)}`} wide onClose={close} actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" disabled={!found} onClick={apply}>Apply</button></>}>
     <ol className="steps">
-      <li>{url ? <>Open <a href={url} target="_blank" rel="noopener noreferrer">{leagueLabel(t)} <Icon n="ext" /></a></> : <>Open your league website (add the link in <a href="#" onClick={(e) => { e.preventDefault(); close(); H.openDialog((c) => <TeamForm t={t} close={c} />); }}>Team settings</a> for a one-tap button)</>}.</li>
+      <li>{url ? <>Open <a href={url} target="_blank" rel="noopener noreferrer">{stUrl ? `${leagueLabel(t)} schedule` : leagueLabel(t)} <Icon n="ext" /></a>{stUrl && <> or <a href={stUrl} target="_blank" rel="noopener noreferrer">{leagueLabel(t)} standings <Icon n="ext" /></a></>}</> : <>Open your league website (add the link in <a href="#" onClick={(e) => { e.preventDefault(); close(); H.openDialog((c) => <TeamForm t={t} close={c} />); }}>Team settings</a> for a one-tap button)</>}.</li>
       <li>Select the whole standings or schedule page (Ctrl/Cmd + A) and copy it.</li>
       <li>Paste below. You'll see what was found before anything changes.</li></ol>
     <textarea className="input" rows="7" placeholder="Paste the league page here" value={text} onChange={(e) => setText(v(e))} onPaste={onPaste} />

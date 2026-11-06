@@ -24,7 +24,9 @@ function headerOf(line) {
   let cells = splitCells(line); if (cells.length < 3) cells = line.trim().split(/\s+/);
   const stats = cells.filter((c) => STAT_KEYS.has(c.toUpperCase()));
   if (stats.length < 3) return null;
-  return { cells, stats: cells.slice(cells.findIndex((c) => STAT_KEYS.has(c.toUpperCase()))) };
+  const at = cells.findIndex((c) => STAT_KEYS.has(c.toUpperCase()));
+  // a division name in the header row's first cells (CSSHL: "CCM  GP  W  L …")
+  return { cells, stats: cells.slice(at), name: cells.slice(0, at).filter((c) => hasWord(c) && !/^(teams?|[ée]quipes?|club|name|nom|rank|pos(ition)?|rang|school|[ée]cole)$/i.test(c)).join(' ') };
 }
 function rowOf(line, nStats) {
   let cells = splitCells(line);
@@ -131,7 +133,7 @@ export function parseLeague(text) {
       sched = null;
     }
     const hd = headerOf(raw);
-    if (hd) { cur = { name: lastText, cols: hd.stats.map((c) => c.replace(/\.$/, '')), rows: [] }; groups.push(cur); continue; }
+    if (hd) { cur = { name: hd.name || lastText, cols: hd.stats.map((c) => c.replace(/\.$/, '')), rows: [] }; groups.push(cur); continue; }
     if (cur) {
       const r = rowOf(raw, cur.cols.length);
       if (r && r.vals.length >= Math.min(3, cur.cols.length)) {
