@@ -73,8 +73,15 @@ export function gameView(g, t) {
   return { home, opp, res, us, them };
 }
 export function ourGames(games, t) { return (games || []).filter((g) => isUsT(g.home, t) || isUsT(g.away, t)).sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || ''))); }
-/** The league's standings page when it can be worked out from the team's league link (CSSHL). */
-export function standingsUrl(t) { const u = t && t.leagueUrl; if (hostOf(u) !== 'csshl.ca') return ''; const lg = (u.match(/[?&]league=(\d+)/) || [])[1]; return lg ? `https://www.csshl.ca/stats/standings?league=${lg}` : ''; }
+/** The league's standings page when it can be worked out from the team's league link (CSSHL):
+ *  same league, and the link's season and division when it has them, so a team in one division
+ *  (e.g. BioSteel) opens on its own table. */
+export function standingsUrl(t) {
+  const u = t && t.leagueUrl; if (hostOf(u) !== 'csshl.ca') return '';
+  const q = (k) => (u.match(new RegExp(`[?&]${k}=(-?\\d+)`)) || [])[1];
+  const lg = q('league'); if (!lg) return '';
+  return `https://www.csshl.ca/stats/standings?league=${lg}${q('season') ? `&season=${q('season')}` : ''}${q('division') && q('division') !== '-1' ? `&division=${q('division')}` : ''}`;
+}
 export function leagueLabel(t) { return (t && (t.leagueName || hostOf(t.leagueUrl))) || 'league website'; }
 export function slugify(s) { return String(s || '').replace(/['’]/g, '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40); }
 
