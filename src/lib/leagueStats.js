@@ -28,14 +28,21 @@ const HEAD = {
   gwg: ['gwg'], so_g: ['sog'], so_a: ['soa'], so_gw: ['sogw'], so_pct: ['so'], pim: ['pim'], pimpg: ['pimpg'], sh_pct: ['sh'],
   pm: ['+/-', 'plusminus'], ga: ['ga'], sa: ['sa', 'shotsagainst', 'shots'], sv: ['sv', 'saves'],
 };
-export const fieldOf = (h) => { const x = k(h); for (const [f, l] of Object.entries(HEAD)) if (l.includes(x)) return f; return null; };
+// CSSHL writes every heading twice ("GP GP", "Jersey # Jersey #": one for phones), so a heading
+// whose two halves match is read once
+const once = (h) => { const t = String(h || '').trim().replace(/\s+/g, ' '), sp = t.split(' '), n = sp.length / 2, m = t.length / 2;
+  if (Number.isInteger(n) && n > 0 && sp.slice(0, n).join(' ') === sp.slice(n).join(' ')) return sp.slice(0, n).join(' ');
+  return Number.isInteger(m) && m > 0 && t.slice(0, m) === t.slice(m) ? t.slice(0, m) : t; }; // "GP GP" or, copied as HTML, "GPGP"
+export const fieldOf = (h) => { const x = k(once(h)); for (const [f, l] of Object.entries(HEAD)) if (l.includes(x)) return f; return null; };
 const POS = { f: 'F', fwd: 'F', forward: 'F', c: 'C', lw: 'LW', rw: 'RW', d: 'D', def: 'D', defence: 'D', defense: 'D', g: 'G', goalie: 'G', goaltender: 'G' };
 const numOf = (v) => { const s = String(v ?? '').trim().replace(/%$/, ''); const x = Number(s); return s !== '' && Number.isFinite(x) ? x : undefined; };
 
 /** One row's cells by field → {num, name, position, gp, stats} or null without a name and GP. */
+/** A usable player name: two or more letters with at least one lowercase (not "F", "BCS", "LW"). */
+export const isName = (s) => { const t = String(s || '').trim(); return (t.match(/[a-zà-ÿ]/gi) || []).length >= 2 && /[a-zà-ÿ]/.test(t); };
 function rowOf(v) {
   const name = String(v.name || '').replace(/\s+/g, ' ').trim(), gp = numOf(v.gp);
-  if (!name || !/[a-zà-ÿ]/i.test(name) || gp === undefined) return null;
+  if (!isName(name) || gp === undefined) return null;
   const stats = {};
   for (const s of STAT_KEYS) { const x = numOf(v[s]); if (x !== undefined) stats[s] = x; }
   if (stats.sa === undefined && numOf(v.sv) !== undefined && stats.ga !== undefined) stats.sa = numOf(v.sv) + stats.ga;
@@ -86,6 +93,28 @@ export function fromGrid(grid) {
 /** Is a table cell's value wrong for its column? (numbers only; blank is fine) */
 export const badCell = (c, v) => !TEXT.has(c) && String(v || '').trim() !== '' && numOf(v) === undefined;
 
+const isPos = (s) => Object.prototype.hasOwnProperty.call(POS, k(s)) && /^[A-Za-z]{1,3}$/.test(String(s).trim());
+const STATS_ORDER = LEAGUE_COLS.filter((c) => !c[3]).map((c) => c[0]); // gp … sh_pct
+/** One copied CSSHL row, read by what the cells hold rather than where they are: the site adds a
+ *  hidden line number and a second (phone) Name column, which shift everything by position.
+ *  The name is the first cell with words in it; the jersey is the number just before it; then
+ *  position, team, and the numbers in the table's order (GP … SH%). null when there's no name. */
+export function readCsshlRow(cells) {
+  const c = cells.map((x) => String(x ?? '').trim());
+  const ni = c.findIndex(isName); if (ni < 0) return null;
+  const before = c.slice(0, ni), nums = before.filter((x) => /^\d{1,3}$/.test(x));
+  const out = { ...blankCells(), name: c[ni].replace(/\s+/g, ' '), num: nums.length ? nums[nums.length - 1] : '' };
+  const ji = before.lastIndexOf(out.num); out.flags = before.slice(ji + 1).filter((x) => x && !/^\d+$/.test(x)).join(' ');
+  // the position code within the next few cells (past the phone Name cell, which may be shortened)
+  const pi = c.findIndex((x, i) => i > ni && i <= ni + 4 && isPos(x));
+  let j = pi > 0 ? pi : ni + 1;
+  if (pi > 0) out.position = c[j++];
+  else while (j < c.length && (c[j] === '' || c[j] === c[ni])) j++;
+  if (j < c.length && c[j] !== '' && numOf(c[j]) === undefined) out.team = c[j++];
+  STATS_ORDER.forEach((f, i) => { if (c[j + i] !== undefined) out[f] = c[j + i]; });
+  return numOf(out.gp) === undefined ? null : out; // a heading row or a stray line has no GP
+}
+
 /** Pastes a block of cells into the table at row r, column c (an index into LEAGUE_COLS). A block
  *  with its heading row is matched by column name (rows go to the player of the same name, or to
  *  new rows); without one it fills from the clicked cell. A leading line-number column, as in a
@@ -106,13 +135,17 @@ export function pasteBlock(grid, block, r, c) {
     }
     return n;
   }
-  const width = LEAGUE_COLS.length - c;
-  block.forEach((b, i) => {
-    if (c === 0 && b.length === width + 1 && /^\d{1,3}$/.test(b[0])) b = b.slice(1);
+  // from the Jersey # or Name column: whole rows copied from the league, read by content
+  const nameAt = LEAGUE_COLS.findIndex(([f]) => f === 'name');
+  let i = 0;
+  for (const b of block) {
+    const read = c <= nameAt ? readCsshlRow(b) : null;
+    if (c <= nameAt && !read) continue; // a heading or stray line, not a player
     while (n.length <= r + i) n.push(blankRow());
-    const row = n[r + i];
-    b.forEach((val, j) => { const col = LEAGUE_COLS[c + j]; if (col) row[col[0]] = val; });
-  });
+    const row = n[r + i++];
+    if (read) Object.assign(row, read);
+    else b.forEach((val, j) => { const col = LEAGUE_COLS[c + j]; if (col) row[col[0]] = val; });
+  }
   return n;
 }
 

@@ -68,3 +68,29 @@ test('each roster player is matched once (repeated rows, shared last names)', ()
   assert.equal(plan.repeated, 1);
   assert.equal(new Set(plan.updates.map((u) => u.id)).size, plan.updates.length);
 });
+
+test('CSSHL rows as they really copy: line number, doubled headings, two Name cells', () => {
+  const head = ['', 'Jersey # Jersey #', 'FLAGS FLAGS', 'Name Name', 'Name Name', 'Pos Pos', 'Team Team', 'GP GP', 'G G', 'A A', 'PTS PTS', 'Pt/G Pt/G', 'PPG PPG', 'PPA PPA', 'SHG SHG', 'SHA SHA', 'GWG GWG', 'SOG SOG', 'SOA SOA', 'SOGW SOGW', 'SO% SO%', 'PIM PIM', 'PIMPG PIMPG', 'SH% SH%'];
+  const row = ['1', '23', '', 'Athlete HV01', 'A. HV01', 'F', 'BCS', '5', '2', '5', '7', '1.40', '0', '0', '0', '0', '0', '0', '0', '0', '0.0', '8', '1.60', '10.0'];
+  // without the heading row, pasted at Jersey #
+  const g1 = pasteBlock([blankRow()], [row], 0, 0);
+  assert.deepEqual([g1[0].num, g1[0].name, g1[0].position, g1[0].team, g1[0].gp, g1[0].g, g1[0].pim, g1[0].sh_pct], ['23', 'Athlete HV01', 'F', 'BCS', '5', '2', '8', '10.0']);
+  // with it
+  const g2 = pasteBlock([blankRow()], [head, row], 0, 0);
+  assert.deepEqual([g2[0].num, g2[0].name, g2[0].position, g2[0].gp, g2[0].a, g2[0].pim], ['23', 'Athlete HV01', 'F', '5', '5', '8']);
+  // the whole page pasted in the box
+  const rows = parseLeagueStats([head.join('\t'), row.join('\t')].join('\n'));
+  assert.equal(rows[0].name, 'Athlete HV01'); assert.equal(rows[0].num, '23'); assert.equal(rows[0].position, 'F');
+});
+
+test('a one-letter or code "name" is never saved', () => {
+  const g = pasteBlock([blankRow()], [['23', '', 'F', 'BCS', '5', '2', '5']], 0, 0);
+  assert.equal(fromGrid(g).length, 0);
+});
+
+test('headings doubled without a space (copied as HTML) are read too', () => {
+  const head = ['', 'Jersey #Jersey #', 'FLAGSFLAGS', 'NameName', 'NameName', 'PosPos', 'TeamTeam', 'GPGP', 'GG', 'AA'];
+  const g = pasteBlock([blankRow()], [head, ['1', '23', '', 'Athlete HV01', 'A. HV01', 'F', 'BCS', '5', '2', '5']], 0, 0);
+  assert.equal(g.filter((x) => x.name).length, 1);
+  assert.deepEqual([g[0].num, g[0].name, g[0].gp, g[0].a], ['23', 'Athlete HV01', '5', '5']);
+});
