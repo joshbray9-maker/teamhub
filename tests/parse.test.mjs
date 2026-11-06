@@ -50,3 +50,22 @@ test('parseIcs converts UTC times to the given zone', () => {
   assert.deepEqual([items[0].date, items[0].time], ['2026-11-01', '18:00']);
   assert.equal(planIcs(items, 'Universel Sherbrooke').games.length, 1);
 });
+
+test('findSameGame: a pasted game spelled differently matches the calendar game', async () => {
+  const { findSameGame } = await import('../supabase/functions/_shared/leagueParse.js');
+  const team = { name: 'BCS U16 Hockey', school: "Bishop's College School" };
+  const cal = [{ id: 'a', date: '2026-11-07', home: "Bishop's College School", away: 'Selwyn House' },
+    { id: 'b', date: '2027-01-31', home: "Bishop's College School", away: 'OHA U17' },
+    { id: 'c', date: '2026-10-03', home: 'Selwyn House', away: "Bishop's College School" }];
+  const pasted = [{ date: '2026-11-07', home: "Bishop's College School", away: 'Selwyn House School' },
+    { date: '2027-01-31', home: "Bishop's College School", away: 'Ontario Hockey Academy' },
+    { date: '2026-10-03', home: "Bishop's College School", away: 'Selwyn House School' },
+    { date: '2026-12-01', home: "Bishop's College School", away: 'Kuper Academy' },
+    { date: '2026-11-07', home: 'Kuper Academy', away: 'Stanstead College' }];
+  assert.equal(findSameGame(cal, pasted[0], team, pasted).id, 'a'); // longer name
+  assert.equal(findSameGame(cal, pasted[1], team, pasted).id, 'b'); // abbreviation: only game that day
+  assert.equal(findSameGame(cal, pasted[2], team, pasted).id, 'c'); // home and away swapped
+  assert.equal(findSameGame(cal, pasted[3], team, pasted), null); // a new game
+  assert.equal(findSameGame(cal, pasted[4], team, pasted), null); // not ours
+  assert.equal(findSameGame(cal, pasted[0], team, pasted, new Set(['a'])), null); // already matched
+});

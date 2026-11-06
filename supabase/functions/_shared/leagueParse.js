@@ -223,6 +223,20 @@ function daysBetween(a, b) { return Math.round((Date.parse(a + 'T00:00:00Z') - D
 function opponentOf(g, team) { return isUsName(g.home, team) ? g.away : g.home; }
 function sameOpp(a, b) { const x = norm(a), y = norm(b); return !!x && !!y && (x === y || (x.length > 3 && y.includes(x)) || (y.length > 3 && x.includes(y))); }
 
+/** The game already on the calendar that a league game of ours is (pasted pages spell teams
+ *  differently: "Selwyn House" / "Selwyn House School", "OHA U17", home and away swapped).
+ *  Same date and a matching opponent; else, when that date has exactly one game of ours on the
+ *  calendar and one in the paste, that one. `used`: ids already matched in this paste. */
+export function findSameGame(existing, g, team, incoming = [], used = new Set()) {
+  if (!isUsName(g.home, team) && !isUsName(g.away, team)) return null;
+  const ours = existing.filter((e) => !used.has(e.id) && e.date === g.date && (isUsName(e.home, team) || isUsName(e.away, team)));
+  const opp = opponentOf(g, team);
+  const byOpp = ours.find((e) => sameOpp(opponentOf(e, team), opp));
+  if (byOpp) return byOpp;
+  const sameDay = incoming.filter((x) => x.date === g.date && (isUsName(x.home, team) || isUsName(x.away, team)));
+  return ours.length === 1 && sameDay.length === 1 ? ours[0] : null;
+}
+
 /**
  * Compare league games against the games already on a team's calendar.
  * Only updates games that are already there; anything else comes back as `fresh` so a

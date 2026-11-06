@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useHub } from '../lib/hub.jsx';
 import { fmtDate, fmtTime, todayISO, hasScore, isUsT, schoolName, leagueLabel, standingsUrl } from '../lib/util.js';
-import { parseLeague, gameKey, docToText, parseIcs, planIcs, cleanTeam } from '../../supabase/functions/_shared/leagueParse.js';
+import { parseLeague, gameKey, docToText, parseIcs, planIcs, cleanTeam, findSameGame } from '../../supabase/functions/_shared/leagueParse.js';
 import Modal from './Modal.jsx';
 import Icon from './Icon.jsx';
 import TeamForm from './TeamForm.jsx';
@@ -120,13 +120,16 @@ export function LeagueUpdate({ close }) {
   const onPaste = (e) => { const html = e.clipboardData && e.clipboardData.getData('text/html'); if (html) { e.preventDefault(); setText(docToText(new DOMParser().parseFromString(html, 'text/html'))); } };
   const apply = async () => {
     // merge: update matching games (score, missing details), add the rest
-    const byKey = new Map(H.tdata.league.games.map((g) => [gameKey(g), g]));
+    const all = H.tdata.league.games, byKey = new Map(all.map((g) => [gameKey(g), g])), used = new Set();
     const rows = []; let added = 0, scored = 0;
     parsed.games.forEach((p) => {
-      const ex = byKey.get(gameKey(p));
+      // the same game spelled differently ("Selwyn House" / "Selwyn House School", home and away swapped) is not added twice
+      const ex = byKey.get(gameKey(p)) || findSameGame(all, p, t, parsed.games, used);
       if (ex) {
+        if (ex.id) used.add(ex.id);
         const n = { ...ex }; let ch = false;
-        if (p.hs !== null && (ex.hs !== p.hs || ex.as !== p.as)) { n.hs = p.hs; n.as = p.as; scored++; ch = true; }
+        const flip = isUsT(ex.home, t) !== isUsT(p.home, t), hs = flip ? p.as : p.hs, as = flip ? p.hs : p.as; // keep the calendar's home / away
+        if (p.hs !== null && (ex.hs !== hs || ex.as !== as)) { n.hs = hs; n.as = as; scored++; ch = true; }
         ['time', 'venue', 'round'].forEach((k) => { if (p[k] && !ex[k]) { n[k] = p[k]; ch = true; } });
         if (ch) rows.push(n);
       } else { rows.push({ ...p, source: 'paste' }); byKey.set(gameKey(p), p); added++; if (p.hs !== null) scored++; }
