@@ -155,6 +155,19 @@ test('migration + seed load, and access follows memberships', async () => {
   // a player from another team can't be attached, and bad statuses are refused
   await assert.rejects(as(db, U.coach, `insert into injuries (team_id, player_id) values ($1, $2)`, [bcsTeam, uniPlayer]));
   await assert.rejects(as(db, U.coach, `insert into injuries (team_id, player_id, status) values ($1, $2, 'maybe')`, [bcsTeam, pa.id]));
+  // SCAT6 tests: staff of the player's team only, like injuries
+  const injId = (await db.query(`select id from injuries where player_id=$1`, [pa.id])).rows[0].id;
+  await as(db, U.coach, `insert into scat_tests (player_id, tested_on, kind, injury_id, data) values ($1, '2026-11-02', 'injury', $2, '{"recall": 6}')`, [pa.id, injId]);
+  await as(db, U.coach, `insert into scat_tests (player_id, tested_on, kind) values ($1, '2026-08-20', 'baseline')`, [pa.id]);
+  assert.equal((await as(db, U.coach, 'select count(*)::int c from scat_tests'))[0].c, 2);
+  assert.equal((await as(db, U.josh, 'select count(*)::int c from scat_tests'))[0].c, 2);
+  for (const u of [U.viewer, U.other, null]) assert.equal((await as(db, u, 'select count(*)::int c from scat_tests'))[0].c, 0);
+  await assert.rejects(as(db, U.viewer, `insert into scat_tests (player_id, tested_on) values ($1, '2026-11-03')`, [pa.id]));
+  await assert.rejects(as(db, U.coach, `insert into scat_tests (player_id, tested_on) values ($1, '2026-11-03')`, [uniPlayer]));
+  await assert.rejects(as(db, U.coach, `insert into scat_tests (player_id, tested_on, kind) values ($1, '2026-11-03', 'maybe')`, [pa.id]));
+  // the linked injury must be this player's
+  const [pb] = (await db.query(`insert into players (team_id, name) values ($1, 'Athlete HV02') returning id`, [bcsTeam])).rows;
+  await assert.rejects(as(db, U.coach, `insert into scat_tests (player_id, tested_on, injury_id) values ($1, '2026-11-03', $2)`, [pb.id, injId]));
   // IPPs: staff only, like injuries. One base IPP per team (player_id null) and one per athlete
   await as(db, U.coach, `insert into ipps (team_id, data) values ($1, '{"coach":"Test Coach"}')`, [bcsTeam]);
   await as(db, U.coach, `insert into ipps (team_id, player_id, data) values ($1, $2, '{"g.sleep":"4"}')`, [bcsTeam, pa.id]);
@@ -463,6 +476,9 @@ test('sports med: edits injuries, reads testing, never coach notes, IPPs or test
   assert.equal((await me('select count(*)::int c from injuries'))[0].c, 1);
   await me(`update injuries set status = 'limited'`);
   assert.equal((await db.query('select status from injuries')).rows[0].status, 'limited');
+  // SCAT6 tests: read and write, like injuries
+  await me(`insert into scat_tests (player_id, tested_on, kind) values ($1, '2026-08-20', 'baseline')`, [pid]);
+  assert.equal((await me('select count(*)::int c from scat_tests'))[0].c, 1);
   // testing: read only
   assert.equal((await me('select count(*)::int c from test_results'))[0].c, 1);
   assert.equal((await me('select count(*)::int c from test_sessions'))[0].c, 1);

@@ -156,6 +156,9 @@ export const api = {
   async photoUrls(paths) { return Object.fromEntries(paths.filter(Boolean).map((p) => [p, p])); },
   async saveInjuries(teamId, list) { const l = (D(teamId).injuries = D(teamId).injuries || []); const r = upsert(l, list.map((i) => ({ team_id: teamId, updated_at: new Date().toISOString(), ...i })), 'i'); save(); return clone(r); },
   async deleteInjury(id) { Object.values(db.data).forEach((d) => { d.injuries = (d.injuries || []).filter((i) => i.id !== id); }); save(); },
+  async listScats(teamId) { await load(); const ids = new Set((D(teamId).players || []).map((p) => p.id)); return clone((db.scats || []).filter((t) => ids.has(t.player_id))); },
+  async saveScat(t) { const l = (db.scats = db.scats || []), now = new Date().toISOString(); const [r] = upsert(l, [{ created_at: now, ...t, updated_at: now }], 'sc'); save(); return clone(r); },
+  async deleteScat(id) { db.scats = (db.scats || []).filter((t) => t.id !== id); save(); },
   async listIpps(teamId) { await load(); const x = D(teamId).ipps || {}; const { base, ...ps } = x; return clone({ base: base ? base.data : null, baseAt: base ? base.updated_at : null, players: ps }); },
   async saveIpp(teamId, playerId, data) { const x = (D(teamId).ipps = D(teamId).ipps || {}); x[playerId || 'base'] = { data: clone(data), updated_at: new Date().toISOString() }; save(); },
   async deleteIpp(teamId, playerId) { delete (D(teamId).ipps || {})[playerId || 'base']; save(); },
@@ -201,7 +204,7 @@ export const api = {
     if (fd.gym) delete fd.gym.overrides[id];
     save();
   },
-  async deletePlayer(id) { Object.values(db.data).forEach((d) => { d.players = (d.players || []).filter((p) => p.id !== id); if (d.ipps) delete d.ipps[id]; }); db.selfAssess = (db.selfAssess || []).filter((a) => a.player_id !== id); save(); },
+  async deletePlayer(id) { Object.values(db.data).forEach((d) => { d.players = (d.players || []).filter((p) => p.id !== id); if (d.ipps) delete d.ipps[id]; }); db.selfAssess = (db.selfAssess || []).filter((a) => a.player_id !== id); db.scats = (db.scats || []).filter((t) => t.player_id !== id); save(); },
   async listLineups(teamId) { await load(); return clone(D(teamId).lineups || {}); },
   async saveLineup(teamId, key, slots, opponent = '') { (D(teamId).lineups = D(teamId).lineups || {})[key] = { slots: clone(slots), opponent, updatedAt: Date.now() }; save(); },
   async deleteLineup(teamId, key) { delete (D(teamId).lineups || {})[key]; save(); },

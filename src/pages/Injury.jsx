@@ -2,6 +2,7 @@
 //   Team       : every rostered player with a red / yellow / green status and the countdown
 //                to return to practice and play. Click a player for their profile.
 //   Sports med : enter, edit and clear injuries, or import a CSV / PDF injury sheet.
+//   SCAT       : SCAT6 concussion tests, baseline and post-injury (components/Scat.jsx).
 // The profile shows roster details, a body diagram heat-mapping active injuries, limitations
 // and the return timeline. Statuses never change by themselves (see lib/injury.js).
 import { useEffect, useState } from 'react';
@@ -16,6 +17,7 @@ import Icon from '../components/Icon.jsx';
 import Anatomy from '../components/Anatomy.jsx';
 import Avatar from '../components/Avatar.jsx';
 import InjuryFlag from '../components/InjuryFlag.jsx';
+import { ScatView, ScatHistory, openScatForm } from '../components/Scat.jsx';
 import { byNumber } from './Roster.jsx';
 import { openPlayerReport } from './PlayerReport.jsx';
 
@@ -48,6 +50,9 @@ export default function Injury() {
   const H = useHub();
   const [tab, setTab] = useState('team');
   const { roster, photos } = useRoster();
+  const [scats, setScats] = useState([]);
+  const loadScats = async () => { if (!H.seesMed) return; try { setScats(await H.api.listScats(H.teamId)); } catch (e) { H.toast('Could not load SCATs: ' + e.message); } };
+  useEffect(() => { setScats([]); loadScats(); }, [H.teamId, H.seesMed]); // eslint-disable-line react-hooks/exhaustive-deps
   const injuries = H.tdata.injuries || [];
   const today = todayISO();
   if (!H.seesMed) return <><PageHead title="Injury report" /><section className="card"><p className="muted" style={{ margin: 0 }}>The injury report is only visible to coaches, sports med and admins.</p></section></>;
@@ -55,11 +60,12 @@ export default function Injury() {
   const save = async (list, msg) => { try { await H.api.saveInjuries(H.teamId, list); if (msg) H.toast(msg); } catch (e) { H.toast('Could not save. ' + e.message); } H.reloadTeam(); };
   const remove = async (i) => { try { await H.api.deleteInjury(i.id); } catch (e) { H.toast(e.message); } H.reloadTeam(); };
   const edit = (i, player) => H.openDialog((c) => <InjuryForm i={i} player={player} roster={roster || []} close={c} onSave={(x) => save([x], 'Saved')} onDelete={() => remove(i)} />);
-  const profile = (p) => H.openDialog((c) => <Profile p={p} photo={photos[p.photo]} close={c} onEdit={(i) => { c(); edit(i, p); }} onAdd={() => { c(); edit(null, p); }} />);
+  const scat = (t, p) => openScatForm(H, { t, player: p, roster: roster || [], injuries, scats, reload: loadScats });
+  const profile = (p) => H.openDialog((c) => <Profile p={p} photo={photos[p.photo]} scats={scats.filter((t) => t.player_id === p.id)} close={c} onEdit={(i) => { c(); edit(i, p); }} onAdd={() => { c(); edit(null, p); }} onScat={(t) => { c(); scat(t, p); }} />);
 
   const rows = (roster || []).map((p) => ({ p, i: currentInjury(p.id, injuries) })).sort((a, b) => statusOf(b.i).rank - statusOf(a.i).rank || byNumber(a.p, b.p));
   const n = { out: rows.filter((r) => r.i && r.i.status === 'out').length, limited: rows.filter((r) => r.i && r.i.status === 'limited').length };
-  const acts = <><button className="btn" disabled={!roster || !roster.length} onClick={() => H.openDialog((c) => <ImportInjuries roster={roster} close={c} onSave={save} />)}><Icon n="refresh" /> Import: file or paste</button><div className="seg" role="tablist">{[['team', 'Team'], ['med', 'Sports med']].map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div></>;
+  const acts = <><button className="btn" disabled={!roster || !roster.length} onClick={() => H.openDialog((c) => <ImportInjuries roster={roster} close={c} onSave={save} />)}><Icon n="refresh" /> Import: file or paste</button><div className="seg" role="tablist">{[['team', 'Team'], ['med', 'Sports med'], ['scat', 'SCAT']].map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>)}</div></>;
 
   return <>
     <PageHead title="Injury report" actions={acts} />
@@ -82,7 +88,8 @@ export default function Injury() {
             </tr>)}</tbody>
           </table></div>
         </section>
-      </> : <MedView roster={roster} injuries={injuries} today={today} edit={edit} save={save} />}
+      </> : tab === 'scat' ? <ScatView roster={roster} photos={photos} injuries={injuries} scats={scats} reload={loadScats} />
+      : <MedView roster={roster} injuries={injuries} today={today} edit={edit} save={save} />}
   </>;
 }
 
@@ -150,12 +157,12 @@ function InjuryForm({ i, player, roster, close, onSave, onDelete }) {
   </Modal>;
 }
 
-function Profile({ p, photo, close, onEdit, onAdd }) {
+function Profile({ p, photo, scats, close, onEdit, onAdd, onScat }) {
   const H = useHub(); const today = todayISO();
   const mine = (H.tdata.injuries || []).filter((i) => i.player_id === p.id);
   const active = mine.filter(isActive), past = mine.filter((i) => !isActive(i));
   const cur = currentInjury(p.id, mine);
-  return <Modal title="Player profile" wide onClose={close} actions={<><button className="btn" onClick={onAdd}><Icon n="plus" /> Injury</button><span className="spacer" /><button className="btn" onClick={() => { close(); openPlayerReport(H, p, photo); }}><Icon n="clipboard" /> Full profile / print</button><button className="btn primary" onClick={close}>Done</button></>}>
+  return <Modal title="Player profile" wide onClose={close} actions={<><button className="btn" onClick={onAdd}><Icon n="plus" /> Injury</button><button className="btn" onClick={() => onScat(null)}><Icon n="plus" /> SCAT</button><span className="spacer" /><button className="btn" onClick={() => { close(); openPlayerReport(H, p, photo); }}><Icon n="clipboard" /> Full profile / print</button><button className="btn primary" onClick={close}>Done</button></>}>
     <div className="prof-head">
       <Avatar p={p} url={photo} size={76} />
       <div><h3 className="prof-name">{p.num && <span className="tnum">#{p.num} </span>}{p.name}</h3>
@@ -181,6 +188,7 @@ function Profile({ p, photo, close, onEdit, onAdd }) {
           </div>; })}
         {past.length > 0 && <div className="prof-box"><div className="prof-k">History</div>
           <ul className="prof-hist">{past.map((i) => <li key={i.id}><button className="linkish" onClick={() => onEdit(i)}>{i.injury || where(i)}</button><span className="muted small">{dateOr(i.injured_on)} → cleared {dateOr(i.cleared_on)}</span></li>)}</ul></div>}
+        {scats.length > 0 && <div className="prof-box"><div className="prof-k">SCAT6 tests</div><ScatHistory tests={scats} injuries={mine} onOpen={onScat} /></div>}
       </div>
     </div>
   </Modal>;

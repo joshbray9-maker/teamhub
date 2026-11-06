@@ -173,6 +173,15 @@ export const api = {
       ...Object.fromEntries(text.map((c) => [c, i[c] ?? ''])), ...Object.fromEntries(dates.map((c) => [c, i[c] || null])) })));
   },
   async deleteInjury(id) { ok(await supabase.from('injuries').delete().eq('id', id)); },
+  /** SCAT6 tests of the team's players (staff only, RLS). */
+  async listScats(teamId) {
+    return ok(await supabase.from('scat_tests').select('*, players!inner(team_id)').eq('players.team_id', teamId).order('tested_on')).map(({ players, ...t }) => t);
+  },
+  async saveScat(t) {
+    const row = { player_id: t.player_id, tested_on: t.tested_on, kind: t.kind, injury_id: t.injury_id || null, examiner: t.examiner || '', data: t.data || {}, notes: t.notes || '' };
+    return ok(t.id ? await supabase.from('scat_tests').update(row).eq('id', t.id).select().single() : await supabase.from('scat_tests').insert(row).select().single());
+  },
+  async deleteScat(id) { ok(await supabase.from('scat_tests').delete().eq('id', id)); },
 
   /* ---------- IPPs (staff only) ---------- */
   /** The team's IPPs: { base: data|null, players: { [player_id]: { data, updated_at } } }. */
