@@ -1,5 +1,5 @@
 // S&C testing: metrics, the two batteries, gym-group allocation and team trends. Pure functions.
-import { fieldFor, nameKey } from './rosterImport.js';
+import { fieldFor, nameMatcher } from './rosterImport.js';
 //
 // Gym groups (Josh's model, revised 2026-11-04). Each athlete's latest FULL testing is compared
 // with the targets Josh sets per metric (no built-in targets). Each result becomes a ratio to
@@ -242,7 +242,13 @@ const SYN = [ // checked in order; a heading matches when it equals or starts wi
 ];
 export function metricField(h) { const k = hkey(h); if (!k) return null; for (const [m, l] of SYN) if (l.some((s) => k === s || k.startsWith(s))) return m; return null; }
 /** rows[0] = headings (a Name or # column plus metric columns). Matches players to the roster by
- *  name or number. → { values: {player_id: {metric: number}}, metrics: [found], unmatched: [names] } */
+ *  name (see nameMatcher: a first or last name alone matches a single profile containing it;
+ *  those are listed in `loose` [{name, player_id}], and names fitting several profiles in
+ *  `ambiguous` and skipped), or by number only on a row with no name (a name that isn't on the roster is skipped,
+ *  never matched by jersey number: another team's player can wear the same number).
+ *  A player listed twice keeps the first row's numbers: identical repeats are counted in `dupes`,
+ *  different ones listed in `conflicts`.
+ *  → { values: {player_id: {metric: number}}, metrics: [found], unmatched: [names], dupes, conflicts: [{player_id, metric, kept, dropped}] } */
 export function rowsToTests(rows, roster) {
   const head = rows[0] || [];
   const who = head.map((h) => { const f = fieldFor(h); return f === 'name' || f === 'num' || f === 'first' || f === 'last' ? f : null; });
@@ -250,19 +256,25 @@ export function rowsToTests(rows, roster) {
   const scale = head.map((h, i) => (met[i] === 'bw' && /\bkgs?\b|kilo/i.test(String(h)) ? 2.20462 : 1)); // bodyweight is kept in pounds
   if (!who.some(Boolean)) throw new Error('No Name or # column found. The first row should be headings like Name, CMJ JH, RSImod.');
   if (!met.some(Boolean)) throw new Error('No test columns recognised. Use headings like CMJ JH, RSImod, SJ JH, IMTP, Rel PF, 10m fly, Cooper.');
-  const byName = new Map(roster.map((p) => [nameKey(p.name), p])), byNum = new Map(roster.filter((p) => p.num).map((p) => [p.num, p]));
-  const values = {}, unmatched = [];
+  const match = nameMatcher(roster), byNum = new Map(roster.filter((p) => p.num).map((p) => [p.num, p]));
+  const values = {}, unmatched = [], conflicts = [], loose = [], ambiguous = []; let dupes = 0;
   for (const r of rows.slice(1)) {
     const g = (f) => { const i = who.indexOf(f); return i >= 0 ? String(r[i] || '').trim() : ''; };
     let name = g('name') || [g('first'), g('last')].filter(Boolean).join(' '); const m = name.match(/^([^,]+),\s*([^,]+)$/); if (m) name = `${m[2]} ${m[1]}`;
     const n = g('num').replace(/^#/, '');
-    const p = (name && byName.get(nameKey(name))) || (n && byNum.get(n)) || (/^#?\d+$/.test(name) && byNum.get(name.replace(/^#/, '')));
+    const hit = /^#?\d+$/.test(name) || !name ? null : match(name);
+    const p = /^#?\d+$/.test(name) ? byNum.get(name.replace(/^#/, '')) : name ? hit && hit.p : n && byNum.get(n);
     const v = {}; met.forEach((k, i) => { if (k) { const x = cellValue(k, r[i]); if (x !== null) v[k] = scale[i] === 1 || typeof x !== 'number' ? x : Math.round(x * scale[i] * 10) / 10; } });
     if (!Object.keys(v).length) continue;
-    if (!p) { unmatched.push(name || '#' + n); continue; }
-    values[p.id] = { ...(values[p.id] || {}), ...v };
+    if (!p) { if (hit && hit.ambiguous) ambiguous.push({ name, players: hit.ambiguous.map((x) => x.name) }); else unmatched.push(name || '#' + n); continue; }
+    if (hit && hit.loose && !loose.some((x) => x.name === name)) loose.push({ name, player_id: p.id });
+    const had = values[p.id] || {};
+    for (const [k, x] of Object.entries(v)) {
+      if (!(k in had)) had[k] = x; else if (String(had[k]) === String(x)) dupes++; else conflicts.push({ player_id: p.id, metric: k, kept: had[k], dropped: x });
+    }
+    values[p.id] = had;
   }
-  return { values, metrics: [...new Set(met.filter(Boolean))], unmatched };
+  return { values, metrics: [...new Set(met.filter(Boolean))], unmatched, dupes, conflicts, loose, ambiguous };
 }
 
 /** A test date from a sheet cell: 2026-09-15, "Sep 15 2026", or a/b/yyyy (or yy) read as
@@ -288,21 +300,36 @@ export function dateOrder(cells) {
   if (ab.some((m) => +m[1] > 12)) return 'dmy'; if (ab.some((m) => +m[2] > 12)) return 'mdy'; return null;
 }
 /** opts: { order: 'dmy' | 'mdy' (default: from the sheet, else day/month), from, to: 'YYYY-MM-DD'
- *  (days outside are left out and listed in `outside`) } */
+ *  (days outside are left out and listed in `outside`), teams: [values of the sheet's Team column
+ *  to import] }. With a Team column, rows of the other teams are left out; by default a team is
+ *  imported when most of its rows' names are on this roster (listed in `teams`, with `on`).
+ *  Repeats (a player twice on one day) keep the first row: `dupes` counts identical ones, and
+ *  `conflicts` lists [{date, player_id, metric, kept, dropped}]. */
 export function rowsToTestDays(rows, roster, sport, opts = {}) {
   const READINESS = new Set(batteryCols('readiness', sport));
   const head = rows[0] || [];
   const di = head.findIndex((h) => ['date', 'testdate', 'dateoftest', 'testedon', 'day', 'session', 'sessiondate'].includes(hkey(h)));
   if (di < 0) throw new Error('No Date column found. The first row should be headings like Date, Name, CMJ JH, RSImod.');
   const detected = dateOrder(rows.slice(1).map((r) => r[di])), order = opts.order || detected || 'dmy';
+  // the sheet's Team column: which teams' rows to import
+  const ti = head.findIndex((h, i) => i !== di && ['team', 'teamname', 'equipe', 'squad', 'club'].includes(hkey(h)));
+  let teams = [];
+  if (ti >= 0) {
+    const match = nameMatcher(roster), wi = head.findIndex((h) => fieldFor(h) === 'name'), by = new Map();
+    rows.slice(1).forEach((r) => { const t = String(r[ti] || '').trim(); if (!t) return; const x = by.get(t) || { value: t, rows: 0, named: 0, matched: 0 }; x.rows++;
+      const nm = wi >= 0 ? String(r[wi] || '').trim().replace(/^([^,]+),\s*([^,]+)$/, '$2 $1') : ''; if (nm) { x.named++; const h = match(nm); if (h && h.p) x.matched++; } by.set(t, x); });
+    teams = [...by.values()].map((x) => ({ ...x, on: opts.teams ? opts.teams.includes(x.value) : x.named ? x.matched * 2 >= x.named : false }));
+  }
+  const skipTeam = new Set(teams.filter((t) => !t.on).map((t) => t.value)); let otherTeam = 0;
   const byDate = new Map(), badDates = []; let cur = '';
   for (const r of rows.slice(1)) {
     const raw = String(r[di] || '').trim();
     if (raw) { cur = testDate(raw, order); if (!cur && !badDates.includes(raw)) badDates.push(raw); }
     if (!cur || !r.some((x, i) => i !== di && String(x || '').trim())) continue;
+    if (ti >= 0 && skipTeam.has(String(r[ti] || '').trim())) { otherTeam++; continue; }
     if (!byDate.has(cur)) byDate.set(cur, []); byDate.get(cur).push(r);
   }
-  const h2 = head.map((h, i) => (i === di ? '' : h)), unmatched = new Set(), metrics = new Set(); const days = [];
+  const h2 = head.map((h, i) => (i === di ? '' : h)), unmatched = new Set(), metrics = new Set(); const days = [], conflicts = [], loose = new Map(), ambiguous = new Map(); let dupes = 0;
   const textCols = head.map((h, i) => { if (i === di || !metricField(h) || METRICS[metricField(h)].text || ['name', 'num', 'first', 'last'].includes(fieldFor(h))) return null;
     const words = [...new Set([...byDate.values()].flat().map((r) => String(r[i] || '').trim()).filter((v) => v && num(v) === null))];
     return words.length ? { heading: String(h).trim(), examples: words.slice(0, 3) } : null; }).filter(Boolean);
@@ -310,7 +337,8 @@ export function rowsToTestDays(rows, roster, sport, opts = {}) {
   for (const [date, list] of [...byDate].sort((a, b) => a[0].localeCompare(b[0]))) {
     if ((opts.from && date < opts.from) || (opts.to && date > opts.to)) { outside.push(date); continue; }
     const t = rowsToTests([h2, ...list], roster);
-    t.unmatched.forEach((n) => unmatched.add(n));
+    t.unmatched.forEach((n) => unmatched.add(n)); dupes += t.dupes; t.conflicts.forEach((c) => conflicts.push({ date, ...c }));
+    t.loose.forEach((x) => loose.set(x.name, x)); t.ambiguous.forEach((x) => ambiguous.set(x.name, x));
     if (!Object.keys(t.values).length) continue;
     const used = new Set(Object.values(t.values).flatMap(Object.keys)); used.forEach((k) => metrics.add(k));
     days.push({ date, battery: [...used].some((k) => !READINESS.has(k)) ? 'full' : 'readiness', values: t.values });
@@ -324,7 +352,26 @@ export function rowsToTestDays(rows, roster, sport, opts = {}) {
     if (m !== null && m > 0.85 && m < 1.15) { bwRead = 'kg'; days.forEach((d) => Object.values(d.values).forEach((v) => { if (typeof v.bw === 'number') v.bw = Math.round(v.bw * 2.20462 * 10) / 10; })); }
     else if (m !== null && m > 0.39 && m < 0.52) bwRead = 'lb';
   }
-  return { days, metrics: [...metrics], unmatched: [...unmatched], badDates, textCols, bwRead, order, detected, outside };
+  return { days, metrics: [...metrics], unmatched: [...unmatched], badDates, textCols, bwRead, order, detected, outside, teams, otherTeam, dupes, conflicts, loose: [...loose.values()], ambiguous: [...ambiguous.values()] };
+}
+
+/** What a bulk import adds to what's saved: a result the player already has on that date (in any
+ *  session that day) is a repeat and left out, unless `replace` is set and the sheet's number is
+ *  different. → { days: [{...day, values: only what's new}], same: count, differ: [{date, player_id, metric, saved, sheet}] } */
+export function bulkNew(days, sessions, results, replace = false) {
+  const dateOf = Object.fromEntries(sessions.map((s) => [s.id, s.tested_on])), saved = {};
+  results.forEach((r) => { const d = dateOf[r.session_id]; if (!d) return; const k = d + '|' + r.player_id; saved[k] = { ...(saved[k] || {}), ...(r.values || {}) }; });
+  let same = 0; const differ = [];
+  const out = days.map((day) => ({ ...day, values: Object.fromEntries(Object.entries(day.values).map(([pid, v]) => {
+    const old = saved[day.date + '|' + pid] || {}, keep = {};
+    for (const [k, x] of Object.entries(v)) {
+      if (!(k in old) || old[k] === null || old[k] === '') keep[k] = x;
+      else if (String(old[k]) === String(x)) same++;
+      else { differ.push({ date: day.date, player_id: pid, metric: k, saved: old[k], sheet: x }); if (replace) keep[k] = x; }
+    }
+    return [pid, keep];
+  }).filter(([, v]) => Object.keys(v).length)) })).filter((d) => Object.keys(d.values).length);
+  return { days: out, same, differ };
 }
 
 /* ---------- leaderboard ---------- */

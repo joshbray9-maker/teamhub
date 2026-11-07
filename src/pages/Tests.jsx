@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useHub, useMetrics } from '../lib/hub.jsx';
 import { fmtDate, todayISO } from '../lib/util.js';
-import { METRICS, BATTERIES, batteryCols, metricOrder, seasonSheet, testProfile, cellValue, GROUPS, FORCE, MAIN, num, fmt, ratio, gymGroup, metricSeries, changeSeries, teamSessions, metricField, rowsToTests, rowsToTestDays, leaderboards } from '../lib/testing.js';
+import { METRICS, BATTERIES, batteryCols, metricOrder, seasonSheet, testProfile, cellValue, GROUPS, FORCE, MAIN, num, fmt, ratio, gymGroup, metricSeries, changeSeries, teamSessions, metricField, rowsToTests, rowsToTestDays, bulkNew, leaderboards } from '../lib/testing.js';
 import { parseTsv } from '../lib/imports.js';
 import { byNumber } from './Roster.jsx';
 import Modal from '../components/Modal.jsx';
@@ -172,29 +172,35 @@ function ImportTests({ roster, cols, close, onUse }) {
 /* Bulk import: every testing day in one sheet. Each date goes into the session already on that
    date (one with the same battery first; made if there's none), so a day is never split in two.
    A readiness session that gets full-testing results becomes full team testing (gym groups read
-   those); a full session is never turned back into readiness. Results merge per player, so tests
-   already entered for a player that day are kept unless the sheet has a new number for them. */
+   those); a full session is never turned back into readiness. Left out (Josh, 2026-11-07):
+   rows of another team (Team column), names not on the roster, a player's repeats in the sheet,
+   and results the player already has that day (kept as saved unless the coach ticks Replace).
+   A first or last name alone matches the one profile containing it (lib/rosterImport.js). */
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 function BulkImport({ d, close, onDone }) {
   const M = useMetrics();
   const H = useHub();
   const [res, setRes] = useState(null), [bat, setBat] = useState({}), [ind, setInd] = useState({}), [busy, setBusy] = useState(false);
   // the pasted sheet, and how to read it: date order (null = from the sheet) and the days to keep
-  const [src, setSrc] = useState(null), [opt, setOpt] = useState({ order: null, from: '', to: todayISO() });
+  const [src, setSrc] = useState(null), [opt, setOpt] = useState({ order: null, from: '', to: todayISO(), teams: null }), [replace, setReplace] = useState(false);
   const run = (s, o) => {
     const r = rowsToTestDays(s.rows, d.players, tp(H), o);
-    if (!r.days.length) throw new Error(r.unmatched.length ? `None of the ${r.unmatched.length} names matched the roster.` : r.badDates.length ? `No dates could be read (e.g. "${r.badDates[0]}").` : r.outside.length ? 'No testing days inside the dates you chose.' : 'No results found.');
+    if (!r.days.length && !r.teams.length) throw new Error(r.unmatched.length ? `None of the ${r.unmatched.length} names matched the roster.` : r.badDates.length ? `No dates could be read (e.g. "${r.badDates[0]}").` : r.outside.length ? 'No testing days inside the dates you chose.' : 'No results found.');
     setRes({ ...r, file: s.label }); setBat(Object.fromEntries(r.days.map((x) => [x.date, x.battery])));
     setInd(Object.fromEntries(r.days.map((x) => { const y = d.sessions.find((z) => z.tested_on === x.date); return [x.date, !!(y && y.individual)]; })));
   };
   const take = (rows, label) => { const s = { rows, label }; run(s, opt); setSrc(s); };
   const change = (patch) => { const o = { ...opt, ...patch }; setOpt(o); try { run(src, o); } catch (e) { setRes(null); H.toast(e.message); } };
   const existing = (date, b) => d.sessions.find((s) => s.tested_on === date && s.battery === b) || d.sessions.find((s) => s.tested_on === date);
-  const total = res ? res.days.reduce((n, x) => n + Object.keys(x.values).length, 0) : 0;
+  const plan = useMemo(() => (res ? bulkNew(res.days, d.sessions, d.results, replace) : null), [res, d, replace]);
+  const days = plan ? plan.days : [];
+  const total = days.reduce((n, x) => n + Object.values(x.values).reduce((m, v) => m + Object.keys(v).length, 0), 0); // test results, not players
+  const nameOf = (id) => (d.players.find((p) => p.id === id) || {}).name || '?';
+  const setTeam = (v, on) => change({ teams: res.teams.filter((t) => (t.value === v ? on : t.on)).map((t) => t.value) });
   const save = async () => {
     setBusy(true);
     try {
-      for (const day of res.days) {
+      for (const day of days) {
         const b = bat[day.date]; let s = existing(day.date, b);
         if (!s) s = await H.api.createTestSession(H.teamId, day.date, b);
         const patch = { ...(s.battery !== b && b === 'full' ? { battery: 'full' } : {}), ...(!!s.individual !== !!ind[day.date] ? { individual: !!ind[day.date] } : {}) };
@@ -202,13 +208,13 @@ function BulkImport({ d, close, onDone }) {
         const before = Object.fromEntries(d.results.filter((r) => r.session_id === s.id).map((r) => [r.player_id, r.values || {}]));
         await H.api.saveTestResults(H.teamId, s.id, Object.entries(day.values).map(([pid, v]) => ({ player_id: pid, values: { ...(before[pid] || {}), ...v } })));
       }
-      H.toast(`Imported ${plural(total, 'result')} over ${plural(res.days.length, 'testing day')}`); close(); await onDone();
+      H.toast(`Imported ${plural(total, 'result')} over ${plural(days.length, 'testing day')}`); close(); await onDone();
     } catch (e) { H.toast('Could not finish the import. ' + e.message + ' Days before the error were saved; running it again is safe.'); await onDone(); }
     finally { setBusy(false); }
   };
   return <Modal title="Bulk import test results" wide onClose={close}
-    actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" disabled={!res || busy} onClick={save}>{busy ? 'Importing…' : res ? `${res.textCols.length ? 'Import anyway: ' : 'Import '}${plural(res.days.length, 'day')}` : 'Import'}</button></>}>
-    <p className="muted small" style={{ margin: 0 }}><b>Copy your heading row with the data</b> and paste it into the top-left cell: columns are then matched by name, whatever their order. Paste your whole sheet: one row per player per testing day, with a <b>Date</b> column, a <b>Name</b> (or <b>#</b>) column and test columns such as <b>{batteryCols('full', tp(H)).map((k) => M[k].label).join(', ')}</b>. Other columns (team, position, notes) are ignored. A blank date repeats the date above. Each date becomes its own testing session (or adds to the one already there); you can check everything before it's saved.</p>
+    actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" disabled={!res || !days.length || busy} onClick={save}>{busy ? 'Importing…' : res ? (days.length ? `${res.textCols.length ? 'Import anyway: ' : 'Import '}${plural(total, 'result')}` : 'Nothing new to import') : 'Import'}</button></>}>
+    <p className="muted small" style={{ margin: 0 }}><b>Copy your heading row with the data</b> and paste it into the top-left cell: columns are then matched by name, whatever their order. Paste your whole sheet: one row per player per testing day, with a <b>Date</b> column, a <b>Name</b> (or <b>#</b>) column and test columns such as <b>{batteryCols('full', tp(H)).map((k) => M[k].label).join(', ')}</b>. With a <b>Team</b> column, only this team's rows are imported (you can change which below). Names are matched to the roster by full name, or by a first or last name that fits only one player (e.g. Bassuk = Henry Bassuk); names that aren't on the roster, repeats and results already in TeamHub are left out. Other columns (position, notes) are ignored. A blank date repeats the date above. Each date becomes its own testing session (or adds to the one already there); you can check everything before it's saved.</p>
     <ImportSource mode0="paste" onRows={take} isHeading={(h) => !!metricField(h)} template={[seasonSheet(tp(H))]} templateName="test-results-season-template.csv" />
     {src && <div className="bi-opts">
       <label className="small">Dates are <select className="select" value={opt.order || (res && res.order) || 'dmy'} onChange={(e) => change({ order: e.target.value })}>
@@ -218,16 +224,26 @@ function BulkImport({ d, close, onDone }) {
       <label className="small">to <input type="date" className="input" value={opt.to} onChange={(e) => change({ to: e.target.value })} /></label>
     </div>}
     {res && <>
-      <div className="small"><b>{res.file}</b>: {plural(total, 'result')} for {plural(new Set(res.days.flatMap((x) => Object.keys(x.values))).size, 'player')} over {plural(res.days.length, 'testing day')} ({metricOrder(tp(H)).filter((k) => res.metrics.includes(k)).map((k) => M[k].label).join(', ')}).
+      {res.teams.length > 0 && <div className="small bi-teams"><b>Teams in the sheet</b> (only ticked teams are imported):{' '}
+        {res.teams.map((t) => <label key={t.value}><input type="checkbox" className="cb" checked={t.on} onChange={(e) => setTeam(t.value, e.target.checked)} /> {t.value} <span className="muted">({plural(t.rows, 'row')}, {t.matched} on this roster)</span></label>)}
+        {res.otherTeam > 0 && <span className="muted"> · {plural(res.otherTeam, 'row')} of other teams left out</span>}</div>}
+      <div className="small"><b>{res.file}</b>: {plural(total, 'new result')} for {plural(new Set(days.flatMap((x) => Object.keys(x.values))).size, 'player')} over {plural(days.length, 'testing day')} ({metricOrder(tp(H)).filter((k) => res.metrics.includes(k)).map((k) => M[k].label).join(', ')}).
+        {plan.same > 0 && <> <b>Already in TeamHub (left out):</b> {plural(plan.same, 'result')}.</>}
+        {res.dupes > 0 && <> <b>Repeated in the sheet (left out):</b> {plural(res.dupes, 'result')}.</>}
+        {res.ambiguous.length > 0 && <> <b>Fits more than one player (skipped):</b> {res.ambiguous.map((x) => `${x.name} (${x.players.join(' or ')})`).join(', ')}.</>}
         {res.unmatched.length > 0 && <> <b>Not on the roster (skipped):</b> {res.unmatched.join(', ')}.</>}
         {res.badDates.length > 0 && <> <b>Dates not understood (rows skipped):</b> {res.badDates.join(', ')}.</>}
         {res.bwRead === 'kg' && <> Bodyweight is in kg (it matches IMTP ÷ N/kg), so it's saved in pounds.</>}
         {res.outside.length > 0 && <> <b>Outside the dates (left out):</b> {plural(res.outside.length, 'day')}, {fmtDate(res.outside[0], true)}{res.outside.length > 1 ? ` to ${fmtDate(res.outside[res.outside.length - 1], true)}` : ''}.</>}</div>
+      {res.loose.length > 0 && <div className="small"><b>Matched by part of the name:</b> {res.loose.map((x) => `${x.name} → ${nameOf(x.player_id)}`).join(', ')}. Check these are the right players.</div>}
+      {res.conflicts.length > 0 && <div className="hint warn"><b>{plural(res.conflicts.length, 'result')} listed twice with different numbers</b>; the first row is kept: {res.conflicts.slice(0, 8).map((c) => `${nameOf(c.player_id)} ${M[c.metric].label} ${fmtDate(c.date)} (kept ${c.kept}, not ${c.dropped})`).join('; ')}{res.conflicts.length > 8 ? '…' : ''}.</div>}
+      {plan.differ.length > 0 && <div className="hint warn"><b>{plural(plan.differ.length, 'result')} already in TeamHub with a different number</b> ({plan.differ.slice(0, 6).map((c) => `${nameOf(c.player_id)} ${M[c.metric].label} ${fmtDate(c.date)}: ${c.saved} saved, ${c.sheet} in the sheet`).join('; ')}{plan.differ.length > 6 ? '…' : ''}).{' '}
+        <label><input type="checkbox" className="cb" checked={replace} onChange={(e) => setReplace(e.target.checked)} /> Replace them with the sheet's numbers</label>{!replace && ' Otherwise TeamHub\'s numbers are kept.'}</div>}
       {res.textCols.length > 0 && <div className="hint warn"><b>Check your columns before importing.</b> These test columns contain words, so your data probably doesn't line up with the headings:{' '}
         {res.textCols.map((c) => `${c.heading} ("${c.examples.join('", "')}")`).join('; ')}. Clear the grid and paste again with your heading row included, starting in the top-left cell.</div>}
       <div className="tbl-wrap" style={{ maxHeight: 320, overflow: 'auto' }}><table className="tbl">
         <thead><tr><th>Date</th><th>Battery</th><th title="Only for these athletes: left out of team averages">Individual</th><th className="num">Players</th><th>Tests</th><th>Goes into</th></tr></thead>
-        <tbody>{res.days.map((x) => { const used = [...new Set(Object.values(x.values).flatMap(Object.keys))]; const s = existing(x.date, bat[x.date]);
+        <tbody>{days.map((x) => { const used = [...new Set(Object.values(x.values).flatMap(Object.keys))]; const s = existing(x.date, bat[x.date]);
           return <tr key={x.date}><td>{fmtDate(x.date, true)}</td>
             <td><select className="select" value={bat[x.date]} onChange={(e) => setBat({ ...bat, [x.date]: e.target.value })} aria-label={`Battery for ${x.date}`}>{Object.entries(BATTERIES).map(([k, b]) => <option key={k} value={k}>{b.label}</option>)}</select></td>
             <td><input type="checkbox" className="cb" checked={!!ind[x.date]} onChange={(e) => setInd({ ...ind, [x.date]: e.target.checked })} aria-label={`Individual testing on ${x.date}`} /></td>

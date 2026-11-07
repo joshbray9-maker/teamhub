@@ -164,6 +164,44 @@ export function tablesToPlayers(tables) {
 
 /** Matches imported players to the current roster by name (case/accents ignored). */
 export const nameKey = (n) => key(n);
+
+// a name's words, lowercased without accents or punctuation ("O'Neil-Smith" → ["oneil", "smith"])
+const words = (n) => String(n || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[+*†‡]/g, '').split(/[\s-]+/).map((w) => w.replace(/[^a-z]/g, '')).filter(Boolean);
+// edit distance (with swapped letters) up to 2; 3 means "more than 2"
+function dist(a, b) {
+  if (Math.abs(a.length - b.length) > 2) return 3;
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]); for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) {
+    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+  }
+  return Math.min(d[a.length][b.length], 3);
+}
+// the same word, allowing one typo in names of 5+ letters ("Bojnansky" = "Bojnanski")
+const sameWord = (a, b) => a === b || (a.length >= 5 && b.length >= 5 && dist(a, b) <= 1);
+const sameFirst = (a, b) => sameWord(a, b) || (a.length === 1 && b[0] === a) || (b.length === 1 && a[0] === b);
+
+/** Finds a sheet name on the roster: the full name first; then, as the coach asked, a profile
+ *  containing the first or last name ("Bassuk" = "Henry Bassuk", allowing one typo in longer
+ *  names: "Bojnansky" = "Adam Bojnanski"). A full name needs its last name to match and its
+ *  first name to fit (same, typo or initial), so "Adam Smith" never matches "Adam Bojnanski".
+ *  Only a single profile can match: two or more is `ambiguous`, and nothing is guessed.
+ *  → (name) => { p, loose } | { ambiguous: [players] } | null */
+export function nameMatcher(roster) {
+  const exact = new Map(); roster.forEach((p) => { const k = key(p.name); exact.set(k, exact.has(k) ? null : p); });
+  const people = roster.map((p) => ({ p, w: words(p.name) })).filter((x) => x.w.length);
+  return (name) => {
+    const k = key(name); if (!k) return null;
+    if (exact.get(k)) return { p: exact.get(k), loose: false };
+    const w = words(name); if (!w.length) return null;
+    const fits = people.filter(({ w: r }) => {
+      if (w.length === 1 || r.length === 1) { const one = w.length === 1 ? w[0] : r[0], many = w.length === 1 ? r : w; return many.some((x) => sameWord(x, one)); }
+      return sameWord(w[w.length - 1], r[r.length - 1]) && sameFirst(w[0], r[0]);
+    });
+    if (fits.length === 1) return { p: fits[0].p, loose: true };
+    return fits.length ? { ambiguous: fits.map((x) => x.p) } : null;
+  };
+}
 export function planImport(current, incoming) {
   const byName = new Map(current.map((p) => [nameKey(p.name), p]));
   const seen = new Set(); const updates = [], adds = [];

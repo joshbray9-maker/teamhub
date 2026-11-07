@@ -270,3 +270,50 @@ test('self-assessments: open games and kept answers follow the database rule', a
   assert.deepEqual(cleanAnswers({ rating: '4', compete: '7', fun: 'Maybe', well: '  ok  ', hack: 1 }), { rating: '4', well: 'ok' });
   assert.deepEqual(splitName('Athlete HV 01'), { first: 'Athlete', last: 'HV 01' });
 });
+
+test('names: a first or last name alone matches the one profile containing it, typos allowed', async () => {
+  const { nameMatcher } = await import('../src/lib/rosterImport.js');
+  const roster = [{ id: 'h', name: 'Henry Bassuk' }, { id: 'a', name: 'Adam Bojnanski' }, { id: 'l', name: 'Leclerc' }, { id: 'm1', name: 'Max Roy' }, { id: 'm2', name: 'Max Côté' }];
+  const m = nameMatcher(roster), id = (n) => { const r = m(n); return r && r.p ? r.p.id : r && r.ambiguous ? 'ambiguous' : null; };
+  assert.equal(id('Henry Bassuk'), 'h'); assert.equal(m('Henry Bassuk').loose, false);
+  assert.equal(id('Bassuk'), 'h'); assert.equal(m('Bassuk').loose, true);
+  assert.equal(id('Bojnansky'), 'a'); assert.equal(id('Adam Bojnansky'), 'a'); assert.equal(id('A. Bojnanski'), 'a');
+  assert.equal(id('Henry'), 'h');
+  assert.equal(id('Zach Leclerc'), 'l');           // roster has only the last name
+  assert.equal(id('Adam Smith'), null);            // same first name, different last name: another athlete
+  assert.equal(id('Tom Bassuk'), null);            // same last name, different first name
+  assert.equal(id('Max'), 'ambiguous');            // fits two players: never guessed
+  assert.equal(id('Cote'), 'm2');
+  assert.equal(id('Roy'), 'm1'); assert.equal(id('Ray'), null); // one typo only in names of 5+ letters
+});
+
+test('bulk import: other teams, players not on the roster, repeats and saved results are left out', async () => {
+  const { rowsToTestDays, bulkNew } = await import('../src/lib/testing.js');
+  const roster = [{ id: 'h', name: 'Henry Bassuk', num: '12' }, { id: 'a', name: 'Adam Bojnanski', num: '7' }];
+  const rows = [['Date', 'Name', '#', 'Team', 'CMJ', 'RSImod'],
+    ['2025-09-08', 'Bassuk', '', 'U18 Varsity', '40', '0.5'],
+    ['2025-09-08', 'Bassuk', '', 'U18 Varsity', '40', '0.5'],          // exact repeat
+    ['2025-09-08', 'Bojnansky', '', 'U18 Varsity', '38', ''],
+    ['2025-09-08', 'Adam Bojnanski', '', 'U18 Varsity', '39', '0.4'],   // repeat with a different CMJ: first kept
+    ['2025-09-08', 'Sam Other', '12', 'U18 Varsity', '50', '0.6'],      // not on the roster: never matched by #12
+    ['2025-09-08', 'Henry Bassuk', '', 'U16 Prep', '30', '0.3'],        // another team's row
+    ['2025-09-08', 'Kid One', '', 'U16 Prep', '31', '0.3'],
+    ['2025-09-08', 'Kid Two', '', 'U16 Prep', '32', '0.3']];
+  const r = rowsToTestDays(rows, roster, 'bcs:hockey');
+  assert.deepEqual(r.teams.map((t) => [t.value, t.on]), [['U18 Varsity', true], ['U16 Prep', false]]);
+  assert.equal(r.otherTeam, 3);
+  assert.deepEqual(r.days[0].values, { h: { cmj_jh: 40, rsimod: 0.5 }, a: { cmj_jh: 38, rsimod: 0.4 } });
+  assert.equal(r.dupes, 2);
+  assert.deepEqual(r.conflicts.map((c) => [c.player_id, c.metric, c.kept, c.dropped]), [['a', 'cmj_jh', 38, 39]]);
+  assert.deepEqual(r.unmatched, ['Sam Other']);
+  assert.deepEqual(r.loose.map((x) => [x.name, x.player_id]), [['Bassuk', 'h'], ['Bojnansky', 'a']]);
+  // ticking the other team brings its matching rows in (still first row kept)
+  assert.equal(rowsToTestDays(rows, roster, 'bcs:hockey', { teams: ['U16 Prep'] }).days[0].values.h.cmj_jh, 30);
+  // results already saved that day (in any session) are left out; a different number only with replace
+  const sessions = [{ id: 's1', tested_on: '2025-09-08' }], results = [{ session_id: 's1', player_id: 'h', values: { cmj_jh: 40, rsimod: 0.45 } }];
+  const p = bulkNew(r.days, sessions, results);
+  assert.deepEqual(p.days[0].values, { a: { cmj_jh: 38, rsimod: 0.4 } });
+  assert.equal(p.same, 1); assert.deepEqual(p.differ.map((x) => [x.player_id, x.metric, x.saved, x.sheet]), [['h', 'rsimod', 0.45, 0.5]]);
+  assert.deepEqual(bulkNew(r.days, sessions, results, true).days[0].values.h, { rsimod: 0.5 });
+  assert.equal(bulkNew(r.days, sessions, [...results, { session_id: 's1', player_id: 'a', values: { cmj_jh: 38, rsimod: 0.4 } }]).days.length, 0); // a second run adds nothing
+});
