@@ -317,3 +317,25 @@ test('bulk import: other teams, players not on the roster, repeats and saved res
   assert.deepEqual(bulkNew(r.days, sessions, results, true).days[0].values.h, { rsimod: 0.5 });
   assert.equal(bulkNew(r.days, sessions, [...results, { session_id: 's1', player_id: 'a', values: { cmj_jh: 38, rsimod: 0.4 } }]).days.length, 0); // a second run adds nothing
 });
+
+test('bulk import: the coach answers names, repeats and saved results', async () => {
+  const { rowsToTestDays, bulkNew } = await import('../src/lib/testing.js');
+  const roster = [{ id: 'h', name: 'Henry Testuk' }, { id: 'm1', name: 'Max Roy' }, { id: 'm2', name: 'Max Cote' }, { id: 'z', name: 'Zed Sample', active: false }];
+  const rows = [['Date', 'Name', 'CMJ'], ['2025-09-08', 'Testuk', '40'], ['2025-09-08', 'Max', '41'], ['2025-09-08', 'Zeddy S', '42'], ['2025-09-08', 'Henry Testuk', '44'], ['2025-09-09', 'Zeddy S', '43']];
+  const r = rowsToTestDays(rows, roster, 'bcs:hockey');
+  assert.deepEqual(r.review.map((e) => [e.name, e.auto, e.candidates, e.rows]), [['Testuk', 'h', [], 1], ['Max', null, ['m1', 'm2'], 1], ['Zeddy S', null, [], 2]]);
+  assert.deepEqual(r.days[0].values, { h: { cmj_jh: 40 } });
+  // answers: Max is Max Cote, Zeddy S is the former player Zed Sample, Testuk is skipped
+  const a = rowsToTestDays(rows, roster, 'bcs:hockey', { names: { Max: 'm2', 'Zeddy S': 'z', Testuk: '' } });
+  assert.deepEqual(a.days.map((x) => x.values), [{ m2: { cmj_jh: 41 }, z: { cmj_jh: 42 }, h: { cmj_jh: 44 } }, { z: { cmj_jh: 43 } }]);
+  assert.equal(a.review.length, 3); // still listed, so an answer can be changed
+  // a repeat: the first row by default, the other number when picked
+  assert.equal(r.conflicts[0].using, 40);
+  const k = rowsToTestDays(rows, roster, 'bcs:hockey', { keep: { '2025-09-08|h|cmj_jh': 44 } });
+  assert.equal(k.days[0].values.h.cmj_jh, 44); assert.equal(k.conflicts[0].using, 44);
+  // saved results: replaced one by one
+  const sessions = [{ id: 's', tested_on: '2025-09-08' }], results = [{ session_id: 's', player_id: 'm2', values: { cmj_jh: 39 } }, { session_id: 's', player_id: 'z', values: { cmj_jh: 30 } }];
+  const p = bulkNew(a.days, sessions, results, new Set(['2025-09-08|z|cmj_jh']));
+  assert.deepEqual(p.days[0].values, { z: { cmj_jh: 42 }, h: { cmj_jh: 44 } });
+  assert.deepEqual(p.differ.map((x) => x.key), ['2025-09-08|m2|cmj_jh', '2025-09-08|z|cmj_jh']);
+});

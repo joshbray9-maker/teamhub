@@ -248,8 +248,11 @@ export function metricField(h) { const k = hkey(h); if (!k) return null; for (co
  *  never matched by jersey number: another team's player can wear the same number).
  *  A player listed twice keeps the first row's numbers: identical repeats are counted in `dupes`,
  *  different ones listed in `conflicts`.
- *  → { values: {player_id: {metric: number}}, metrics: [found], unmatched: [names], dupes, conflicts: [{player_id, metric, kept, dropped}] } */
-export function rowsToTests(rows, roster) {
+ *  Every name that isn't an exact roster name is listed in `review` [{name, auto: player_id|null,
+ *  candidates: [player_id], rows}] so the coach can confirm or correct it; `names` {name:
+ *  player_id, or '' to skip} holds those answers and wins over the automatic match.
+ *  → { values: {player_id: {metric: number}}, metrics: [found], unmatched: [names], dupes, conflicts: [{player_id, metric, kept, dropped}], review } */
+export function rowsToTests(rows, roster, names = {}) {
   const head = rows[0] || [];
   const who = head.map((h) => { const f = fieldFor(h); return f === 'name' || f === 'num' || f === 'first' || f === 'last' ? f : null; });
   const met = head.map((h, i) => (who[i] ? null : metricField(h)));
@@ -257,24 +260,30 @@ export function rowsToTests(rows, roster) {
   if (!who.some(Boolean)) throw new Error('No Name or # column found. The first row should be headings like Name, CMJ JH, RSImod.');
   if (!met.some(Boolean)) throw new Error('No test columns recognised. Use headings like CMJ JH, RSImod, SJ JH, IMTP, Rel PF, 10m fly, Cooper.');
   const match = nameMatcher(roster), byNum = new Map(roster.filter((p) => p.num).map((p) => [p.num, p]));
-  const values = {}, unmatched = [], conflicts = [], loose = [], ambiguous = []; let dupes = 0;
+  const values = {}, unmatched = [], conflicts = [], loose = [], ambiguous = [], review = new Map(); let dupes = 0;
+  const byId = new Map(roster.map((p) => [p.id, p]));
   for (const r of rows.slice(1)) {
     const g = (f) => { const i = who.indexOf(f); return i >= 0 ? String(r[i] || '').trim() : ''; };
     let name = g('name') || [g('first'), g('last')].filter(Boolean).join(' '); const m = name.match(/^([^,]+),\s*([^,]+)$/); if (m) name = `${m[2]} ${m[1]}`;
     const n = g('num').replace(/^#/, '');
     const hit = /^#?\d+$/.test(name) || !name ? null : match(name);
-    const p = /^#?\d+$/.test(name) ? byNum.get(name.replace(/^#/, '')) : name ? hit && hit.p : n && byNum.get(n);
+    let p = /^#?\d+$/.test(name) ? byNum.get(name.replace(/^#/, '')) : name ? hit && hit.p : n && byNum.get(n);
     const v = {}; met.forEach((k, i) => { if (k) { const x = cellValue(k, r[i]); if (x !== null) v[k] = scale[i] === 1 || typeof x !== 'number' ? x : Math.round(x * scale[i] * 10) / 10; } });
     if (!Object.keys(v).length) continue;
+    const label = name || (n ? '#' + n : '');
+    if (label && (!p || (hit && hit.loose))) {
+      const e = review.get(label) || { name: label, auto: p ? p.id : null, candidates: hit && hit.ambiguous ? hit.ambiguous.map((x) => x.id) : [], rows: 0 }; e.rows++; review.set(label, e);
+      if (label in names) { p = byId.get(names[label]) || null; if (!p) { unmatched.push(label); continue; } }
+    }
     if (!p) { if (hit && hit.ambiguous) ambiguous.push({ name, players: hit.ambiguous.map((x) => x.name) }); else unmatched.push(name || '#' + n); continue; }
-    if (hit && hit.loose && !loose.some((x) => x.name === name)) loose.push({ name, player_id: p.id });
+    if (hit && hit.loose && !(label in names) && !loose.some((x) => x.name === name)) loose.push({ name, player_id: p.id });
     const had = values[p.id] || {};
     for (const [k, x] of Object.entries(v)) {
       if (!(k in had)) had[k] = x; else if (String(had[k]) === String(x)) dupes++; else conflicts.push({ player_id: p.id, metric: k, kept: had[k], dropped: x });
     }
     values[p.id] = had;
   }
-  return { values, metrics: [...new Set(met.filter(Boolean))], unmatched, dupes, conflicts, loose, ambiguous };
+  return { values, metrics: [...new Set(met.filter(Boolean))], unmatched, dupes, conflicts, loose, ambiguous, review: [...review.values()] };
 }
 
 /** A test date from a sheet cell: 2026-09-15, "Sep 15 2026", or a/b/yyyy (or yy) read as
@@ -304,7 +313,9 @@ export function dateOrder(cells) {
  *  to import] }. With a Team column, rows of the other teams are left out; by default a team is
  *  imported when most of its rows' names are on this roster (listed in `teams`, with `on`).
  *  Repeats (a player twice on one day) keep the first row: `dupes` counts identical ones, and
- *  `conflicts` lists [{date, player_id, metric, kept, dropped}]. */
+ *  `conflicts` lists [{date, player_id, metric, kept, dropped}]; opts.keep {'date|player_id|metric':
+ *  value} picks the other number. opts.names: the coach's answers for names (see rowsToTests),
+ *  and `review` lists every name to check, across the whole sheet. */
 export function rowsToTestDays(rows, roster, sport, opts = {}) {
   const READINESS = new Set(batteryCols('readiness', sport));
   const head = rows[0] || [];
@@ -329,15 +340,18 @@ export function rowsToTestDays(rows, roster, sport, opts = {}) {
     if (ti >= 0 && skipTeam.has(String(r[ti] || '').trim())) { otherTeam++; continue; }
     if (!byDate.has(cur)) byDate.set(cur, []); byDate.get(cur).push(r);
   }
-  const h2 = head.map((h, i) => (i === di ? '' : h)), unmatched = new Set(), metrics = new Set(); const days = [], conflicts = [], loose = new Map(), ambiguous = new Map(); let dupes = 0;
+  const h2 = head.map((h, i) => (i === di ? '' : h)), unmatched = new Set(), metrics = new Set(); const days = [], conflicts = [], loose = new Map(), ambiguous = new Map(), review = new Map(); let dupes = 0;
   const textCols = head.map((h, i) => { if (i === di || !metricField(h) || METRICS[metricField(h)].text || ['name', 'num', 'first', 'last'].includes(fieldFor(h))) return null;
     const words = [...new Set([...byDate.values()].flat().map((r) => String(r[i] || '').trim()).filter((v) => v && num(v) === null))];
     return words.length ? { heading: String(h).trim(), examples: words.slice(0, 3) } : null; }).filter(Boolean);
   const outside = [];
   for (const [date, list] of [...byDate].sort((a, b) => a[0].localeCompare(b[0]))) {
     if ((opts.from && date < opts.from) || (opts.to && date > opts.to)) { outside.push(date); continue; }
-    const t = rowsToTests([h2, ...list], roster);
-    t.unmatched.forEach((n) => unmatched.add(n)); dupes += t.dupes; t.conflicts.forEach((c) => conflicts.push({ date, ...c }));
+    const t = rowsToTests([h2, ...list], roster, opts.names || {});
+    t.review.forEach((e) => { const x = review.get(e.name); review.set(e.name, x ? { ...x, rows: x.rows + e.rows } : e); });
+    t.unmatched.forEach((n) => unmatched.add(n)); dupes += t.dupes; t.conflicts.forEach((c) => { const want = (opts.keep || {})[`${date}|${c.player_id}|${c.metric}`];
+      if (want !== undefined && String(want) === String(c.dropped)) t.values[c.player_id][c.metric] = c.dropped;
+      conflicts.push({ date, ...c, using: t.values[c.player_id][c.metric] }); });
     t.loose.forEach((x) => loose.set(x.name, x)); t.ambiguous.forEach((x) => ambiguous.set(x.name, x));
     if (!Object.keys(t.values).length) continue;
     const used = new Set(Object.values(t.values).flatMap(Object.keys)); used.forEach((k) => metrics.add(k));
@@ -352,12 +366,12 @@ export function rowsToTestDays(rows, roster, sport, opts = {}) {
     if (m !== null && m > 0.85 && m < 1.15) { bwRead = 'kg'; days.forEach((d) => Object.values(d.values).forEach((v) => { if (typeof v.bw === 'number') v.bw = Math.round(v.bw * 2.20462 * 10) / 10; })); }
     else if (m !== null && m > 0.39 && m < 0.52) bwRead = 'lb';
   }
-  return { days, metrics: [...metrics], unmatched: [...unmatched], badDates, textCols, bwRead, order, detected, outside, teams, otherTeam, dupes, conflicts, loose: [...loose.values()], ambiguous: [...ambiguous.values()] };
+  return { days, metrics: [...metrics], unmatched: [...unmatched], badDates, textCols, bwRead, order, detected, outside, teams, otherTeam, dupes, conflicts, loose: [...loose.values()], ambiguous: [...ambiguous.values()], review: [...review.values()] };
 }
 
 /** What a bulk import adds to what's saved: a result the player already has on that date (in any
  *  session that day) is a repeat and left out, unless `replace` is set and the sheet's number is
- *  different. → { days: [{...day, values: only what's new}], same: count, differ: [{date, player_id, metric, saved, sheet}] } */
+ *  different (true for all, or a Set of 'date|player_id|metric' keys). → { days: [{...day, values: only what's new}], same: count, differ: [{date, player_id, metric, saved, sheet}] } */
 export function bulkNew(days, sessions, results, replace = false) {
   const dateOf = Object.fromEntries(sessions.map((s) => [s.id, s.tested_on])), saved = {};
   results.forEach((r) => { const d = dateOf[r.session_id]; if (!d) return; const k = d + '|' + r.player_id; saved[k] = { ...(saved[k] || {}), ...(r.values || {}) }; });
@@ -367,7 +381,7 @@ export function bulkNew(days, sessions, results, replace = false) {
     for (const [k, x] of Object.entries(v)) {
       if (!(k in old) || old[k] === null || old[k] === '') keep[k] = x;
       else if (String(old[k]) === String(x)) same++;
-      else { differ.push({ date: day.date, player_id: pid, metric: k, saved: old[k], sheet: x }); if (replace) keep[k] = x; }
+      else { const key = `${day.date}|${pid}|${k}`; differ.push({ key, date: day.date, player_id: pid, metric: k, saved: old[k], sheet: x }); if (replace === true || (replace && replace.has && replace.has(key))) keep[k] = x; }
     }
     return [pid, keep];
   }).filter(([, v]) => Object.keys(v).length)) })).filter((d) => Object.keys(d.values).length);

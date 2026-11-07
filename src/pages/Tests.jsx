@@ -182,20 +182,24 @@ function BulkImport({ d, close, onDone }) {
   const H = useHub();
   const [res, setRes] = useState(null), [bat, setBat] = useState({}), [ind, setInd] = useState({}), [busy, setBusy] = useState(false);
   // the pasted sheet, and how to read it: date order (null = from the sheet) and the days to keep
-  const [src, setSrc] = useState(null), [opt, setOpt] = useState({ order: null, from: '', to: todayISO(), teams: null }), [replace, setReplace] = useState(false);
+  const [src, setSrc] = useState(null), [opt, setOpt] = useState({ order: null, from: '', to: todayISO(), teams: null, names: {}, keep: {} }), [replace, setReplace] = useState(new Set());
   const run = (s, o) => {
     const r = rowsToTestDays(s.rows, d.players, tp(H), o);
-    if (!r.days.length && !r.teams.length) throw new Error(r.unmatched.length ? `None of the ${r.unmatched.length} names matched the roster.` : r.badDates.length ? `No dates could be read (e.g. "${r.badDates[0]}").` : r.outside.length ? 'No testing days inside the dates you chose.' : 'No results found.');
-    setRes({ ...r, file: s.label }); setBat(Object.fromEntries(r.days.map((x) => [x.date, x.battery])));
-    setInd(Object.fromEntries(r.days.map((x) => { const y = d.sessions.find((z) => z.tested_on === x.date); return [x.date, !!(y && y.individual)]; })));
+    if (!r.days.length && !r.teams.length && !r.review.length) throw new Error(r.unmatched.length ? `None of the ${r.unmatched.length} names matched the roster.` : r.badDates.length ? `No dates could be read (e.g. "${r.badDates[0]}").` : r.outside.length ? 'No testing days inside the dates you chose.' : 'No results found.');
+    // a day keeps the battery / individual choice already made for it when the coach answers a question below
+    setRes({ ...r, file: s.label }); setBat((b) => ({ ...Object.fromEntries(r.days.map((x) => [x.date, x.battery])), ...b }));
+    setInd((v) => ({ ...Object.fromEntries(r.days.map((x) => { const y = d.sessions.find((z) => z.tested_on === x.date); return [x.date, !!(y && y.individual)]; })), ...v }));
   };
-  const take = (rows, label) => { const s = { rows, label }; run(s, opt); setSrc(s); };
+  const take = (rows, label) => { const s = { rows, label }, o = { ...opt, names: {}, keep: {} }; setBat({}); setInd({}); setReplace(new Set()); run(s, o); setOpt(o); setSrc(s); };
   const change = (patch) => { const o = { ...opt, ...patch }; setOpt(o); try { run(src, o); } catch (e) { setRes(null); H.toast(e.message); } };
   const existing = (date, b) => d.sessions.find((s) => s.tested_on === date && s.battery === b) || d.sessions.find((s) => s.tested_on === date);
   const plan = useMemo(() => (res ? bulkNew(res.days, d.sessions, d.results, replace) : null), [res, d, replace]);
   const days = plan ? plan.days : [];
   const total = days.reduce((n, x) => n + Object.values(x.values).reduce((m, v) => m + Object.keys(v).length, 0), 0); // test results, not players
   const nameOf = (id) => (d.players.find((p) => p.id === id) || {}).name || '?';
+  const setName = (name, pid) => change({ names: { ...opt.names, [name]: pid } });
+  const setKeep = (c, v) => change({ keep: { ...opt.keep, [`${c.date}|${c.player_id}|${c.metric}`]: v } });
+  const setRepl = (keys, on) => setReplace((cur) => { const n = new Set(cur); keys.forEach((k) => (on ? n.add(k) : n.delete(k))); return n; });
   const setTeam = (v, on) => change({ teams: res.teams.filter((t) => (t.value === v ? on : t.on)).map((t) => t.value) });
   const save = async () => {
     setBusy(true);
@@ -230,15 +234,11 @@ function BulkImport({ d, close, onDone }) {
       <div className="small"><b>{res.file}</b>: {plural(total, 'new result')} for {plural(new Set(days.flatMap((x) => Object.keys(x.values))).size, 'player')} over {plural(days.length, 'testing day')} ({metricOrder(tp(H)).filter((k) => res.metrics.includes(k)).map((k) => M[k].label).join(', ')}).
         {plan.same > 0 && <> <b>Already in TeamHub (left out):</b> {plural(plan.same, 'result')}.</>}
         {res.dupes > 0 && <> <b>Repeated in the sheet (left out):</b> {plural(res.dupes, 'result')}.</>}
-        {res.ambiguous.length > 0 && <> <b>Fits more than one player (skipped):</b> {res.ambiguous.map((x) => `${x.name} (${x.players.join(' or ')})`).join(', ')}.</>}
-        {res.unmatched.length > 0 && <> <b>Not on the roster (skipped):</b> {res.unmatched.join(', ')}.</>}
+        {((n) => n > 0 && <> <b>Skipped:</b> {plural(n, 'name')} (see below).</>)(res.review.filter((e) => !(e.name in opt.names ? opt.names[e.name] : e.auto)).length)}
         {res.badDates.length > 0 && <> <b>Dates not understood (rows skipped):</b> {res.badDates.join(', ')}.</>}
         {res.bwRead === 'kg' && <> Bodyweight is in kg (it matches IMTP ÷ N/kg), so it's saved in pounds.</>}
         {res.outside.length > 0 && <> <b>Outside the dates (left out):</b> {plural(res.outside.length, 'day')}, {fmtDate(res.outside[0], true)}{res.outside.length > 1 ? ` to ${fmtDate(res.outside[res.outside.length - 1], true)}` : ''}.</>}</div>
-      {res.loose.length > 0 && <div className="small"><b>Matched by part of the name:</b> {res.loose.map((x) => `${x.name} → ${nameOf(x.player_id)}`).join(', ')}. Check these are the right players.</div>}
-      {res.conflicts.length > 0 && <div className="hint warn"><b>{plural(res.conflicts.length, 'result')} listed twice with different numbers</b>; the first row is kept: {res.conflicts.slice(0, 8).map((c) => `${nameOf(c.player_id)} ${M[c.metric].label} ${fmtDate(c.date)} (kept ${c.kept}, not ${c.dropped})`).join('; ')}{res.conflicts.length > 8 ? '…' : ''}.</div>}
-      {plan.differ.length > 0 && <div className="hint warn"><b>{plural(plan.differ.length, 'result')} already in TeamHub with a different number</b> ({plan.differ.slice(0, 6).map((c) => `${nameOf(c.player_id)} ${M[c.metric].label} ${fmtDate(c.date)}: ${c.saved} saved, ${c.sheet} in the sheet`).join('; ')}{plan.differ.length > 6 ? '…' : ''}).{' '}
-        <label><input type="checkbox" className="cb" checked={replace} onChange={(e) => setReplace(e.target.checked)} /> Replace them with the sheet's numbers</label>{!replace && ' Otherwise TeamHub\'s numbers are kept.'}</div>}
+      <BulkReview res={res} plan={plan} d={d} names={opt.names} replace={replace} nameOf={nameOf} setName={setName} setKeep={setKeep} setRepl={setRepl} />
       {res.textCols.length > 0 && <div className="hint warn"><b>Check your columns before importing.</b> These test columns contain words, so your data probably doesn't line up with the headings:{' '}
         {res.textCols.map((c) => `${c.heading} ("${c.examples.join('", "')}")`).join('; ')}. Clear the grid and paste again with your heading row included, starting in the top-left cell.</div>}
       <div className="tbl-wrap" style={{ maxHeight: 320, overflow: 'auto' }}><table className="tbl">
@@ -252,6 +252,44 @@ function BulkImport({ d, close, onDone }) {
       </table></div>
     </>}
   </Modal>;
+}
+
+/* The bulk import's questions, answered before saving: names that aren't an exact roster name
+   (pick the player, or skip), a player listed twice in a day with different numbers (pick one),
+   and results already in TeamHub with a different number (keep TeamHub's, or use the sheet's). */
+function BulkReview({ res, plan, d, names, replace, nameOf, setName, setKeep, setRepl }) {
+  const M = useMetrics();
+  const roster = d.players; // former players too: past seasons have them
+  const label = (p) => `${p.num ? '#' + p.num + ' ' : ''}${p.name}${p.active === false ? ' (former)' : ''}`;
+  const status = (e) => (e.candidates.length ? `Fits ${e.candidates.length} players` : e.auto ? 'Part of the name' : 'Not on the roster');
+  const differ = plan.differ;
+  if (!res.review.length && !res.conflicts.length && !differ.length) return null;
+  const allRepl = differ.length > 0 && differ.every((c) => replace.has(c.key));
+  return <div className="bi-review">
+    <b>Check before importing</b>
+    {res.review.length > 0 && <div className="tbl-wrap"><table className="tbl">
+      <thead><tr><th>Name in the sheet</th><th className="num">Rows</th><th>Why</th><th>Import as</th></tr></thead>
+      <tbody>{res.review.map((e) => { const v = e.name in names ? names[e.name] : e.auto || '';
+        return <tr key={e.name} className={v ? '' : 'skip'}><td><b>{e.name}</b></td><td className="num tnum">{e.rows}</td><td className="small muted">{status(e)}{e.name in names ? ' · your answer' : ''}</td>
+          <td><select className="select" value={v} onChange={(x) => setName(e.name, x.target.value)} aria-label={`Import ${e.name} as`}>
+            <option value="">Skip (don't import)</option>
+            {e.candidates.length > 0 && <optgroup label="Possible matches">{e.candidates.map((id) => <option key={id} value={id}>{nameOf(id)}</option>)}</optgroup>}
+            <optgroup label="Roster">{roster.filter((p) => !e.candidates.includes(p.id)).map((p) => <option key={p.id} value={p.id}>{label(p)}</option>)}</optgroup>
+          </select></td></tr>; })}</tbody>
+    </table></div>}
+    {res.conflicts.length > 0 && <div className="tbl-wrap"><table className="tbl">
+      <thead><tr><th colSpan={3}>Listed twice on one day, with different numbers</th><th>Use</th></tr></thead>
+      <tbody>{res.conflicts.map((c) => <tr key={`${c.date}|${c.player_id}|${c.metric}`}><td><b>{nameOf(c.player_id)}</b></td><td>{M[c.metric].label}</td><td className="tnum">{fmtDate(c.date, true)}</td>
+        <td><span className="seg">{[c.kept, c.dropped].map((v, i) => <button key={i} type="button" className={String(c.using) === String(v) ? 'on' : ''} onClick={() => setKeep(c, v)}>{v}{i === 0 ? ' (first row)' : ''}</button>)}</span></td></tr>)}</tbody>
+    </table></div>}
+    {differ.length > 0 && <div className="tbl-wrap"><table className="tbl">
+      <thead><tr><th colSpan={3}>Already in TeamHub with a different number</th><th className="num">TeamHub</th><th className="num">Sheet</th>
+        <th><label className="bi-all"><input type="checkbox" className="cb" checked={allRepl} onChange={(x) => setRepl(differ.map((c) => c.key), x.target.checked)} /> Use the sheet's</label></th></tr></thead>
+      <tbody>{differ.map((c) => <tr key={c.key}><td><b>{nameOf(c.player_id)}</b></td><td>{M[c.metric].label}</td><td className="tnum">{fmtDate(c.date, true)}</td>
+        <td className="num tnum">{c.saved}</td><td className="num tnum">{c.sheet}</td>
+        <td><input type="checkbox" className="cb" checked={replace.has(c.key)} onChange={(x) => setRepl([c.key], x.target.checked)} aria-label={`Use the sheet's ${M[c.metric].label} for ${nameOf(c.player_id)} on ${c.date}`} /></td></tr>)}</tbody>
+    </table></div>}
+  </div>;
 }
 
 /* ================= Coaches view: trends ================= */
