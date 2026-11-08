@@ -21,6 +21,7 @@ import InjuredCard from './components/InjuredCard.jsx';
 import OrgSchedule from './pages/OrgSchedule.jsx';
 import MasterWeek from './pages/MasterWeek.jsx';
 import AllTeamsSC from './pages/AllTeamsSC.jsx';
+import PlayerInfo from './pages/PlayerInfo.jsx';
 import PageHead from './components/PageHead.jsx';
 import TeamForm from './components/TeamForm.jsx';
 import Icon from './components/Icon.jsx';
@@ -55,6 +56,7 @@ function Page() {
   if (H.tdata._loading) return <div className="loading">Loading {t.name}…</div>;
   if (H.page === 'home') return <Home key={t.id} />;
   if (H.page === 'sc') return <SC key={t.id} />;
+  if (H.page === 'playerinfo' && t.sport === 'basketball') return <PlayerInfo key={t.id} />;
   if (H.page === 'master') return <MasterWeek key={t.org_id} />;
   if (H.page === 'chat') return <Chat key={t.id} />;
   if (H.page === 'gameday' && t.sport === 'hockey') return <GameDay key={t.id} />;

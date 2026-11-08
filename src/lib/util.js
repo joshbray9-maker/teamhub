@@ -20,6 +20,7 @@ export const MENUS = [
   { id: 'data', label: 'Data Center', icon: 'chart' },
   { id: 'injury', label: 'Injury report', icon: 'cross', coach: true },
   { id: 'sc', label: 'S&C', icon: 'dumbbell' },
+  { id: 'playerinfo', label: 'Player info', icon: 'book', sports: ['basketball'] },
   { id: 'athletes', label: 'Athlete reports', icon: 'report', coach: true },
   { id: 'ipp', label: 'IPP', icon: 'target', coach: true },
   { id: 'selfassess', label: 'Self-assessments', icon: 'clipboard', coach: true },

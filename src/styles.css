@@ -1121,3 +1121,34 @@ span.gd-row{cursor:default}
 .bi-review tr.skip td{color:var(--muted)}
 .bi-review .select{width:auto;min-width:200px}
 .bi-all{display:inline-flex;gap:6px;align-items:center;text-transform:none;letter-spacing:0}
+
+/* Player info (basketball player pack) */
+.pi-secs{display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 14px}
+.pi-secs button{border:1px solid var(--line);background:var(--surface);color:var(--muted);padding:6px 12px;border-radius:20px;font-weight:600;font-size:13px;cursor:pointer}
+.pi-secs button.on{background:var(--accent-soft);color:var(--accent-text);border-color:transparent}
+.pi{display:flex;flex-direction:column;gap:14px;max-width:980px}
+.pi-head h2{font:700 24px/1.1 var(--f-display);margin:0}
+.pi-head p{margin:6px 0 0}
+.pi .card-head h3,.pi-card h3{font:700 17px/1.2 var(--f-display);margin:0}
+.pi-text{margin:0;line-height:1.5}
+.pi-text.strong{font-weight:700}
+.pi-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.pi-card{gap:8px;border-left:4px solid var(--accent)}
+.pi-card p{margin:0;line-height:1.5}
+.pi-tag{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-text)}
+.pi-meta{margin-top:auto;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.pi-list{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;line-height:1.4}
+.pi-rules{margin:0;padding-left:26px;display:flex;flex-direction:column;gap:0}
+.pi-rules li{padding:9px 0 9px 4px;border-bottom:1px solid var(--line);line-height:1.45}
+.pi-rules li:last-child{border-bottom:0}
+.pi-rules li::marker{font-weight:700;color:var(--accent-text)}
+.pi-tbl td{white-space:normal;vertical-align:top;line-height:1.4}
+.pi-tbl td:first-child{font-weight:600;min-width:140px}
+.pi-tbl tr.pi-group td{background:var(--surface-2);font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--accent-text)}
+.pi-tbl tr.pi-group td span{text-transform:none;letter-spacing:0;font-weight:500;color:var(--muted);font-size:12px}
+.pi-plan{margin:0;display:flex;flex-direction:column}
+.pi-plan>div{display:grid;grid-template-columns:minmax(120px,190px) 1fr;gap:12px;padding:9px 0;border-bottom:1px solid var(--line)}
+.pi-plan>div:last-child{border-bottom:0}
+.pi-plan dt{font-weight:700;color:var(--accent-text)}
+.pi-plan dd{margin:0;line-height:1.45}
+@media (max-width:600px){.pi-plan>div{grid-template-columns:1fr;gap:2px}.pi-tbl td:first-child{min-width:110px}}
