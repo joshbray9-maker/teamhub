@@ -191,6 +191,12 @@ export const api = {
       open: open.map((g) => { const a = mine.find((x) => x.game_id === g.id); return { id: g.id, date: g.date, time: g.time || '', home: g.home, away: g.away, opponent: opponentOf(g, t), answers: a ? a.answers : null, submitted_at: a ? a.submitted_at : null }; }),
       past: mine.filter((a) => !open.some((g) => g.id === a.game_id)).sort((a, b) => b.game_date.localeCompare(a.game_date)) });
   },
+  // demo: an athlete view (org role switched to 'athlete' by hand) answers as the team's first player
+  async myAssessToken(teamId) {
+    await load(); const t = db.teams.find((x) => x.id === teamId), o = t && db.orgs.find((x) => x.id === t.org_id); if (!o || o.role !== 'athlete') return null;
+    const p = (D(teamId).players || []).find((x) => x.active !== false); if (!p) return null;
+    return (await api.listAssessLinks(teamId))[p.id];
+  },
   async assessSubmit(token, gameId, answers) {
     const v = await api.assessView(token); if (!v) throw new Error('This link is not valid');
     const g = v.open.find((x) => x.id === gameId); if (!g) throw new Error('This game is closed for answers');
@@ -229,9 +235,13 @@ export const api = {
   async listMembers(orgId) { return clone((db.members[orgId] || []).map((m) => (m.user_id ? { ...m, seen_at: (db.seen || {})[m.user_id] || null } : m))); },
   async touchSeen() { await load(); (db.seen = db.seen || {})[USER.id] = new Date().toISOString(); save(); },
   async inviteMember(orgId, email, role, teams = null, label = '') { (db.members[orgId] = db.members[orgId] || []).push({ id: 'inv' + uid(), email: email.toLowerCase(), label: label.trim().slice(0, 80), role, pending: true, token: 'demo-' + uid(), teams: teams && teams.length ? teams : null }); save(); return 'invited'; },
-  async createInviteLink(orgId, { label = '', role, teams = null }) { const token = 'demo-' + uid(); (db.members[orgId] = db.members[orgId] || []).push({ id: 'inv' + uid(), email: '', label: label.trim().slice(0, 80), role, pending: true, token, teams: role !== 'admin' && teams && teams.length ? teams : null }); save(); return token; },
+  async createInviteLink(orgId, { label = '', role, teams = null, player = null }) {
+    await load(); const pt = role === 'athlete' ? db.teams.find((t) => t.org_id === orgId && (D(t.id).players || []).some((p) => p.id === player)) : null;
+    if (role === 'athlete' && !pt) throw new Error('That player is not on a team in this organization');
+    const token = 'demo-' + uid(); (db.members[orgId] = db.members[orgId] || []).push({ id: 'inv' + uid(), email: '', label: label.trim().slice(0, 80), role, pending: true, token, player_id: pt ? player : null, teams: pt ? [pt.id] : role !== 'admin' && teams && teams.length ? teams : null }); save(); return token;
+  },
   async inviteInfo(token) {
-    await load(); for (const o of db.orgs) { const m = (db.members[o.id] || []).find((x) => x.pending && x.token === token); if (m) return { org_name: o.name, role: m.role, email: m.email || null, label: m.label || '', teams: m.role === 'admin' || !m.teams ? null : db.teams.filter((t) => m.teams.includes(t.id)).map((t) => t.name) }; }
+    await load(); for (const o of db.orgs) { const m = (db.members[o.id] || []).find((x) => x.pending && x.token === token); if (m) return { org_name: o.name, role: m.role, email: m.email || null, label: m.label || '', teams: m.role === 'admin' || !m.teams ? null : db.teams.filter((t) => m.teams.includes(t.id)).map((t) => t.name), player: m.player_id ? ((m.teams && (D(m.teams[0]).players || []).find((p) => p.id === m.player_id)) || {}).name || null : null }; }
     return null;
   },
   // demo: the one demo user is already in every organization, so joining just uses the link up

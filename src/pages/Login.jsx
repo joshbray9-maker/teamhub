@@ -2,8 +2,8 @@
 import { useState } from 'react';
 
 /** Which teams an invite opens, in words. */
-/** The invite's role in words: "an admin", "a coach", "sports med staff". */
-export const roleWords = (r) => (r === 'admin' ? 'an admin' : r === 'sportsmed' ? 'sports med staff' : `a ${r}`);
+/** The invite's role in words: "an admin", "a coach", "sports med staff", "Athlete HV01, an athlete". */
+export const roleWords = (r, player) => (r === 'admin' ? 'an admin' : r === 'sportsmed' ? 'sports med staff' : r === 'athlete' ? (player ? `${player}, an athlete` : 'an athlete') : `a ${r}`);
 export const inviteTeams = (inv) => (!inv.teams ? 'every team' : inv.teams.length ? inv.teams.join(', ') : 'no teams yet');
 
 // invite: { org_name, role, email, back } from an invite link (pages/Join.jsx): the form starts on
@@ -26,7 +26,7 @@ export default function Login({ api, mode: initial = 'in', invite = null }) {
   return <div className="auth">
     <div className="eyebrow">TeamHub</div>
     <form className="card" onSubmit={submit}>
-      {invite && <div className="okmsg" style={{ color: 'inherit' }}>You're invited to <b>{invite.org_name}</b> as {roleWords(invite.role)} ({inviteTeams(invite)}). Create your account below, or sign in if you already have one.</div>}
+      {invite && <div className="okmsg" style={{ color: 'inherit' }}>You're invited to <b>{invite.org_name}</b> as {roleWords(invite.role, invite.player)} ({inviteTeams(invite)}). Create your account below, or sign in if you already have one.</div>}
       <div className="card-head"><h2>{title}</h2></div>
       {mode !== 'reset' && <label className="field"><span>Email</span><input className="input" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} /></label>}
       {mode !== 'forgot' && <label className="field"><span>{mode === 'reset' ? 'New password' : 'Password'}</span><input className="input" type="password" autoComplete={mode === 'in' ? 'current-password' : 'new-password'} required value={pw} onChange={(e) => setPw(e.target.value)} /></label>}

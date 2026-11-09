@@ -1,23 +1,25 @@
 // A player's self-assessment page: /a/<token>, their own permanent link. No sign-in. After each
 // game on the team's schedule, that game's questionnaire opens here (assess_view decides which
 // games are open); answers can be changed until a game on a later date starts. Below, the player's
-// own past answers, read-only.
+// own past answers, read-only. An athlete with a TeamHub account sees the same page inside the
+// app (`token` and `embedded`, from the Self-assessment menu).
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { applyTheme, fmtDate, fmtTime } from '../lib/util.js';
 import { QUESTIONS, splitName, cleanAnswers } from '../lib/selfAssess.js';
 import Logo from '../components/Logo.jsx';
 
-export default function PlayerAssess({ api }) {
-  const { token } = useParams();
+export default function PlayerAssess({ api, token: given, embedded = false }) {
+  const params = useParams(); const token = given || params.token;
   const [d, setD] = useState(undefined);
-  const load = () => api.assessView(token).then((r) => { setD(r); if (r) { applyTheme(r.team.color); document.title = `${r.team.name} · Self-assessment`; } }).catch(() => setD(null));
+  const load = () => api.assessView(token).then((r) => { setD(r); if (r && !embedded) { applyTheme(r.team.color); document.title = `${r.team.name} · Self-assessment`; } }).catch(() => setD(null));
   useEffect(() => { if (!api) { setD(null); return; } load(); }, [api, token]); // eslint-disable-line react-hooks/exhaustive-deps
   if (d === undefined) return <div className="loading">Loading…</div>;
+  if (!d && embedded) return <section className="card"><p className="muted" style={{ margin: 0 }}>Your self-assessment isn't available. Ask your coach to check you're still on the roster.</p></section>;
   if (!d) return <div className="auth"><div className="card"><div className="card-head"><h2>Link not available</h2></div><p className="muted" style={{ margin: 0 }}>This link was replaced or the address is wrong. Ask your coach for your link.</p></div></div>;
   const n = splitName(d.player.name);
-  return <div className="pub-wrap sa-wrap">
-    <header className="spx-head"><Logo t={{ name: d.team.name, logo_url: d.team.logo_url }} cls="lg" /><div><h1>Self-assessment</h1><span className="muted">{d.team.name}</span></div></header>
+  return <div className={embedded ? 'sa-wrap sa-in' : 'pub-wrap sa-wrap'}>
+    {!embedded && <header className="spx-head"><Logo t={{ name: d.team.name, logo_url: d.team.logo_url }} cls="lg" /><div><h1>Self-assessment</h1><span className="muted">{d.team.name}</span></div></header>}
     <section className="card sa-who">
       <div><span className="muted small">First name</span><b>{n.first}</b></div>
       <div><span className="muted small">Last name</span><b>{n.last || '—'}</b></div>

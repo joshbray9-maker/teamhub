@@ -2,7 +2,7 @@
 // selected team's data, plus toasts and dialogs. Components call `save(...)` for writes:
 // they update local state first, then the backend; a failed write shows a toast and reloads.
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { applyTheme, store, SWATCHES, MENUS, SISTER, MED_PAGES } from './util.js';
+import { applyTheme, store, SWATCHES, MENUS, SISTER, MED_PAGES, ATHLETE_PAGES } from './util.js';
 import Modal from '../components/Modal.jsx';
 import { metricsFor, testProfile } from './testing.js';
 
@@ -44,6 +44,8 @@ export function HubProvider({ api, user, children }) {
   // sports med: Injury report (edit), S&C, Athlete reports and Master schedule only (read)
   const isMed = role === 'sportsmed';
   const seesMed = isCoach || isMed; // injuries and testing results
+  // athlete: a player's own account; reads like a viewer, on fewer pages, plus their own self-assessment
+  const isAthlete = role === 'athlete';
 
   const teamList = useMemo(() => {
     const order = prefs.teamOrder || [];
@@ -113,6 +115,7 @@ export function HubProvider({ api, user, children }) {
   const menuAvailable = useCallback((m, t = team) => {
     const r = roleOf(t); const coach = r === 'admin' || r === 'coach';
     if (r === 'sportsmed') return MED_PAGES.includes(m.id);
+    if (r === 'athlete') return ATHLETE_PAGES.includes(m.id) && !(m.sports && !(t && m.sports.includes(t.sport)));
     if (m.coach && !coach) return false;
     if (m.admin && r !== 'admin') return false;
     if (m.sports && !(t && m.sports.includes(t.sport))) return false;
@@ -148,7 +151,7 @@ export function HubProvider({ api, user, children }) {
 
   const value = {
     api, user, hub, orgs, teams, teamList, orgTeams, prefs, savePrefs, reloadHub, setHub,
-    team, teamId, role, isCoach, isAdmin, isMed, seesMed, isOwner, orgOf, roleOf, selectTeam, menuAvailable,
+    team, teamId, role, isCoach, isAdmin, isMed, seesMed, isAthlete, isOwner, orgOf, roleOf, selectTeam, menuAvailable,
     viewOrg, openOrg: (id) => setOrgId(id), closeOrg: () => setOrgId(null), orgData, reloadOrg,
     page, go: (p) => { setPage(p); window.scrollTo(0, 0); },
     tdata, setTdata, reloadTeam, save, pending,

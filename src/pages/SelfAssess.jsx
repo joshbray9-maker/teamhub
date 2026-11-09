@@ -2,7 +2,8 @@
 // permanent link (/a/<token>); a coach sends it once and, after every game on the schedule, that
 // game's questionnaire opens on it (PlayerAssess.jsx). Tabs: By game (every player's answers for
 // one game, and who hasn't answered), By player (one player's season file) and Player links
-// (copy each link, or all of them at once; a new link stops the old one working).
+// (copy each link, or all of them at once; a new link stops the old one working). An athlete
+// signed in to TeamHub sees only their own questionnaire here (MyAssess).
 import { useEffect, useMemo, useState } from 'react';
 import { useHub } from '../lib/hub.jsx';
 import { fmtDate, ourGames, todayISO } from '../lib/util.js';
@@ -10,6 +11,7 @@ import { QUESTIONS, openGames, opponentOf } from '../lib/selfAssess.js';
 import { useRoster } from './Injury.jsx';
 import PageHead from '../components/PageHead.jsx';
 import Icon from '../components/Icon.jsx';
+import PlayerAssess from './PlayerAssess.jsx';
 
 export const assessUrl = (token) => `${location.origin}/a/${token}`;
 async function copy(H, text, done) {
@@ -17,6 +19,23 @@ async function copy(H, text, done) {
 }
 
 export default function SelfAssess() {
+  const H = useHub();
+  if (H.isAthlete) return <MyAssess />;
+  return <Staff />;
+}
+
+/** The signed-in athlete's own questionnaire: the page their personal link opens. */
+function MyAssess() {
+  const H = useHub();
+  const [token, setToken] = useState(undefined);
+  useEffect(() => { H.api.myAssessToken(H.teamId).then(setToken).catch(() => setToken(null)); }, [H.teamId]); // eslint-disable-line react-hooks/exhaustive-deps
+  return <><PageHead title="Self-assessment" />
+    {token === undefined ? <div className="loading">Loading…</div>
+      : !token ? <section className="card"><p className="muted" style={{ margin: 0 }}>Your account isn't linked to a player on {H.team.name}'s roster yet. Ask your coach.</p></section>
+      : <PlayerAssess api={H.api} token={token} embedded />}</>;
+}
+
+function Staff() {
   const H = useHub(); const t = H.team;
   const { roster } = useRoster();
   const [list, setList] = useState(null), [links, setLinks] = useState(null), [tab, setTab] = useState('game');

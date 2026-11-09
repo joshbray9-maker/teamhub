@@ -30,6 +30,8 @@ export const MENUS = [
 ];
 /** The only pages a sports med member sees (Josh, 2026-11-05). */
 export const MED_PAGES = ['master', 'injury', 'sc', 'athletes', 'profile'];
+/** The only pages an athlete sees (Josh, 2026-11-09); S&C shows them the calendar and leaderboard only. */
+export const ATHLETE_PAGES = ['master', 'chat', 'playbook', 'stats', 'sc', 'selfassess', 'profile'];
 export const SISTER = { gameday: 'playbook', playbook: 'gameday' };
 // per-team colours inside a master schedule (teams in one org often share a brand colour)
 export const ORG_PAL = ['#1f5fbf', '#c2410c', '#0e8a62', '#7c3aed', '#be123c', '#0a7c8c', '#a16207', '#c026d3'];

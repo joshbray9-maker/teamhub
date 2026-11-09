@@ -6,13 +6,14 @@ import Modal from './Modal.jsx';
 import Icon from './Icon.jsx';
 import { ago } from '../lib/util.js';
 
-const ROLES = { admin: 'Admin', coach: 'Coach', sportsmed: 'Sports med', viewer: 'Viewer' };
+const ROLES = { admin: 'Admin', coach: 'Coach', sportsmed: 'Sports med', viewer: 'Viewer', athlete: 'Athlete' };
 // what each access level can do (enforced in the database, see the RLS policies)
 const ROLE_INFO = {
   coach: 'Edits schedules, the S&C plan, team notes, injuries, testing and IPPs for their teams.',
   sportsmed: 'Only the Injury report (can edit), S&C, Athlete reports and Master schedule (view only).',
   viewer: 'Looks only: schedules and plans. No notes, injuries, test results or IPPs.',
   admin: 'Everything on every team, plus members, invite links and settings.',
+  athlete: 'One player\'s own account: Master schedule, Chat, Playbook, Stats, S&C schedule and leaderboard, and their self-assessment.',
 };
 
 /** Team access as switches: "All teams" on = null; off = only the teams switched on ([ids]). */
@@ -41,6 +42,12 @@ export default function MembersDialog({ org, close }) {
   const [list, setList] = useState(null);
   const [label, setLabel] = useState(''); const [email, setEmail] = useState(''); const [role, setRole] = useState('coach'); const [pick, setPick] = useState(null);
   const [made, setMade] = useState(null); // the link just created: { url, label }
+  // athlete links: one player, picked from a team's roster
+  const [aTeam, setATeam] = useState((teams[0] || {}).id || ''), [players, setPlayers] = useState(null), [aPlayer, setAPlayer] = useState('');
+  useEffect(() => {
+    if (role !== 'athlete' || !aTeam) return; setPlayers(null); setAPlayer('');
+    H.api.listPlayers(aTeam).then((l) => setPlayers(l.filter((p) => p.active !== false).sort((a, b) => a.name.localeCompare(b.name)))).catch((e) => { setPlayers([]); H.toast('Could not load the roster: ' + e.message); });
+  }, [role, aTeam]); // eslint-disable-line react-hooks/exhaustive-deps
   const [pub, setPub] = useState(!!org.public_schedule);
   const load = () => H.api.listMembers(org.id).then(setList).catch((e) => H.toast('Could not load members: ' + e.message));
   // reload each minute so "Online now" stays current while the dialog is open
@@ -59,6 +66,12 @@ export default function MembersDialog({ org, close }) {
   // email. Without one: a link-only invite. Either way the link is shown, ready to copy.
   const add = async (e) => {
     e.preventDefault(); const em = email.trim();
+    if (role === 'athlete') {
+      const p = (players || []).find((x) => x.id === aPlayer); if (!p) { H.toast('Pick the player this link is for.'); return; }
+      try { show({ url: `${location.origin}/join/${await H.api.createInviteLink(org.id, { label: label.trim() || p.name, role, player: p.id })}`, label: label.trim() || p.name }); setLabel(''); setAPlayer(''); load(); }
+      catch (x) { H.toast(x.message); }
+      return;
+    }
     if (em && !/^\S+@\S+\.\S+$/.test(em)) { H.toast('That email doesn\'t look right. Fix it or leave it empty.'); return; }
     if (role !== 'admin' && pick && !pick.length) { H.toast('Switch on at least one team, or All teams.'); return; }
     const teamIds = role === 'admin' ? null : pick;
@@ -80,12 +93,19 @@ export default function MembersDialog({ org, close }) {
       <label className="small">Who is it for? <span className="muted">(optional, just so you know which link is whose)</span>
         <input className="input" value={label} maxLength={80} placeholder="e.g. Coach Martin" onChange={(e) => setLabel(e.target.value)} /></label>
       <div className="small">Access level</div>
-      <div className="role-pick" role="radiogroup" aria-label="Access level">{['coach', 'sportsmed', 'viewer', 'admin'].map((k) => <label key={k} className={role === k ? 'on' : ''}>
+      <div className="role-pick" role="radiogroup" aria-label="Access level">{['coach', 'sportsmed', 'viewer', 'athlete', 'admin'].map((k) => <label key={k} className={role === k ? 'on' : ''}>
         <span><input type="radio" name="inv-role" checked={role === k} onChange={() => setRole(k)} /> <b>{ROLES[k]}</b></span><span className="muted small">{ROLE_INFO[k]}</span></label>)}</div>
-      {teams.length > 1 && <><div className="small">Teams they can see</div>
+      {role === 'athlete' ? <div className="mem-ath">
+        <label className="small">Team<select className="select" value={aTeam} onChange={(e) => setATeam(e.target.value)}>{teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select></label>
+        <label className="small">Player<select className="select" value={aPlayer} disabled={!players || !players.length} onChange={(e) => setAPlayer(e.target.value)}>
+          <option value="">{!players ? 'Loading…' : players.length ? 'Choose a player' : 'No players on this roster'}</option>
+          {(players || []).map((p) => <option key={p.id} value={p.id}>{p.num ? `#${p.num} ` : ''}{p.name}</option>)}</select></label>
+        <div className="muted small">The link signs them in as this player, on this team only. Make one link per player.</div>
+      </div>
+      : teams.length > 1 && <><div className="small">Teams they can see</div>
         {role === 'admin' ? <div className="muted small">Admins always see every team.</div> : <TeamPick teams={teams} value={pick} onChange={setPick} />}</>}
-      <label className="small">Their email <span className="muted">(optional: if they already have a TeamHub account they're added right away, no link needed)</span>
-        <input className="input" type="email" value={email} placeholder="coach@school.ca" onChange={(e) => setEmail(e.target.value)} /></label>
+      {role !== 'athlete' && <label className="small">Their email <span className="muted">(optional: if they already have a TeamHub account they're added right away, no link needed)</span>
+        <input className="input" type="email" value={email} placeholder="coach@school.ca" onChange={(e) => setEmail(e.target.value)} /></label>}
       <div><button className="btn primary" type="submit"><Icon n="plus" /> Create invite link</button></div>
       {made && <div className="mem-made">
         <div className="small"><b>Link ready{made.label ? ` for ${made.label}` : ''}.</b> Send it to them: it works once.</div>
@@ -95,8 +115,8 @@ export default function MembersDialog({ org, close }) {
     <div className="mem-h">People and links{list && <span className="seen on" style={{ marginLeft: 10 }}><i />{list.filter(isOnline).length} online now</span>}</div>
     {!list ? <div className="muted small">Loading…</div> : <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>{list.map((m) => { const me = m.user_id === H.user.id; return <div key={m.id || m.email + (m.user_id || '')} className="mem-row">
       <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{m.pending ? (m.label || m.email || 'Invite link') : m.email} {m.pending && m.label && m.email && <span className="muted small">{m.email} </span>}{m.pending && <span className="pill">{m.email ? 'Invited' : 'Link not used yet'}</span>}{m.pending && m.token && <button className="btn sm" style={{ marginLeft: 6 }} onClick={() => copy(joinLink(m), 'Invite link')} title="Copy the link to send to this person">Copy invite link</button>}{me && <span className="pill">You</span>}<Seen m={m} /></span>
-      <select className="select" value={m.role} disabled={me} onChange={(e) => act(() => H.api.setMemberRole(org.id, m, e.target.value))}>{Object.entries(ROLES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
-      <button className="btn sm mem-teams" disabled={m.role === 'admin' || teams.length < 2} onClick={() => editTeams(m)} title={m.role === 'admin' ? 'Admins see every team' : 'Choose which teams they see'}>{teamsLabel(m, teams)}</button>
+      <select className="select" value={m.role} disabled={me || m.role === 'athlete'} title={m.role === 'athlete' ? 'An athlete account stays an athlete: remove it and send a new link instead' : undefined} onChange={(e) => act(() => H.api.setMemberRole(org.id, m, e.target.value))}>{Object.entries(ROLES).filter(([k]) => k !== 'athlete' || m.role === 'athlete').map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+      <button className="btn sm mem-teams" disabled={m.role === 'admin' || m.role === 'athlete' || teams.length < 2} onClick={() => editTeams(m)} title={m.role === 'admin' ? 'Admins see every team' : 'Choose which teams they see'}>{teamsLabel(m, teams)}</button>
       {me ? <span /> : <button className="icon-btn" aria-label={`Remove ${who(m)}`} onClick={async () => { if (await H.confirm(m.pending ? 'Delete this invite link?' : 'Remove access?', m.pending ? `The link for ${who(m)} will stop working.` : `${who(m)} will no longer see ${org.name}.`, m.pending ? 'Delete link' : 'Remove')) act(() => H.api.removeMember(org.id, m), 'Removed'); }}><Icon n="x" /></button>}
     </div>; })}</div>}
     <div className="card" style={{ padding: 14 }}>

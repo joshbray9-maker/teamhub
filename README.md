@@ -184,6 +184,13 @@ test) to fix or add to in bulk: type, or paste rows from a spreadsheet (with the
 are matched by name: Date, CMJ, RSImod…). Each row goes into that day's testing session; a date with
 no session gets a new one, marked individual testing by default so it stays out of team averages.
 
+**Athlete accounts:** in Members & sharing, choose **Athlete**, pick the team and the player, and
+copy the invite link (one link per player, used once). The athlete creates an account and sees
+only that team's Master schedule, Chat (the team thread, posting under their roster name), Playbook,
+Stats, S&C (calendar and leaderboard) and their own Self-assessment. The database keeps them to
+viewer-level reads, hides shared Data Center tables and other athletes' emails and profiles, and
+never shows them notes, injuries, testing, IPPs or anyone else's self-assessments.
+
 **Self-assessments (admins and coaches only):** game-by-game player self-assessments. Every
 rostered player has one permanent personal link (`/a/<token>`, **Player links** tab: copy one, or
 **Copy all links**); send it once. After each game on the team's schedule, that game's questions open

@@ -531,3 +531,51 @@ test('programs: private to whoever wrote them, even from another admin', async (
   await assert.rejects(as(db, U.other, `insert into programs (owner, name) values ($1, 'mine')`, [U.josh]));
   await assert.rejects(as(db, U.other, `update programs set owner = $1`, [U.other]).then(() => as(db, U.josh, `update programs set owner = $1`, [U.other])));
 });
+
+test('athletes: a link for one player, viewer-level reads, own self-assessment, no other athletes', async () => {
+  const db = await setup();
+  const bcs = (await db.query(`select id from organizations where slug='bcs'`)).rows[0].id;
+  const [team, team2] = (await db.query(`select id from teams where org_id=$1 order by sort_order`, [bcs])).rows.map((r) => r.id);
+  const [{ id: pid }] = (await db.query(`insert into players (team_id, name, num) values ($1, 'Athlete HV01', '9') returning id`, [team])).rows;
+  const [{ id: pid2 }] = (await db.query(`insert into players (team_id, name) values ($1, 'Athlete HV02') returning id`, [team])).rows;
+  const [{ id: gid }] = (await db.query(`insert into games (team_id, date, time, home, away) values ($1, current_date - 1, '', 'Opponent U18', 'BCS Hockey') returning id`, [team])).rows;
+  await db.query(`insert into datasets (team_id, title, shared) values ($1, 'Shared table', true)`, [team]);
+  await db.query(`insert into coach_notes (team_id) values ($1) on conflict do nothing`, [team]);
+  // an athlete invite needs a player; its team comes from the player, whatever was sent
+  await assert.rejects(as(db, U.josh, `insert into invites (org_id, role) values ($1, 'athlete')`, [bcs]));
+  const [{ token }] = await as(db, U.josh, `insert into invites (org_id, label, role, player_id, team_ids, email) values ($1, 'HV01', 'athlete', $2, $3, 'x@x.test') returning token`, [bcs, pid, [team2]]);
+  const [info] = await as(db, null, 'select * from invite_info($1)', [token]);
+  assert.equal(info.role, 'athlete'); assert.equal(info.player, 'Athlete HV01'); assert.equal(info.teams.length, 1); assert.equal(info.email, null);
+  await assert.rejects(as(db, U.josh, `select invite_member($1, 'a@x.test', 'athlete')`, [bcs]), /Unknown role/);
+  // a second athlete account, to check athletes can't see each other
+  const [{ token: t2 }] = await as(db, U.josh, `insert into invites (org_id, role, player_id) values ($1, 'athlete', $2) returning token`, [bcs, pid2]);
+  await db.exec(`insert into auth.users values ('${U.other}', 'hv01@x.test'), ('${U.viewer}', 'hv02@x.test')`);
+  await as(db, U.other, 'select accept_invite($1)', [token]);
+  await as(db, U.viewer, 'select accept_invite($1)', [t2]);
+  const me = (sql, p) => as(db, U.other, sql, p);
+  assert.equal((await me('select player_id from memberships where user_id = $1', [U.other]))[0].player_id, pid);
+  // only the player's team, read-only like a viewer
+  assert.deepEqual((await me('select id from teams')).map((r) => r.id), [team]);
+  assert.equal((await me('select count(*)::int c from games where id = $1', [gid]))[0].c, 1);
+  assert.equal((await me('select count(*)::int c from games where team_id <> $1', [team]))[0].c, 0);
+  assert.equal((await me('select count(*)::int c from players where team_id = $1', [team]))[0].c, 2);
+  await assert.rejects(me(`insert into players (team_id, name) values ($1, 'X')`, [team]));
+  assert.equal((await me('select count(*)::int c from coach_notes'))[0].c, 0);
+  assert.equal((await me('select count(*)::int c from datasets'))[0].c, 0);
+  assert.equal((await me('select count(*)::int c from self_assessments'))[0].c, 0);
+  // staff members are visible, the other athlete isn't
+  const seen = (await me('select user_id from memberships')).map((r) => r.user_id);
+  assert.ok(seen.includes(U.josh) && seen.includes(U.other) && !seen.includes(U.viewer));
+  assert.equal((await me('select count(*)::int c from profiles where id = $1', [U.viewer]))[0].c, 0);
+  // team chat as their roster name; the staff board is closed
+  await me(`insert into chat_messages (team_id, body) values ($1, 'hi')`, [team]);
+  assert.equal((await db.query('select author from chat_messages')).rows[0].author, 'Athlete HV01');
+  await assert.rejects(me(`insert into chat_messages (team_id, channel, body) values ($1, 'staff', 'x')`, [team]));
+  // their own self-assessment, through their own link only
+  const [{ t: mine }] = await me('select my_assess_token($1) t', [team]);
+  assert.equal(mine, (await db.query('select token from self_assess_links where player_id=$1', [pid])).rows[0].token);
+  assert.equal((await me('select my_assess_token($1) t', [team2]))[0].t, null);
+  assert.equal((await as(db, U.josh, 'select my_assess_token($1) t', [team]))[0].t, null);
+  await me(`select assess_submit($1, $2, '{"rating":"4"}')`, [mine, gid]);
+  assert.equal((await db.query('select count(*)::int c from self_assessments where player_id=$1', [pid])).rows[0].c, 1);
+});
