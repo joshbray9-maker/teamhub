@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useHub } from '../lib/hub.jsx';
 import { fmtDate } from '../lib/util.js';
-import { TITLE, HEADER, SCALES, LEGENDS, PILLARS, PILLAR_HEAD, BASKETBALL, OPEN, BALANCED, COMMENTS, MONTHS, baseIpp, startIpp, ippProgress } from '../lib/ipp.js';
+import { SCALES, PILLAR_HEAD, OPEN, BALANCED, COMMENTS, MONTHS, baseIpp, startIpp, ippProgress, skillsFor, legendsFor, headerFor, pillarsFor, ippTitle } from '../lib/ipp.js';
 import { useRoster } from './Injury.jsx';
 import PageHead from '../components/PageHead.jsx';
 import Avatar from '../components/Avatar.jsx';
@@ -25,7 +25,7 @@ export default function Ipp() {
   if (!roster || !ipps) return <><PageHead title="IPP" /><div className="loading">Loading…</div></>;
 
   const save = async (pid, data) => { try { await H.api.saveIpp(t.id, pid, data); H.toast('IPP saved'); await load(); return true; } catch (e) { H.toast(/permission|row-level|policy/i.test(e.message || '') ? 'Only coaches and admins can save IPPs.' : 'Could not save. ' + e.message); return false; } };
-  if (sel === 'base') return <IppEditor key="base" mode="base" initial={baseIpp(ipps.base)} name="Base IPP" save={(d) => save(null, d)} back={() => setSel(null)} />;
+  if (sel === 'base') return <IppEditor key="base" mode="base" initial={baseIpp(ipps.base, t.sport)} name="Base IPP" save={(d) => save(null, d)} back={() => setSel(null)} />;
   const p = sel && roster.find((x) => x.id === sel);
   if (p) {
     const mine = ipps.players[p.id];
@@ -43,7 +43,7 @@ export default function Ipp() {
       <div className="card-head"><div><h2>Athletes</h2><span className="muted small">Each athlete has their own IPP. Open one to fill it in; a new one starts from the base IPP.</span></div>
         <input className="input ar-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, # or position" aria-label="Search athletes" /></div>
       {!roster.length ? <p className="muted small" style={{ margin: 0 }}>Add players in the Roster tab first.</p>
-        : <ul className="ar-list">{list.map((x) => { const m = ipps.players[x.id], pr = m ? ippProgress(m.data) : null; return <li key={x.id}><button className="ar-item" onClick={() => setSel(x.id)}>
+        : <ul className="ar-list">{list.map((x) => { const m = ipps.players[x.id], pr = m ? ippProgress(m.data, t.sport) : null; return <li key={x.id}><button className="ar-item" onClick={() => setSel(x.id)}>
           <Avatar p={x} url={photos[x.photo]} size={40} />
           <span className="ar-who"><b>{x.num ? `#${x.num} ` : ''}{x.name}</b><span className="muted small">{m ? `${pr.done} of ${pr.total} rated · updated ${fmtDate(m.updated_at.slice(0, 10))}${m.data.evalDate ? ' · evaluated ' + fmtDate(m.data.evalDate) : ''}` : 'Not started · starts from the base IPP'}</span></span>
           {m && <span className="ipp-bar" aria-hidden="true"><i style={{ width: `${Math.round((pr.done / pr.total) * 100)}%` }} /></span>}
@@ -55,6 +55,8 @@ export default function Ipp() {
 /* ---------- one IPP, laid out like the template ---------- */
 function IppEditor({ mode, player, photo, initial, isNew, name, save, reset, back }) {
   const H = useHub(); const t = H.team, base = mode === 'base';
+  const SKILLS = skillsFor(t.sport), HEADER = headerFor(t.sport), PILLARS = pillarsFor(t.sport), LEGENDS = legendsFor(t.sport);
+  const org = H.orgOf ? H.orgOf(t) : null;
   // fresh = a new IPP not saved yet: Save stays on, but leaving it untouched needs no warning
   const [data, setData] = useState(initial), [saved, setSaved] = useState(initial), [fresh, setFresh] = useState(!!isNew), [busy, setBusy] = useState(false);
   const [tip, setTip] = useState(null);
@@ -85,7 +87,7 @@ function IppEditor({ mode, player, photo, initial, isNew, name, save, reset, bac
     {fresh && !base && <div className="hint no-print">New IPP for {name}, started from the base IPP. Press Save to keep it.</div>}
 
     <article className="card ipp">
-      <header className="ipp-title"><Logo t={t} cls="gp-logo" /><h2>{TITLE}</h2>{player && <Avatar p={player} url={photo} size={52} />}</header>
+      <header className="ipp-title"><Logo t={t} cls="gp-logo" /><h2>{ippTitle(org && org.name)}</h2>{player && <Avatar p={player} url={photo} size={52} />}</header>
       <div className="ipp-head">{HEADER.map((h) => <label key={h.id} className="ipp-hf"><span>{h.label}</span>
         {box(h.note, '', base && PERSONAL.has(h.id) ? <input className="input" disabled placeholder="Filled per athlete" />
           : <input className="input" type={h.type === 'date' ? 'date' : 'text'} value={v(h.id)} onChange={set(h.id)} />)}</label>)}</div>
@@ -108,14 +110,14 @@ function IppEditor({ mode, player, photo, initial, isNew, name, save, reset, bac
       </section>)}
 
       <section className="ipp-pillar ipp-bball">
-        <h3 className="ipp-band">{BASKETBALL.title}</h3>
-        {BASKETBALL.groups.map((g) => <div key={g.id} className="ipp-group">
+        <h3 className="ipp-band">{SKILLS.title}</h3>
+        {SKILLS.groups.map((g) => <div key={g.id} className="ipp-group">
           <h4>{g.title}</h4>
-          <div className={`ipp-row ipp-colrow ${g.scoring ? 'score' : ''}`}><span /><span>{BASKETBALL.head.range}</span>{g.scoring && <><span>{BASKETBALL.head.open}</span><span>{BASKETBALL.head.bal}</span></>}<span>{BASKETBALL.head.comments}</span></div>
+          <div className={`ipp-row ipp-colrow ${g.scoring ? 'score' : ''}`}><span /><span>{SKILLS.head.range}</span>{g.scoring && <><span>{SKILLS.head.open}</span><span>{SKILLS.head.bal}</span></>}<span>{SKILLS.head.comments}</span></div>
           {g.rows.map((r) => <div key={r.id} className={`ipp-row ${g.scoring ? 'score' : ''}`}><span className="ipp-lbl">{r.label}</span>
-            {rate(r.id, r.note, 'skill', BASKETBALL.head.range)}
-            {g.scoring && (r.open ? pick(`${r.id}.open`, r.open.note, OPEN, BASKETBALL.head.open) : <span className="ipp-na" />)}
-            {g.scoring && (r.bal ? pick(`${r.id}.bal`, r.bal.note, BALANCED, BASKETBALL.head.bal) : <span className="ipp-na" />)}
+            {rate(r.id, r.note, 'skill', SKILLS.head.range)}
+            {g.scoring && (r.open ? pick(`${r.id}.open`, r.open.note, OPEN, SKILLS.head.open) : <span className="ipp-na" />)}
+            {g.scoring && (r.bal ? pick(`${r.id}.bal`, r.bal.note, BALANCED, SKILLS.head.bal) : <span className="ipp-na" />)}
             {obs(`${r.id}.obs`)}</div>)}
         </div>)}
       </section>

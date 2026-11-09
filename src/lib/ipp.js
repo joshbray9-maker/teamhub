@@ -81,14 +81,140 @@ export const COMMENTS = { id: 'comments', label: L('B109') };
 /** The monthly notes at the bottom of the template (October, November, December, NOTE). */
 export const MONTHS = ['B146', 'B156', 'B166', 'B173'].map((c) => ({ id: 'm.' + L(c).toLowerCase(), label: L(c) }));
 
-const ratingRows = () => [...PILLARS.flatMap((p) => p.groups.flatMap((g) => g.rows || [])), ...BASKETBALL.groups.flatMap((g) => g.rows)];
+/* ---------- other sports (Josh, 2026-11-09) ----------
+   The template is a basketball IPP. Hockey teams (BCS, Universel) and rugby get the same header,
+   pillars, legend scale, comments and months, with the few basketball-specific notes reworded and
+   their own skills section in place of the basketball four factors. Each skill box asks the
+   template's own question ("At what stage of skill development…") on the 1–5 skill scale. */
+const stage = (what) => `At what stage of skill development is the athlete's ability to ${what}?`;
+const SHOT_OPEN = 'Decide if the athlete has the knowledge, understanding and application in regards to shooting when open or contested.\n\nAn open shot is one where the player has:\n- time and space to pick a spot\n- a clear lane to the net\n\nA contested shot would be:\n- shooting through a defender’s stick or body\n- shooting while being checked or under a tight gap\n\nThis is a subjective rating by the coach. If it is a concern it is better to identify it so that the athlete can address the situation';
+const SHOT_BAL = 'Does the player stay in balance when shooting: weight transferred through the shot, edges under control, able to shoot in stride as well as stationary?\n\nIf the player tends to fall away, lose their edges or shoot off the wrong foot they would be considered off balance.\n\nThis is a subjective rating by the coach. If it is a tendency that needs to be corrected it should be noted';
+const sk = (prefix, gid, rows, extra) => rows.map(([label, what], i) => ({ id: `${prefix}.${gid}${i + 1}`, label, note: stage(what), def: '', ...(extra ? { open: { note: SHOT_OPEN }, bal: { note: SHOT_BAL } } : { open: null, bal: null }) }));
+const head = { range: L('G77'), open: L('J77'), bal: L('L77'), comments: L('N77') };
+const group = (prefix, id, title, rows, scoring) => ({ id, title, scoring: !!scoring, rows: sk(prefix, id, rows, scoring) });
+
+const HOCKEY = {
+  title: 'HOCKEY SKILLS', legend: 'Hockey Legend', head,
+  groups: [
+    group('h', 'skate', 'Skating', [
+      ['Forward stride', 'skate forward with a full, efficient stride'],
+      ['Backward skating', 'skate backward with speed and control'],
+      ['Crossovers and edges', 'use inside and outside edges and crossovers to turn and build speed'],
+      ['Starts and stops', 'start explosively and stop on both sides'],
+      ['Pivots and transitions', 'pivot between forward and backward skating without losing speed'],
+    ]),
+    group('h', 'shoot', 'Shoot the puck', [
+      ['Wrist shot', 'release an accurate wrist shot'],
+      ['Snap shot', 'release a quick snap shot'],
+      ['Slap shot / one-timer', 'shoot a slap shot or one-timer off a pass'],
+      ['Backhand', 'shoot on the backhand'],
+      ['Around the net', 'score around the net: tips, deflections and rebounds'],
+      ['Breakaways and shootouts', 'finish on a breakaway or in a shootout'],
+    ], true),
+    group('h', 'puck', 'Control the puck', [
+      ['Stickhandling in open ice', 'handle the puck at speed in open ice'],
+      ['Puck protection', 'protect the puck in traffic and along the boards'],
+      ['Forehand pass', 'pass the puck on the forehand'],
+      ['Backhand pass', 'pass the puck on the backhand'],
+      ['Receiving passes', 'receive passes on the forehand and backhand, in stride'],
+    ]),
+    group('h', 'battle', 'Battles', [
+      ['Puck retrieval', 'win races and retrieve loose pucks'],
+      ['Board battles', 'compete for and win pucks along the boards'],
+      ['Net-front presence', 'establish and hold position in front of the net'],
+      ['Body contact', 'give and take body contact safely and effectively'],
+    ]),
+    group('h', 'off', 'Offence', [
+      ['Support and spacing', 'support the puck carrier and find open ice in relation to teammates, defenders and the puck'],
+      ['Moving without the puck', 'move without the puck to get open'],
+      ['Zone entries and exits', 'carry, pass or chip the puck in and out of zones'],
+    ]),
+    group('h', 'def', 'Defence', [
+      ['Gap control', 'keep the right gap on the puck carrier'],
+      ['Angling', 'angle the puck carrier to the boards and take away time and space'],
+      ['Defensive-zone positioning', 'read the play and hold position in the defensive zone'],
+      ['Stick detail', 'take away passing lanes with the stick and block shots'],
+      ['Backchecking', 'track back hard and pick up a check in transition'],
+      ['Penalties', 'play with discipline and use penalties wisely'],
+    ]),
+  ],
+};
+
+const RUGBY = {
+  title: 'RUGBY SKILLS', legend: 'Rugby Legend', head,
+  groups: [
+    group('rg', 'hand', 'Handling', [
+      ['Catch and pass left', 'catch and pass to the left'],
+      ['Catch and pass right', 'catch and pass to the right'],
+      ['Passing under pressure', 'pass accurately under pressure and in contact'],
+      ['Offloading', 'offload in or out of the tackle'],
+    ]),
+    group('rg', 'carry', 'Ball carrying', [
+      ['Running lines', 'pick running lines and attack space'],
+      ['Footwork and evasion', 'beat a defender with footwork, a step or a swerve'],
+      ['Contact and leg drive', 'carry into contact with good body height and leg drive'],
+      ['Ball presentation', 'go to ground and present the ball to support players'],
+    ]),
+    group('rg', 'ruck', 'Breakdown', [
+      ['Clean-out', 'clear out rucks with good body position'],
+      ['Contesting the ball', 'compete for the ball on the ground and win turnovers'],
+      ['Support play', 'arrive quickly in support of the ball carrier'],
+    ]),
+    group('rg', 'def', 'Defence', [
+      ['Tackle technique', 'tackle safely and effectively on both shoulders'],
+      ['Line speed', 'get off the line together and close space'],
+      ['Line connection', 'stay connected and communicate in the defensive line'],
+      ['Tackle completion', 'complete tackles and get back to their feet'],
+    ]),
+    group('rg', 'kick', 'Kicking and catching', [
+      ['Kicking', 'kick out of hand and from the ground (punt, grubber, box, place kick)'],
+      ['High ball', 'catch the high ball under pressure'],
+      ['Kick chase', 'chase kicks and put pressure on the receiver'],
+    ]),
+    group('rg', 'set', 'Set piece and restarts', [
+      ['Lineout', 'perform their role in the lineout (throwing, lifting or jumping)'],
+      ['Scrum', 'perform their role in the scrum'],
+      ['Restarts', 'kick or receive restarts'],
+    ]),
+    group('rg', 'game', 'Game understanding', [
+      ['Decision making', 'read the game and choose the right option'],
+      ['Discipline', 'play within the laws and avoid penalties'],
+    ]),
+  ],
+};
+BASKETBALL.legend = L('B70');
+const SKILLS = { basketball: BASKETBALL, hockey: HOCKEY, rugby: RUGBY };
+/** The sport skills section for a team's sport (the template's basketball one for any other sport). */
+export const skillsFor = (sport) => SKILLS[sport] || BASKETBALL;
+/** The legends for a sport: the pillars' scale and the sport's skill scale. */
+export const legendsFor = (sport) => [LEGENDS[0], { title: skillsFor(sport).legend, scale: 'skill' }];
+
+// the template notes that only make sense for basketball, reworded per sport
+const NOTE_FIX = {
+  hockey: { position: 'What position does the athlete play? C, LW, RW, D or G', team: 'Team or age group (e.g. U18)', r36: 'How quickly can the athlete skate the length of the ice? See the tab Physical for help with this area' },
+  rugby: { position: 'What position does the athlete play? e.g. prop, hooker, lock, back row, scrum-half, fly-half, centre, wing, fullback', team: 'Team or age group (e.g. U18)', r36: 'How quickly can the athlete cover the ground in open play? See the tab Physical for help with this area' },
+};
+const fixNote = (sport, x) => {
+  const f = NOTE_FIX[sport]; if (!f) return x;
+  let note = f[x.id] || x.note;
+  if (x.id === 'r25') note = note.replace('basketball vacations/breaks', `breaks from ${sport}`);
+  return note === x.note ? x : { ...x, note };
+};
+/** The header boxes for a sport. */
+export const headerFor = (sport) => HEADER.map((h) => fixNote(sport, h));
+/** The four pillars for a sport. */
+export const pillarsFor = (sport) => PILLARS.map((p) => ({ ...p, groups: p.groups.map((g) => ({ ...g, ...(g.rows ? { rows: g.rows.map((r) => fixNote(sport, r)) } : {}) })) }));
+/** The IPP title: the template's for BCS (Bishop's College School), the organization's own name otherwise. */
+export const ippTitle = (orgName) => (!orgName || /^bcs$|college school/i.test(orgName) ? TITLE : `${orgName} - IPP`);
+
+const ratingRows = (sport) => [...PILLARS.flatMap((p) => p.groups.flatMap((g) => g.rows || [])), ...skillsFor(sport).groups.flatMap((g) => g.rows)];
 
 /** The template's own values (coach, province, handedness, the daily training environment 4s). */
-export function templateDefaults() {
+export function templateDefaults(sport) {
   const out = {};
   HEADER.forEach((h) => { if (h.def) out[h.id] = h.def; });
   PILLARS.forEach((p) => p.groups.forEach((g) => (g.measures || []).forEach((m) => { if (m.def) out[m.id] = m.def; })));
-  ratingRows().forEach((r) => { if (r.def) out[r.id] = r.def; });
+  ratingRows(sport).forEach((r) => { if (r.def) out[r.id] = r.def; });
   return out;
 }
 
@@ -96,8 +222,8 @@ export function templateDefaults() {
 const PERSONAL = new Set(['athlete', 'position', 'team', 'age', 'evalDate']);
 
 /** The team's base IPP: the template's values with the coach's base edits on top. */
-export function baseIpp(base) {
-  const out = { ...templateDefaults(), ...(base || {}) };
+export function baseIpp(base, sport) {
+  const out = { ...templateDefaults(sport), ...(base || {}) };
   PERSONAL.forEach((k) => delete out[k]);
   return out;
 }
@@ -105,13 +231,13 @@ export function baseIpp(base) {
 /** A new athlete IPP: the base IPP, with the athlete's name, position and team from the roster. */
 export function startIpp(base, player, team) {
   const src = { name: player.name || '', position: player.position || '', team: (team && team.name) || '' };
-  const out = baseIpp(base);
+  const out = baseIpp(base, team && team.sport);
   HEADER.forEach((h) => { if (h.from && src[h.from]) out[h.id] = src[h.from]; });
   return out;
 }
 
 /** How far along an IPP is: rating boxes filled out of all of them. */
-export function ippProgress(data) {
-  const rows = ratingRows();
+export function ippProgress(data, sport) {
+  const rows = ratingRows(sport);
   return { done: rows.filter((r) => /^[1-5]$/.test(String((data || {})[r.id] || ''))).length, total: rows.length };
 }
