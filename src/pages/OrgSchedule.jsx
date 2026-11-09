@@ -1,7 +1,7 @@
 // Organization master schedule: every team's games + events in one calendar and list.
 // Used inside the app and, read-only, on the public /schedule/:org page.
 import { useState } from 'react';
-import { fmtDate, fmtTime, daysUntil, todayISO, iso, MONTHS, DOW, ORG_PAL, hasScore, isUsT, store } from '../lib/util.js';
+import { fmtDate, fmtTime, daysUntil, todayISO, iso, MONTHS, DOW, ORG_PAL, hasScore, isUsT, store, DOW_MON, monthGrid } from '../lib/util.js';
 import Icon from '../components/Icon.jsx';
 import Modal from '../components/Modal.jsx';
 
@@ -55,8 +55,7 @@ export default function OrgSchedule({ orgKey, orgName, teams, data, onOpenTeam, 
   // calendar
   const { y, m, sel } = cal, map = {};
   items.forEach((x) => (map[x.date] = map[x.date] || []).push(x));
-  const first = new Date(y, m, 1), start = new Date(y, m, 1 - first.getDay());
-  const weeks = Math.ceil((first.getDay() + new Date(y, m + 1, 0).getDate()) / 7);
+  const { start, weeks } = monthGrid(y, m);
   const move = (n) => { let mm = m + n, yy = y; if (mm < 0) { mm = 11; yy--; } if (mm > 11) { mm = 0; yy++; } setCal({ ...cal, y: yy, m: mm }); };
   const cells = [];
   for (let i = 0; i < weeks * 7; i++) {
@@ -88,7 +87,7 @@ export default function OrgSchedule({ orgKey, orgName, teams, data, onOpenTeam, 
             <span className="cal-title">{MONTHS[m]} {y}</span>
             <button className="icon-btn" onClick={() => move(1)} aria-label="Next month"><Icon n="chev" /></button>
             <button className="btn sm ghost" onClick={() => { const d = new Date(); setCal({ y: d.getFullYear(), m: d.getMonth(), sel: todayISO() }); }}>Today</button></div></div>
-        <div className="cal-dow">{DOW.map((d) => <div key={d}>{d}</div>)}</div>
+        <div className="cal-dow">{DOW_MON.map((d) => <div key={d}>{d}</div>)}</div>
         <div className="cal-grid">{cells}</div>
         <div className="agenda"><div className="agenda-head"><b>{fmtDate(sel, true)}</b></div>
           {day.length ? day.map((x) => <Row key={x.key} x={x} onOpen={open} />) : <div className="muted small">Nothing on this day.</div>}</div>

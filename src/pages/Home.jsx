@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useHub } from '../lib/hub.jsx';
-import { fmtDate, fmtTime, ago, daysUntil, todayISO, iso, fromISO, MON, MONTHS, DOW, hasScore, gameView, ourGames, isUsT, leagueLabel, uid, hostOf } from '../lib/util.js';
+import { fmtDate, fmtTime, ago, daysUntil, todayISO, iso, fromISO, MON, MONTHS, DOW, hasScore, gameView, ourGames, isUsT, leagueLabel, uid, hostOf, DOW_MON, monthGrid } from '../lib/util.js';
 import Icon from '../components/Icon.jsx';
 import { GameDialog, GameForm, EventForm, EventView, LeagueUpdate, ImportIcs, addCandidate } from '../components/Dialogs.jsx';
 import PageHead from '../components/PageHead.jsx';
@@ -59,8 +59,7 @@ function Calendar({ games, openGame }) {
   H.tdata.events.forEach((e) => add(e.date, { kind: e.kind || 'event', time: e.time || '', title: e.title, open: () => H.openDialog((c) => (H.isCoach ? <EventForm e={e} close={c} /> : <EventView e={e} close={c} />)) }));
   Object.values(map).forEach((a) => a.sort((x, y) => (x.time || '99').localeCompare(y.time || '99')));
   const { y, m, sel } = cal, today = todayISO();
-  const first = new Date(y, m, 1), start = new Date(y, m, 1 - first.getDay());
-  const weeks = Math.ceil((first.getDay() + new Date(y, m + 1, 0).getDate()) / 7);
+  const { start, weeks } = monthGrid(y, m);
   const move = (n) => { let mm = m + n, yy = y; if (mm < 0) { mm = 11; yy--; } if (mm > 11) { mm = 0; yy++; } setCal({ ...cal, y: yy, m: mm }); };
   const cells = [];
   for (let i = 0; i < weeks * 7; i++) {
@@ -79,7 +78,7 @@ function Calendar({ games, openGame }) {
         <button className="icon-btn" onClick={() => move(1)} aria-label="Next month"><Icon n="chev" /></button>
         <button className="btn sm ghost" onClick={() => { const d = new Date(); setCal({ y: d.getFullYear(), m: d.getMonth(), sel: todayISO() }); }}>Today</button>
         {H.isCoach && <button className="btn sm" onClick={() => H.openDialog((c) => <ImportIcs close={c} />)} title="Import a calendar file (.ics)"><Icon n="plus" /> Import .ics</button>}</div></div>
-    <div className="cal-dow">{DOW.map((d) => <div key={d}>{d}</div>)}</div>
+    <div className="cal-dow">{DOW_MON.map((d) => <div key={d}>{d}</div>)}</div>
     <div className="cal-grid">{cells}</div>
     <div className="legend"><span><i style={{ background: 'var(--accent)' }} />Game</span><span><i style={{ background: 'var(--good)' }} />Practice</span><span><i style={{ background: 'var(--muted)' }} />Event</span></div>
     <div className="agenda"><div className="agenda-head"><b>{fmtDate(sel, true)}</b>{H.isCoach && <button className="btn sm" onClick={() => H.openDialog((c) => <EventForm date={sel} close={c} />)}><Icon n="plus" /> Add</button>}</div>

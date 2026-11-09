@@ -55,6 +55,12 @@ export function fromISO(s) { const [y, m, d] = s.split('-').map(Number); return 
 export const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 export const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+// Month calendars run Monday to Sunday: the weekday headings, and where a month's grid starts and how many weeks it spans
+export const DOW_MON = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+export function monthGrid(y, m) {
+  const lead = (new Date(y, m, 1).getDay() + 6) % 7;
+  return { start: new Date(y, m, 1 - lead), weeks: Math.ceil((lead + new Date(y, m + 1, 0).getDate()) / 7) };
+}
 export function fmtDate(s, long) { if (!s) return ''; const d = fromISO(s); return long ? `${DOW[d.getDay()]}, ${MON[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}` : `${DOW[d.getDay()]} ${MON[d.getMonth()]} ${d.getDate()}`; }
 export function fmtTime(t) { if (!t) return ''; const [H, M] = t.split(':').map(Number); const ap = H >= 12 ? 'pm' : 'am'; return `${((H + 11) % 12) + 1}:${pad(M)} ${ap}`; }
 export function ago(ts) { const s = (Date.now() - ts) / 1000; if (s < 60) return 'just now'; if (s < 3600) return Math.floor(s / 60) + ' min ago'; if (s < 86400) return Math.floor(s / 3600) + ' h ago'; const d = Math.floor(s / 86400); return d === 1 ? 'yesterday' : d + ' days ago'; }
