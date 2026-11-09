@@ -65,12 +65,15 @@ function Side({ onNavigate }) {
       <button className="ts-btn" onClick={() => setOpen(!open)} aria-haspopup="true" aria-expanded={open}>
         <Logo t={o ? { name: o.name, logo: o.logo_url } : t} />
         <span className="ts-txt"><span className="ts-name">{o ? o.name : t ? t.name : 'TeamHub'}</span>
-          <span className="ts-meta">{o ? `Master schedule · ${ots.length} team${ots.length === 1 ? '' : 's'}` : t ? `${SPORTS[t.sport] || ''} · ${LEVELS[t.level] || ''}` : 'No team yet'}</span></span>
+          <span className="ts-meta">{o && o.programs ? 'Only you' : o ? `Master schedule · ${ots.length} team${ots.length === 1 ? '' : 's'}` : t ? `${SPORTS[t.sport] || ''} · ${LEVELS[t.level] || ''}` : 'No team yet'}</span></span>
         <Icon n="down" />
       </button>
       {open && <div className="pop" role="menu">
         {H.teamList.map((x) => <button key={x.id} className="pop-item" role="menuitem" onClick={pick(() => H.selectTeam(x.id))}>
           <Logo t={x} /><span className="ts-txt">{x.name}<span className="ts-meta">{SPORTS[x.sport] || ''} · {LEVELS[x.level] || ''}</span></span>{x.id === H.teamId && !o && <Icon n="check" />}</button>)}
+        {H.isOwner && <><div className="pop-sep" />
+          <button className="pop-item" role="menuitem" onClick={pick(() => H.openOrg('programs'))}>
+            <span className="logo"><Icon n="clipboard" /></span><span className="ts-txt">Programs<span className="ts-meta">Only you · program builder</span></span>{o && o.programs && <Icon n="check" />}</button></>}
         {orgsWithTeams.length > 0 && <><div className="pop-sep" /><div className="pop-label">Master schedules</div>
           {H.isOwner && <button className="pop-item" role="menuitem" onClick={pick(() => H.openOrg('all'))}>
             <span className="logo"><Icon n="dumbbell" /></span><span className="ts-txt">All teams · S&C<span className="ts-meta">Only you · {H.teams.length} teams</span></span>{o && o.all && <Icon n="check" />}</button>}
@@ -85,7 +88,11 @@ function Side({ onNavigate }) {
         <button className="pop-item dim" onClick={pick(() => H.api.signOut())}><Icon n="user" /> Sign out</button>
       </div>}
     </div>
-    {o ? <>
+    {o && o.programs ? <>
+      <div className="side-label">Programs</div>
+      <ul className="menu"><li className="on"><a href="#" onClick={(e) => e.preventDefault()}><Icon n="clipboard" /><span>Program builder</span></a></li></ul>
+      <p className="muted small" style={{ margin: '4px 12px' }}>Only you see your programs. Switch back to a team from the menu above.</p>
+    </> : o ? <>
       <div className="side-label">Schedule</div>
       <ul className="menu"><li className="on"><a href="#" onClick={(e) => e.preventDefault()}><Icon n={o.all ? 'dumbbell' : 'cal'} /><span>{o.all ? 'All teams · S&C' : 'Master schedule'}</span></a></li></ul>
       <div className="side-label">Teams</div>

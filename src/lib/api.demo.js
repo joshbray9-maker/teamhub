@@ -159,6 +159,15 @@ export const api = {
   async listScats(teamId) { await load(); const ids = new Set((D(teamId).players || []).map((p) => p.id)); return clone((db.scats || []).filter((t) => ids.has(t.player_id))); },
   async saveScat(t) { const l = (db.scats = db.scats || []), now = new Date().toISOString(); const [r] = upsert(l, [{ created_at: now, ...t, updated_at: now }], 'sc'); save(); return clone(r); },
   async deleteScat(id) { db.scats = (db.scats || []).filter((t) => t.id !== id); save(); },
+  async listPrograms() { await load(); return clone([...(db.programs || [])].sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1))); },
+  async saveProgram(p) {
+    const l = (db.programs = db.programs || []), now = new Date().toISOString();
+    const old = p.id && l.find((x) => x.id === p.id);
+    const r = { ...(old || { id: 'pg' + uid(), created_at: now }), name: p.name || 'Untitled program', folder: p.folder || '', data: clone(p.data || {}), updated_at: now };
+    if (old) l[l.indexOf(old)] = r; else l.push(r);
+    save(); return clone(r);
+  },
+  async deleteProgram(id) { db.programs = (db.programs || []).filter((x) => x.id !== id); save(); },
   async listIpps(teamId) { await load(); const x = D(teamId).ipps || {}; const { base, ...ps } = x; return clone({ base: base ? base.data : null, baseAt: base ? base.updated_at : null, players: ps }); },
   async saveIpp(teamId, playerId, data) { const x = (D(teamId).ipps = D(teamId).ipps || {}); x[playerId || 'base'] = { data: clone(data), updated_at: new Date().toISOString() }; save(); },
   async deleteIpp(teamId, playerId) { delete (D(teamId).ipps || {})[playerId || 'base']; save(); },

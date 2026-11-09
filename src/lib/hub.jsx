@@ -55,7 +55,10 @@ export function HubProvider({ api, user, children }) {
   // UI only; what it shows is still limited by RLS to the teams this user can read.
   const withTeams = orgs.filter((o) => teams.some((t) => t.org_id === o.id));
   const isOwner = withTeams.length > 0 && withTeams.every((o) => o.role === 'admin');
-  const viewOrg = orgId === 'all' ? (isOwner ? { id: 'all', name: 'All teams · S&C', all: true, role: 'admin' } : null) : orgId ? orgs.find((o) => o.id === orgId) || null : null;
+  // 'programs' = Josh's own program builder, outside any team (also owner-only)
+  const viewOrg = orgId === 'all' ? (isOwner ? { id: 'all', name: 'All teams · S&C', all: true, role: 'admin' } : null)
+    : orgId === 'programs' ? (isOwner ? { id: 'programs', name: 'Programs', programs: true, role: 'admin' } : null)
+    : orgId ? orgs.find((o) => o.id === orgId) || null : null;
 
   // pick a team once loaded
   useEffect(() => { if (hub && !team) { const first = teamList[0]; setTeamId(first ? first.id : null); } }, [hub, team, teamList]);
@@ -82,7 +85,7 @@ export function HubProvider({ api, user, children }) {
   }, [api, user]);
 
   const reloadOrg = useCallback(async () => {
-    if (!orgId) return; const ids = orgTeams(orgId).map((t) => t.id);
+    if (!orgId || orgId === 'programs') return; const ids = orgTeams(orgId).map((t) => t.id);
     setOrgData(await api.loadOrgData(ids));
   }, [api, orgId, orgTeams]);
   useEffect(() => { if (orgId && hub) reloadOrg().catch((e) => toast('Could not load schedule: ' + e.message)); }, [orgId, hub, reloadOrg, toast]);

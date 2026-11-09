@@ -22,6 +22,7 @@ import OrgSchedule from './pages/OrgSchedule.jsx';
 import MasterWeek from './pages/MasterWeek.jsx';
 import AllTeamsSC from './pages/AllTeamsSC.jsx';
 import PlayerInfo from './pages/PlayerInfo.jsx';
+import Programs from './pages/Programs.jsx';
 import PageHead from './components/PageHead.jsx';
 import TeamForm from './components/TeamForm.jsx';
 import Icon from './components/Icon.jsx';
@@ -38,6 +39,7 @@ export default function App() {
 function Page() {
   const H = useHub();
   if (!H.hub) return <div className="loading">Loading TeamHub…</div>;
+  if (H.viewOrg && H.viewOrg.programs) return <Programs />;
   if (H.viewOrg && H.viewOrg.all) return <AllTeamsSC />;
   if (H.viewOrg) {
     const ts = H.orgTeams(H.viewOrg.id);

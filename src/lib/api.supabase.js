@@ -183,6 +183,14 @@ export const api = {
   },
   async deleteScat(id) { ok(await supabase.from('scat_tests').delete().eq('id', id)); },
 
+  /* ---------- programs (private to their author) ---------- */
+  async listPrograms() { return ok(await supabase.from('programs').select('*').order('updated_at', { ascending: false })); },
+  async saveProgram(p) {
+    const row = { name: p.name || 'Untitled program', folder: p.folder || '', data: p.data || {} };
+    return ok(p.id ? await supabase.from('programs').update(row).eq('id', p.id).select().single() : await supabase.from('programs').insert(row).select().single());
+  },
+  async deleteProgram(id) { ok(await supabase.from('programs').delete().eq('id', id)); },
+
   /* ---------- IPPs (staff only) ---------- */
   /** The team's IPPs: { base: data|null, players: { [player_id]: { data, updated_at } } }. */
   async listIpps(teamId) {

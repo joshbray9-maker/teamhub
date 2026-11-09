@@ -513,3 +513,21 @@ test('activity: people record their own last-seen time; only their org admins re
   await as(db, null, 'select touch_seen()').catch(() => {});
   assert.equal((await db.query('select count(*)::int c from user_activity')).rows[0].c, 1);
 });
+
+test('programs: private to whoever wrote them, even from another admin', async () => {
+  const db = await setup();
+  const bcs = (await db.query(`select id from organizations where slug='bcs'`)).rows[0].id;
+  await db.exec(`insert into auth.users values ('${U.other}', 'admin2@x.test')`);
+  await db.query(`insert into memberships (org_id, user_id, role) values ($1, $2, 'admin')`, [bcs, U.other]);
+  const [p] = await as(db, U.josh, `insert into programs (name, data) values ('Phase 2', '{"sheets":[]}') returning id, owner`);
+  assert.equal(p.owner, U.josh);
+  assert.equal((await as(db, U.josh, 'select count(*)::int c from programs'))[0].c, 1);
+  // another admin of the same org, and a signed-out visitor, see nothing and change nothing
+  assert.equal((await as(db, U.other, 'select count(*)::int c from programs'))[0].c, 0);
+  await as(db, U.other, `update programs set name = 'x'`); await as(db, U.other, 'delete from programs');
+  assert.equal((await db.query('select name from programs')).rows[0].name, 'Phase 2');
+  assert.equal((await as(db, null, 'select count(*)::int c from programs'))[0].c, 0);
+  // nobody writes a program in someone else's name
+  await assert.rejects(as(db, U.other, `insert into programs (owner, name) values ($1, 'mine')`, [U.josh]));
+  await assert.rejects(as(db, U.other, `update programs set owner = $1`, [U.other]).then(() => as(db, U.josh, `update programs set owner = $1`, [U.other])));
+});
