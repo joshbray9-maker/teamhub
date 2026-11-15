@@ -12,3 +12,17 @@ export async function pdfTextItems(file, maxPages = 20) {
   }
   return items;
 }
+
+/** Text items per page for the Program Builder importer: { str, x0, x1, y } with y from the page top. */
+export async function pdfPages(file) {
+  const pdfjs = await import('pdfjs-dist');
+  pdfjs.GlobalWorkerOptions.workerSrc = (await import('pdfjs-dist/build/pdf.worker.min.mjs?url')).default;
+  const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()), isEvalSupported: false }).promise;
+  const pages = [];
+  for (let n = 1; n <= doc.numPages; n++) {
+    const page = await doc.getPage(n), h = page.getViewport({ scale: 1 }).height;
+    pages.push({ items: (await page.getTextContent()).items.filter((it) => typeof it.str === 'string')
+      .map((it) => ({ str: it.str, x0: it.transform[4], x1: it.transform[4] + it.width, y: h - it.transform[5] })) });
+  }
+  return pages;
+}
