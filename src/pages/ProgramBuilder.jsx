@@ -8,7 +8,7 @@
 // it in place (inputs are uncontrolled), so a keystroke doesn't redraw every sheet; anything
 // structural (add / move / delete, undo, import) goes through `act`, which records an undo step
 // and remounts the inputs. Every change keeps a draft in this browser and saves itself shortly after.
-import { useEffect, useReducer, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useReducer, useRef, useState } from 'react';
 import { useHub } from '../lib/hub.jsx';
 import { store } from '../lib/util.js';
 import {
@@ -344,7 +344,22 @@ function Groups({ T, cur, folds, foldKey, chipDown, open, toggle, rename, up, do
 }
 
 /* ---------- one training day as a sheet of paper ---------- */
-const In = ({ v, set, cls = '', ph }) => <input className={cls} defaultValue={v} placeholder={ph || ''} aria-label={ph} onChange={(e) => set(e.target.value)} />;
+// A sheet text box: one line that wraps onto more lines when the words don't fit, growing the
+// cell (and its row) to show them all. Enter leaves the box instead of adding a line break.
+const fitHeight = (el) => { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; };
+let resizer = null; // one observer for every box: refit when a column's width changes
+const watch = (el) => {
+  if (!resizer && typeof ResizeObserver !== 'undefined') resizer = new ResizeObserver((es) => es.forEach((e) => { if (e.target.dataset.w !== String(e.contentRect.width)) { e.target.dataset.w = e.contentRect.width; fitHeight(e.target); } }));
+  if (resizer) resizer.observe(el);
+  return () => resizer && resizer.unobserve(el);
+};
+function In({ v, set, cls = '', ph }) {
+  const ref = useRef(null);
+  useLayoutEffect(() => { fitHeight(ref.current); return watch(ref.current); }, []);
+  return <textarea ref={ref} rows={1} className={cls} defaultValue={v} placeholder={ph || ''} aria-label={ph}
+    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}
+    onChange={(e) => { const x = e.target.value.replace(/\r?\n/g, ' '); if (x !== e.target.value) e.target.value = x; fitHeight(e.target); set(x); }} />;
+}
 function Day({ d, di, nd, typed, act, pdf, del, days }) {
   const nw = d.weeks.length, ed = (fn) => (v) => typed(() => fn(v));
   const ab = (label, title, fn, dis) => <button className="pb-ab" title={title} aria-label={title} disabled={dis} onClick={fn}>{label}</button>;
