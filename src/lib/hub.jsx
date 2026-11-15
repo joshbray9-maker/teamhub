@@ -59,7 +59,7 @@ export function HubProvider({ api, user, children }) {
   const isOwner = withTeams.length > 0 && withTeams.every((o) => o.role === 'admin');
   // 'programs' = Josh's own program builder, outside any team (also owner-only)
   const viewOrg = orgId === 'all' ? (isOwner ? { id: 'all', name: 'All teams · S&C', all: true, role: 'admin' } : null)
-    : orgId === 'programs' ? (isOwner ? { id: 'programs', name: 'Programs', programs: true, role: 'admin' } : null)
+    : orgId === 'programs' ? (isOwner ? { id: 'programs', name: 'Program Builder', programs: true, role: 'admin' } : null)
     : orgId ? orgs.find((o) => o.id === orgId) || null : null;
 
   // pick a team once loaded

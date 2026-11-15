@@ -73,7 +73,7 @@ function Side({ onNavigate }) {
           <Logo t={x} /><span className="ts-txt">{x.name}<span className="ts-meta">{SPORTS[x.sport] || ''} · {LEVELS[x.level] || ''}</span></span>{x.id === H.teamId && !o && <Icon n="check" />}</button>)}
         {H.isOwner && <><div className="pop-sep" />
           <button className="pop-item" role="menuitem" onClick={pick(() => H.openOrg('programs'))}>
-            <span className="logo"><Icon n="clipboard" /></span><span className="ts-txt">Programs<span className="ts-meta">Only you · program builder</span></span>{o && o.programs && <Icon n="check" />}</button></>}
+            <span className="logo"><Icon n="clipboard" /></span><span className="ts-txt">Program Builder<span className="ts-meta">Only you · training programs</span></span>{o && o.programs && <Icon n="check" />}</button></>}
         {orgsWithTeams.length > 0 && <><div className="pop-sep" /><div className="pop-label">Master schedules</div>
           {H.isOwner && <button className="pop-item" role="menuitem" onClick={pick(() => H.openOrg('all'))}>
             <span className="logo"><Icon n="dumbbell" /></span><span className="ts-txt">All teams · S&C<span className="ts-meta">Only you · {H.teams.length} teams</span></span>{o && o.all && <Icon n="check" />}</button>}
@@ -89,8 +89,8 @@ function Side({ onNavigate }) {
       </div>}
     </div>
     {o && o.programs ? <>
-      <div className="side-label">Programs</div>
-      <ul className="menu"><li className="on"><a href="#" onClick={(e) => e.preventDefault()}><Icon n="clipboard" /><span>Program builder</span></a></li></ul>
+      <div className="side-label">Program Builder</div>
+      <ul className="menu"><li className="on"><a href="#" onClick={(e) => e.preventDefault()}><Icon n="clipboard" /><span>Program Builder</span></a></li></ul>
       <p className="muted small" style={{ margin: '4px 12px' }}>Only you see your programs. Switch back to a team from the menu above.</p>
     </> : o ? <>
       <div className="side-label">Schedule</div>
