@@ -16,6 +16,19 @@
 // spreadsheet Programs page and are left alone.
 
 export const META_NAME = '__program_builder__';
+
+/* ---------- colour palettes for the sheets and the PDF (Josh, 2026-11-15) ----------
+   BCS purple is the prototype's printout; Universel green uses the Universel logo's green
+   (#229244) and black (#231F20). title = title bar, bar = section bars, line = thick week
+   dividers + outer border, tag = the top-right tag box. Each team tab keeps its own choice;
+   a team without one starts on Universel green if its name says Universel, else BCS purple. */
+export const PALETTES = {
+  bcs: { label: 'BCS purple', title: '#2E1250', bar: '#2E1250', line: '#2E1250', lav: '#BFAED9', sec: '#E4DCF0', alt: '#F6F2FB', grid: '#9A88B8',
+    box: '#7D6A9E', gray: '#6B5A8A', setn: '#A898C4', hdrsub: '#4B3B6B', block: '#3A2E4A', tag: '#FFE500', tagFg: '#000000', tagSub: '#2E1250' },
+  universel: { label: 'Universel green', title: '#231F20', bar: '#229244', line: '#231F20', lav: '#BFE0C8', sec: '#DFF1E5', alt: '#F3FAF5', grid: '#8DBB9A',
+    box: '#4C8A5E', gray: '#4F6B58', setn: '#9CC4A8', hdrsub: '#2E5A3B', block: '#2F3A32', tag: '#229244', tagFg: '#FFFFFF', tagSub: '#FFFFFF' },
+};
+export const paletteOf = (T) => (T && PALETTES[T.palette] ? T.palette : T && /universel/i.test(T.name || '') ? 'universel' : 'bcs');
 const key = () => 'k' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 export const clone = (o) => JSON.parse(JSON.stringify(o));
 
@@ -101,7 +114,7 @@ export function fromRows(rows) {
   const pb = (rows || []).filter(isPbRow);
   const meta = pb.find((r) => r.data.pb === 'meta');
   const progs = pb.filter((r) => r.data.pb !== 'meta').map((r) => ({ ...fixProgram({ ...r.data, id: r.id, name: r.name, folder: r.folder }), team: r.data.team }));
-  const teams = ((meta && meta.data.teams) || []).map((t) => ({ key: t.key, name: t.name || '', folders: [...(t.folders || [])], order: t.order || [], programs: [] }));
+  const teams = ((meta && meta.data.teams) || []).map((t) => ({ key: t.key, name: t.name || '', ...(t.palette ? { palette: t.palette } : {}), folders: [...(t.folders || [])], order: t.order || [], programs: [] }));
   progs.forEach((p) => {
     let T = teams.find((t) => t.key === p.team);
     if (!T) { T = teams.find((t) => t.key === 'unsorted'); if (!T) teams.push(T = { key: 'unsorted', name: 'Unsorted', folders: [], order: [], programs: [] }); }
@@ -115,7 +128,7 @@ export function fromRows(rows) {
   return { teams, metaId: meta ? meta.id : null };
 }
 const progData = (T, p) => ({ pb: 1, key: p.key, team: T.key, days: p.days });
-export const metaData = (state) => ({ pb: 'meta', teams: state.teams.map((T) => ({ key: T.key, name: T.name, folders: T.folders, order: T.programs.map((p) => p.key) })) });
+export const metaData = (state) => ({ pb: 'meta', teams: state.teams.map((T) => ({ key: T.key, name: T.name, ...(T.palette ? { palette: T.palette } : {}), folders: T.folders, order: T.programs.map((p) => p.key) })) });
 /** Fingerprints of what's saved, so a save only sends what changed. */
 export function fingerprint(state) {
   const out = { meta: JSON.stringify(metaData(state)), progs: {} };

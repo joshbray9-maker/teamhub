@@ -2,10 +2,13 @@
 // drawDay / drawCell are ported from the prototype (program-builder-handoff/reference/app.js)
 // with the same geometry and colours, so every day fills exactly one page like the printout.
 // `doc` is a jsPDF document; the page loads jsPDF on demand (exportPdf below).
-import { setPlan, isBlocked } from './model.js';
+import { setPlan, isBlocked, PALETTES } from './model.js';
 
-const C = { purple: [46, 18, 80], lav: [191, 174, 217], sec: [228, 220, 240], alt: [246, 242, 251], yel: [255, 229, 0],
-  grid: [154, 136, 184], block: [58, 46, 74], box: [125, 106, 158], gray: [107, 90, 138], setn: [168, 152, 196], hdrsub: [75, 59, 107], white: [255, 255, 255], black: [0, 0, 0] };
+// the colours in use while a document is drawn (set by buildPdf from the team's palette)
+const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+const colours = (P) => ({ title: rgb(P.title), bar: rgb(P.bar), purple: rgb(P.line), lav: rgb(P.lav), sec: rgb(P.sec), alt: rgb(P.alt), yel: rgb(P.tag), tagFg: rgb(P.tagFg), tagSub: rgb(P.tagSub),
+  grid: rgb(P.grid), block: rgb(P.block), box: rgb(P.box), gray: rgb(P.gray), setn: rgb(P.setn), hdrsub: rgb(P.hdrsub), white: [255, 255, 255], black: [0, 0, 0] });
+let C = colours(PALETTES.bcs);
 // Helvetica in jsPDF only has Latin-1: swap the few characters programs use for ones it can print
 function pt(s) {
   return String(s == null ? '' : s).replace(/→/g, '»').replace(/[“”]/g, '"').replace(/[‘’]/g, "'").replace(/–/g, '-').replace(/−/g, '-')
@@ -53,7 +56,7 @@ export function drawDay(doc, d) {
   let y = M, f; const rowsY = [];
 
   // title row
-  fillR(doc, M, y, W, H.title, C.purple);
+  fillR(doc, M, y, W, H.title, C.title);
   if (nw > 1) fillR(doc, colX[nw], y, wkW, H.title, C.yel);
   font(doc, 'bold', C.white);
   f = fit(doc, pt(d.block), nameW - 8, H.title - 4, 12, 7); drawLines(doc, f, M + 4, y + (H.title - f.h) / 2);
@@ -65,8 +68,8 @@ export function drawDay(doc, d) {
     const tw = () => { doc.setFontSize(sz); return doc.getTextWidth(tag) + (sub ? doc.getTextWidth(' · ' + sub) : 0); };
     while (sz > 6 && tw() > wkW - 8) sz -= 0.25;
     const total = tw(), sx = colX[nw] + (wkW - total) / 2, by = y + H.title / 2 + sz * 0.35;
-    doc.setTextColor(0, 0, 0); doc.text(tag, sx, by);
-    if (sub) { doc.setTextColor(C.purple[0], C.purple[1], C.purple[2]); doc.text(' · ' + sub, sx + doc.getTextWidth(tag), by); }
+    doc.setTextColor(C.tagFg[0], C.tagFg[1], C.tagFg[2]); doc.text(tag, sx, by);
+    if (sub) { doc.setTextColor(C.tagSub[0], C.tagSub[1], C.tagSub[2]); doc.text(' · ' + sub, sx + doc.getTextWidth(tag), by); }
   }
   rowsY.push({ y, h: H.title, type: 'title' }); y += H.title;
 
@@ -82,7 +85,7 @@ export function drawDay(doc, d) {
   rowsY.push({ y, h: H.hdr, type: 'grid' }); y += H.hdr;
 
   d.sections.forEach((s) => {
-    fillR(doc, M, y, W, H.sec, C.purple);
+    fillR(doc, M, y, W, H.sec, C.bar);
     font(doc, 'bold', C.white); doc.setFontSize(9.2);
     const st = pt(s.title).toUpperCase(); doc.text(st, M + 4, y + H.sec / 2 + 3.2);
     if (s.rest) { const sw = doc.getTextWidth(st); doc.setFontSize(7.5); doc.text('   Rest: ' + pt(s.rest).toLowerCase(), M + 4 + sw, y + H.sec / 2 + 3.2); }
@@ -159,16 +162,17 @@ export function drawCell(doc, c, x, y, w, h) {
   }
 }
 
-/** A PDF of these days (one page each). `JsPDF` is the jsPDF class, passed in so tests can use the node build. */
-export function buildPdf(JsPDF, days, title) {
+/** A PDF of these days (one page each) in a palette ('bcs' or 'universel'). `JsPDF` is the jsPDF class, passed in so tests can use the node build. */
+export function buildPdf(JsPDF, days, title, palette = 'bcs') {
+  C = colours(PALETTES[palette] || PALETTES.bcs);
   const doc = new JsPDF({ orientation: 'landscape', unit: 'pt', format: 'letter' });
   doc.setProperties({ title, creator: 'TeamHub Program Builder' });
   days.forEach((d, i) => { if (i) doc.addPage('letter', 'landscape'); drawDay(doc, d); });
   return doc;
 }
 /** Builds and downloads the PDF in the browser (jsPDF loaded on first use). */
-export async function exportPdf(days, filename) {
+export async function exportPdf(days, filename, palette) {
   if (!days.length) return;
   const { jsPDF } = await import('jspdf');
-  buildPdf(jsPDF, days, filename.replace(/\.pdf$/, '')).save(filename);
+  buildPdf(jsPDF, days, filename.replace(/\.pdf$/, ''), palette).save(filename);
 }

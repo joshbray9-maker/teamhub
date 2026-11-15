@@ -183,3 +183,19 @@ test('export: Group A Var is 4 pages', { skip: !existsSync(SEED) && 'handoff dat
   const p = data.teams.find((T) => T.name === 'BCS Hockey 26-27').programs.find((x) => x.name === 'Group A Var');
   assert.equal(buildPdf(jsPDF, p.days, 'x').getNumberOfPages(), 4);
 });
+
+test('palettes: BCS purple by default, Universel green for Universel teams, saved per team', async () => {
+  const { PALETTES, paletteOf } = await import('../src/lib/pb/model.js');
+  assert.equal(paletteOf(newTeam('BCS Hockey 26-27')), 'bcs');
+  assert.equal(paletteOf(newTeam('Universel Hockey')), 'universel');
+  const T = newTeam('BCS Basketball'); T.palette = 'universel'; assert.equal(paletteOf(T), 'universel');
+  T.palette = 'nope'; assert.equal(paletteOf(T), 'bcs');
+  assert.equal(PALETTES.universel.bar, '#229244');
+  // the choice survives a save and reload
+  const s = { teams: [newTeam('A')] }; s.teams[0].palette = 'universel';
+  assert.equal(fromRows([{ id: 'm', name: META_NAME, folder: '', data: metaData(s) }]).teams[0].palette, 'universel');
+  // the green PDF really uses the green
+  const doc = buildPdf(jsPDF, [DAY], 'T', 'universel'), raw = doc.output();
+  assert.match(raw, /0\.13 0\.57 0\.27 rg/); // #229244 section bars
+  assert.doesNotMatch(buildPdf(jsPDF, [DAY], 'T', 'bcs').output(), /0\.13 0\.57 0\.27 rg/);
+});

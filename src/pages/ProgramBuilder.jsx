@@ -12,7 +12,7 @@ import { useEffect, useReducer, useRef, useState } from 'react';
 import { useHub } from '../lib/hub.jsx';
 import { store } from '../lib/util.js';
 import {
-  META_NAME, MAX_WEEKS, clone, setPlan, isBlocked, blankRow, trainingDay, regenDay, addWeek, removeWeek, move, uniqueFolder,
+  META_NAME, MAX_WEEKS, PALETTES, paletteOf, clone, setPlan, isBlocked, blankRow, trainingDay, regenDay, addWeek, removeWeek, move, uniqueFolder,
   countExercises, fileName, guessName, fromRows, fingerprint, changes, metaData, newTeam, newProgram, moveProgram, moveToTeam,
   mergeBackup, toBackup,
 } from '../lib/pb/model.js';
@@ -231,8 +231,8 @@ export default function ProgramBuilder() {
   };
 
   /* ---------- PDF export ---------- */
-  const pdfAll = () => P && exportPdf(P.days, fileName(T.name + ' - ' + P.name)).catch((e) => H.toast('Could not make the PDF: ' + e.message));
-  const pdfDay = (d, di) => exportPdf([d], fileName(T.name + ' - ' + P.name + ' - ' + (d.title || 'Page ' + (di + 1)).replace(/:.*/, ''))).catch((e) => H.toast('Could not make the PDF: ' + e.message));
+  const pdfAll = () => P && exportPdf(P.days, fileName(T.name + ' - ' + P.name), paletteOf(T)).catch((e) => H.toast('Could not make the PDF: ' + e.message));
+  const pdfDay = (d, di) => exportPdf([d], fileName(T.name + ' - ' + P.name + ' - ' + (d.title || 'Page ' + (di + 1)).replace(/:.*/, '')), paletteOf(T)).catch((e) => H.toast('Could not make the PDF: ' + e.message));
 
   /* ---------- render ---------- */
   if (status === 'loading') return <div className="loading">Loading…</div>;
@@ -271,6 +271,10 @@ export default function ProgramBuilder() {
           <div className="pb-ctlrow"><label className="pb-lbl" htmlFor="pb-team">Team</label>
             <input id="pb-team" className="input pb-fld" defaultValue={T.name} placeholder="Team name" onChange={(e) => typed(() => { T.name = e.target.value; }, true)} />
             <button className="btn sm" onClick={delTeam}>Delete team</button></div>
+          <div className="pb-ctlrow"><span className="pb-lbl">Colours</span>
+            <div className="seg pb-pal" role="radiogroup" aria-label="Sheet and PDF colours">{Object.entries(PALETTES).map(([k, x]) => <button key={k} role="radio" aria-checked={paletteOf(T) === k} className={paletteOf(T) === k ? 'on' : ''}
+              onClick={() => paletteOf(T) !== k && act(() => { T.palette = k; return null; })}><i style={{ background: x.bar }} /><i style={{ background: x.tag }} />{x.label}</button>)}</div>
+            <span className="muted small">For this team's sheets and PDFs</span></div>
           <div className="pb-ctlrow top"><span className="pb-lbl">Programs</span>
             <Groups T={T} cur={p} folds={folds} foldKey={foldKey} chipDown={chipDown} open={(i) => { if (!justDragged.current) pick(t, i); }}
               toggle={toggleFold} rename={renameFolder} up={(fi) => act(() => { move(T.folders, fi, -1); })} down={(fi) => act(() => { move(T.folders, fi, 1); })}
@@ -290,7 +294,7 @@ export default function ProgramBuilder() {
 
         {P ? <>
           <p className="hint pb-hint">Drag program chips to reorder them or drop them into a folder. Click any text on a sheet to edit it. Set boxes follow the prescription: <b>3x8</b> gives 3 boxes, <b>12,10,8</b> one box per target, <b>—</b> shades the week out. Import PDF converts a program exported from Excel or Sheets; you can also drop or paste the PDF anywhere on this page.</p>
-          <div key={'d' + sv + t + '-' + p} className="pb-days">
+          <div key={'d' + sv + t + '-' + p} className="pb-days" style={sheetVars(PALETTES[paletteOf(T)])}>
             {P.days.map((d, di) => <Day key={di} d={d} di={di} nd={P.days.length} typed={typed} act={act} pdf={() => pdfDay(d, di)}
               del={async () => { if (await confirmDel('Delete day?', `"${d.title || 'Page ' + (di + 1)}" will be deleted. Undo brings it back.`, 'Delete day')) act(() => { P.days.splice(di, 1); }); }}
               days={P.days} />)}
@@ -304,6 +308,10 @@ export default function ProgramBuilder() {
     {veil && <div className="pb-veil"><div>Drop the PDF to convert it</div></div>}
   </div>;
 }
+
+// the sheet's paper colours as CSS variables (see .pb-sheet in styles.css)
+const sheetVars = (x) => ({ '--p-title': x.title, '--p-bar': x.bar, '--p-purple': x.line, '--p-lav': x.lav, '--p-sec': x.sec, '--p-alt': x.alt, '--p-grid': x.grid,
+  '--p-box': x.box, '--p-gray': x.gray, '--p-setn': x.setn, '--p-hdrsub': x.hdrsub, '--p-block': x.block, '--p-yel': x.tag, '--p-tagfg': x.tagFg, '--p-tagsub': x.tagSub });
 
 /* ---------- program chips grouped by folder ---------- */
 function Groups({ T, cur, folds, foldKey, chipDown, open, toggle, rename, up, down, del, addProgram, addFolder }) {
