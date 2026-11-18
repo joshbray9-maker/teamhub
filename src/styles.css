@@ -1292,3 +1292,12 @@ body.pb-is-dragging{cursor:grabbing;-webkit-user-select:none;user-select:none}
 .pb-sheet .s-row .pb-ab{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.3)}
 .pb-sheet .ra{position:absolute;right:2px;top:2px}
 @media (max-width:640px){.pb-lbl{width:100%}.pb-ctlrow.top .pb-lbl{padding-top:0}.pb-status{min-width:0;text-align:left}}
+/* master schedule: themes, repeats */
+.mw-themes{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 12px}
+.mw-themes .tchip{cursor:pointer}
+.mw-repeat{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+.mw-days{display:flex;gap:4px;flex-wrap:wrap}
+.mw-days button{min-width:44px;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font:inherit;font-size:13px;font-weight:600;color:var(--fg)}
+.mw-days button.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.mw-check{display:flex;gap:8px;align-items:flex-start;margin:6px 0 2px;font-size:13.5px}
+.mw-check input{margin-top:2px;flex:none}

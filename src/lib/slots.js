@@ -95,14 +95,14 @@ export function weekGrid(items, slots, mk) {
 }
 
 /** S&C day writes ([[date, value or null]]) for a hand edit of a gym item on the master
- * schedule. `change` = { date, time, end, theme } to move / retime it, or null to remove it.
+ * schedule. `change` = { date, time, end, theme, intensity? } to move / retime it, or null to remove it.
  * Removing (or moving away from) a rotation day marks it "off" so the rotation doesn't put it
  * back; a planned day keeps its theme and is marked off rather than deleted. */
 export function gymWrites(item, change, org, team) {
   const base = item.sc || {};
   const vacate = (date, x) => (rotationTime(org, team, date) || (x && x.theme && x.theme !== 'Gym') ? { ...(x || {}), intensity: 'off', time: '', end: '' } : null);
   if (!change) return [[item.date, vacate(item.date, item.sc)]];
-  const val = { ...base, theme: change.theme.trim(), intensity: base.intensity === 'off' ? '' : base.intensity || '', time: change.time || '', end: (change.time && change.end) || '' };
+  const val = { ...base, theme: change.theme.trim(), intensity: change.intensity != null ? change.intensity : base.intensity === 'off' ? '' : base.intensity || '', time: change.time || '', end: (change.time && change.end) || '' };
   if (change.date === item.date) return [[item.date, val]];
   return [[change.date, val], [item.date, vacate(item.date, item.sc)]];
 }
