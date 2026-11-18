@@ -153,6 +153,8 @@ export const api = {
   async deletePlayer(id) { ok(await supabase.from('players').delete().eq('id', id)); },
   /** Moves a player (with their injuries) to another team; see the move_player() function. */
   async movePlayer(id, teamId) { ok(await supabase.rpc('move_player', { p_player: id, p_team: teamId })); },
+  /** Merges two profiles of one player on a team: p_drop's records move to p_keep, then p_drop is deleted. */
+  async mergePlayers(keepId, dropId) { ok(await supabase.rpc('merge_players', { p_keep: keepId, p_drop: dropId })); },
   /** Stores a player photo in the private bucket; returns its path (saved on the player). */
   async uploadPlayerPhoto(teamId, blob) {
     const path = `${teamId}/p-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;

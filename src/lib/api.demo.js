@@ -219,6 +219,22 @@ export const api = {
     if (fd.gym) delete fd.gym.overrides[id];
     save();
   },
+  async mergePlayers(keepId, dropId) {
+    await load(); const tid = Object.keys(db.data).find((t) => (db.data[t].players || []).some((p) => p.id === keepId)), d = db.data[tid];
+    const k = d.players.find((p) => p.id === keepId), x = (d.players || []).find((p) => p.id === dropId); if (!x) throw new Error('Both profiles have to be on the same team: move one first');
+    const fold = (rows, key, val) => (rows || []).filter((r) => { if (r.player_id !== dropId) return true; const m = rows.find((y) => y.player_id === keepId && y[key] === r[key]); if (m) { m[val] = { ...r[val], ...m[val] }; return false; } r.player_id = keepId; return true; });
+    d.testResults = fold(d.testResults, 'session_id', 'values'); d.gameStats = fold(d.gameStats, 'game_id', 'stats');
+    (d.injuries || []).forEach((r) => { if (r.player_id === dropId) r.player_id = keepId; });
+    if (d.ipps && d.ipps[dropId]) { d.ipps[keepId] = d.ipps[keepId] ? { ...d.ipps[keepId], data: { ...d.ipps[dropId].data, ...d.ipps[keepId].data } } : d.ipps[dropId]; delete d.ipps[dropId]; }
+    db.selfAssess = (db.selfAssess || []).filter((a) => !(a.player_id === dropId && db.selfAssess.some((b) => b.player_id === keepId && b.game_id === a.game_id))).map((a) => (a.player_id === dropId ? { ...a, player_id: keepId } : a));
+    (db.scats || []).forEach((r) => { if (r.player_id === dropId) r.player_id = keepId; });
+    Object.values(db.members || {}).forEach((l) => l.forEach((m) => { if (m.player_id === dropId) m.player_id = keepId; }));
+    Object.values(d.lineups || {}).forEach((l) => Object.values(l.slots).forEach((v) => { if (v.pid === dropId) v.pid = keepId; }));
+    if (d.gym && d.gym.overrides && dropId in d.gym.overrides) { if (!(keepId in d.gym.overrides)) d.gym.overrides[keepId] = d.gym.overrides[dropId]; delete d.gym.overrides[dropId]; }
+    const ls = d.settings && d.settings.league_stats; if (ls && ls.rows) ls.rows = ls.rows.filter((r) => !(r.player_id === dropId && ls.rows.some((q) => q.player_id === keepId))).map((r) => (r.player_id === dropId ? { ...r, player_id: keepId } : r));
+    ['num', 'position', 'shoots', 'year', 'height', 'weight', 'hometown', 'photo'].forEach((f) => { if (!k[f] && x[f]) k[f] = x[f]; }); k.active = k.active !== false || x.active !== false;
+    d.players = d.players.filter((p) => p.id !== dropId); save();
+  },
   async deletePlayer(id) { Object.values(db.data).forEach((d) => { d.players = (d.players || []).filter((p) => p.id !== id); if (d.ipps) delete d.ipps[id]; }); db.selfAssess = (db.selfAssess || []).filter((a) => a.player_id !== id); db.scats = (db.scats || []).filter((t) => t.player_id !== id); save(); },
   async listLineups(teamId) { await load(); return clone(D(teamId).lineups || {}); },
   async saveLineup(teamId, key, slots, opponent = '') { (D(teamId).lineups = D(teamId).lineups || {})[key] = { slots: clone(slots), opponent, updatedAt: Date.now() }; save(); },

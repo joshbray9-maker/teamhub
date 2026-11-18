@@ -12,6 +12,7 @@ import Modal from '../components/Modal.jsx';
 import Icon from '../components/Icon.jsx';
 import InjuryFlag from '../components/InjuryFlag.jsx';
 import Avatar from '../components/Avatar.jsx';
+import { findDupes, pickKeep, sameName } from '../lib/dupes.js';
 import { openPlayerReport } from './PlayerReport.jsx';
 export { default as InjuryMark } from '../components/InjuryFlag.jsx';
 
@@ -39,10 +40,15 @@ export default function Roster() {
   const edit = (p) => H.isCoach && H.openDialog((c) => <PlayerDialog p={p} photoUrl={p && photos[p.photo]} sport={t.sport} close={c} onSave={(x) => save([x])}
     onDelete={async () => { try { await H.api.deletePlayer(p.id); } catch (e) { H.toast(e.message); } load(); }}
     onMove={async (to) => { try { await H.api.movePlayer(p.id, to.id); H.toast(`${p.name} moved to ${to.name}`); } catch (e) { H.toast('Could not move. ' + e.message); } load(); H.reloadTeam(); }} />);
+  // duplicate profiles: merge = the other profile's tests, stats, injuries, IPP, links and account
+  // move to the one kept, then it is deleted (api.mergePlayers / merge_players)
+  const merge = async (keep, drop) => { try { await H.api.mergePlayers(keep.id, drop.id); return true; } catch (e) { H.toast(`Could not merge ${drop.name} into ${keep.name}. ${e.message}`); return false; } };
+  const openDupes = () => H.openDialog((c) => <DupesDialog players={players || []} merge={merge} close={c} reload={async () => { const ps = await H.api.listPlayers(t.id); setPlayers(ps); H.reloadTeam(); return ps; }} />);
   const openImport = (paste) => H.openDialog((c) => <ImportDialog current={players || []} paste={paste} close={c} onSave={(list, msg) => save(list, msg)} />);
   const acts = H.isCoach && <>
     <button className="btn" onClick={() => openImport(false)}><Icon n="refresh" /> Import: file, paste or web</button>
     <button className="btn" onClick={() => openImport(true)}><Icon n="users" /> Add several</button>
+    <button className="btn" disabled={!players || players.length < 2} onClick={() => openDupes()}><Icon n="users" /> Find duplicates</button>
     <button className="btn primary" onClick={() => edit(null)}><Icon n="plus" /> Player</button></>;
 
   /* ---------- bulk actions on the selected players ---------- */
@@ -88,6 +94,7 @@ export default function Roster() {
             <option value="">Move to team…</option>{moveTargets.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select>}
           {chosen.some((p) => p.active !== false) && <button className="btn sm" onClick={() => bulkActive(false)}>Mark as former</button>}
           {chosen.some((p) => p.active === false) && <button className="btn sm" onClick={() => bulkActive(true)}>Mark as active</button>}
+          {chosen.length === 2 && <button className="btn sm" onClick={() => H.openDialog((c) => <MergeDialog pair={chosen} close={c} onMerge={async (k, d) => { if (await merge(k, d)) done(`${d.name} merged into ${k.name}`); }} />)}>Merge these 2</button>}
           <button className="btn sm danger" onClick={bulkDelete}><Icon n="trash" /> Delete</button>
           <button className="btn sm ghost" onClick={() => setSel(new Set())}>Clear selection</button>
         </div>}
@@ -210,5 +217,49 @@ function ImportDialog({ current, paste, close, onSave }) {
       </table></div>
       {p.missing.length > 0 && <label className="small" style={{ display: 'flex', gap: 8, alignItems: 'center' }}><input type="checkbox" className="cb" checked={retire} onChange={(e) => setRetire(e.target.checked)} /> Move the {p.missing.length} player{p.missing.length === 1 ? '' : 's'} not in this file to former players</label>}
     </>}
+  </Modal>;
+}
+
+/* Pick which of two profiles to keep. */
+function KeepPick({ a, b, keep, set, name }) {
+  return <div className="dp-pick" role="radiogroup">{[a, b].map((p) => <label key={p.id} className={keep === p.id ? 'on' : ''}>
+    <input type="radio" name={name} checked={keep === p.id} onChange={() => set(p.id)} />
+    <span><b>{p.name}</b><span className="muted small">{[p.num && '#' + p.num, p.position, p.year, p.active === false && 'former player'].filter(Boolean).join(' · ') || 'no other details'}</span></span>
+  </label>)}</div>;
+}
+const MERGE_NOTE = 'The other profile’s test results, game stats, injuries, concussion tests, IPP, self-assessments and athlete account or invite link move to the one you keep (where both have the same test session or game, the kept profile’s numbers win). Blank details like number or position are filled in. The other profile is then deleted; this can’t be undone.';
+
+function MergeDialog({ pair: [a, b], close, onMerge }) {
+  const [keep, setKeep] = useState(pickKeep(a, b).id);
+  const k = keep === a.id ? a : b, d = keep === a.id ? b : a;
+  return <Modal title="Merge two profiles" onClose={close} actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" onClick={() => { close(); onMerge(k, d); }}>Merge into {k.name}</button></>}>
+    <div className="small">Keep this one:</div>
+    <KeepPick a={a} b={b} keep={keep} set={setKeep} name="mg" />
+    {!sameName(a.name, b.name) && <div className="hint">These names don’t look alike. Make sure it’s the same person.</div>}
+    <p className="muted small">{MERGE_NOTE}</p>
+  </Modal>;
+}
+
+function DupesDialog({ players, merge, reload, close }) {
+  const H = useHub();
+  const [ps, setPs] = useState(players), [keep, setKeep] = useState({}), [busy, setBusy] = useState(false), [n, setN] = useState(0);
+  const pairs = findDupes(ps), keepOf = (x) => keep[x.a.id + x.b.id] || x.keep;
+  const run = async (list) => {
+    setBusy(true); let m = 0;
+    for (const x of list) { const k = keepOf(x) === x.a.id ? x.a : x.b, d = k === x.a ? x.b : x.a; if (await merge(k, d)) m++; }
+    setN((v) => v + m); try { setPs(await reload()); } catch (e) { H.toast(e.message); } setBusy(false);
+    if (m) H.toast(`${m} profile${m === 1 ? '' : 's'} merged`);
+  };
+  const all = async () => { if (await H.confirm(`Merge ${pairs.length} pair${pairs.length === 1 ? '' : 's'}?`, MERGE_NOTE, 'Merge all')) run(pairs); };
+  return <Modal title="Duplicate profiles" wide onClose={close} actions={<><button className="btn" onClick={close}>Done</button>{pairs.length > 1 && <button className="btn primary" disabled={busy} onClick={all}>Merge all {pairs.length}</button>}</>}>
+    <p className="muted small" style={{ margin: 0 }}>Profiles that look like the same person: a short and a full first name (Dom / Dominic), or one without a last name. Pick the one to keep for each pair. Different jersey numbers are never suggested; for anything missed, tick two players on the roster and use <b>Merge these 2</b>.</p>
+    {n > 0 && <div className="hint">{n} merged so far.</div>}
+    {!pairs.length ? <div className="empty">{n ? 'No more duplicates found.' : 'No duplicates found on this roster.'}</div>
+      : <div className="dp-list">{pairs.map((x) => <div key={x.a.id + x.b.id} className="dp-row card">
+        <div className="dp-why"><span className="pill">{x.why}</span></div>
+        <KeepPick a={x.a} b={x.b} keep={keepOf(x)} set={(id) => setKeep({ ...keep, [x.a.id + x.b.id]: id })} name={'dp' + x.a.id} />
+        <div><button className="btn sm primary" disabled={busy} onClick={() => run([x])}>Merge</button></div>
+      </div>)}</div>}
+    {pairs.length > 0 && <p className="muted small">{MERGE_NOTE}</p>}
   </Modal>;
 }

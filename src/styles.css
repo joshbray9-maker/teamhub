@@ -1301,3 +1301,12 @@ body.pb-is-dragging{cursor:grabbing;-webkit-user-select:none;user-select:none}
 .mw-days button.on{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .mw-check{display:flex;gap:8px;align-items:flex-start;margin:6px 0 2px;font-size:13.5px}
 .mw-check input{margin-top:2px;flex:none}
+/* roster: duplicate profiles */
+.dp-list{display:flex;flex-direction:column;gap:8px}
+.dp-row{padding:10px 12px;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+.dp-why{grid-column:1/-1}
+.dp-pick{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.dp-pick label{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line);border-radius:10px;cursor:pointer;min-width:0}
+.dp-pick label.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.dp-pick label>span{display:flex;flex-direction:column;min-width:0;overflow-wrap:anywhere}
+@media (max-width:560px){.dp-pick{grid-template-columns:1fr}.dp-row{grid-template-columns:1fr}}
