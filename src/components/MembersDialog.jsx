@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { useHub } from '../lib/hub.jsx';
 import Modal from './Modal.jsx';
 import Icon from './Icon.jsx';
-import { ago } from '../lib/util.js';
+import { ago, todayISO, fmtDate } from '../lib/util.js';
+import { inviteRows, buildInvitePdf } from '../lib/invitePdf.js';
 
 const ROLES = { admin: 'Admin', coach: 'Coach', sportsmed: 'Sports med', viewer: 'Viewer', athlete: 'Athlete' };
 // what each access level can do (enforced in the database, see the RLS policies)
@@ -119,6 +120,7 @@ export default function MembersDialog({ org, close }) {
       <button className="btn sm mem-teams" disabled={m.role === 'admin' || m.role === 'athlete' || teams.length < 2} onClick={() => editTeams(m)} title={m.role === 'admin' ? 'Admins see every team' : 'Choose which teams they see'}>{teamsLabel(m, teams)}</button>
       {me ? <span /> : <button className="icon-btn" aria-label={`Remove ${who(m)}`} onClick={async () => { if (await H.confirm(m.pending ? 'Delete this invite link?' : 'Remove access?', m.pending ? `The link for ${who(m)} will stop working.` : `${who(m)} will no longer see ${org.name}.`, m.pending ? 'Delete link' : 'Remove')) act(() => H.api.removeMember(org.id, m), 'Removed'); }}><Icon n="x" /></button>}
     </div>; })}</div>}
+    {list && teams.length > 0 && <TeamLinks org={org} teams={teams} list={list} joinLink={joinLink} reload={load} />}
     <div className="card" style={{ padding: 14 }}>
       <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontWeight: 600 }}><input type="checkbox" className="cb" checked={pub} onChange={(e) => togglePub(e.target.checked)} /> Public master schedule link</label>
       <div className="muted small">Anyone with the link sees {org.name}'s games and calendar events, read-only. No S&C plan, notes or member list.</div>
@@ -133,4 +135,40 @@ function MemberTeams({ m, teams, close, onSave }) {
   return <Modal title={`Teams for ${who(m)}`} onClose={close} actions={<><button className="btn" onClick={close}>Cancel</button><button className="btn primary" onClick={() => { if (v && !v.length) { H.toast('Switch on at least one team, or All teams.'); return; } close(); onSave(v); }}>Save</button></>}>
     <TeamPick teams={teams} value={v} onChange={setV} />
   </Modal>;
+}
+
+/* One team's invite links as a PDF: every roster player with their athlete link (or "Joined"),
+ * and the staff links that open the team. Can first make the missing player links. */
+function TeamLinks({ org, teams, list, joinLink, reload }) {
+  const H = useHub();
+  const [tid, setTid] = useState(teams[0].id), [players, setPlayers] = useState(null), [make, setMake] = useState(true), [busy, setBusy] = useState(false);
+  useEffect(() => { setPlayers(null); H.api.listPlayers(tid).then(setPlayers).catch((e) => { setPlayers([]); H.toast('Could not load the roster: ' + e.message); }); }, [tid]); // eslint-disable-line react-hooks/exhaustive-deps
+  const team = teams.find((t) => t.id === tid) || teams[0];
+  const rows = players ? inviteRows(team, players, list, (tok) => joinLink({ token: tok })) : null;
+  const missing = rows ? rows.players.filter((p) => p.status === 'none') : [];
+  const pdf = async () => {
+    setBusy(true);
+    try {
+      let members = list;
+      if (make && missing.length) {
+        for (const p of missing) await H.api.createInviteLink(org.id, { label: p.name, role: 'athlete', player: p.id });
+        members = await H.api.listMembers(org.id); reload();
+      }
+      const { jsPDF } = await import('jspdf');
+      const r = inviteRows(team, players, members, (tok) => joinLink({ token: tok }));
+      buildInvitePdf(jsPDF, { orgName: org.name, teamName: team.name, rows: r, date: fmtDate(todayISO(), true) }).save(`${team.name} - invite links.pdf`);
+      H.toast(make && missing.length ? `Made ${missing.length} new link${missing.length === 1 ? '' : 's'} and downloaded the PDF` : 'PDF downloaded');
+    } catch (e) { H.toast('Could not make the PDF: ' + e.message); }
+    setBusy(false);
+  };
+  return <div className="card" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div className="mem-h" style={{ margin: 0 }}>Team invite list (PDF)</div>
+    <div className="muted small">Every player on the roster with their own invite link (or who has already joined), plus the staff links that open the team.</div>
+    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+      <select className="select" style={{ width: 'auto' }} value={tid} onChange={(e) => setTid(e.target.value)} aria-label="Team">{teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select>
+      <button className="btn primary" disabled={!rows || busy} onClick={pdf}><Icon n="clipboard" /> {busy ? 'Making…' : 'Download PDF'}</button>
+    </div>
+    {rows && <div className="muted small">{rows.players.length} player{rows.players.length === 1 ? '' : 's'}: {rows.players.filter((p) => p.status === 'joined').length} joined, {rows.players.filter((p) => p.status === 'link').length} with a link, {missing.length} without one · {rows.staff.length} staff</div>}
+    {missing.length > 0 && <label style={{ display: 'flex', gap: 8, alignItems: 'center' }} className="small"><input type="checkbox" className="cb" checked={make} onChange={(e) => setMake(e.target.checked)} /> Make a link for the {missing.length} player{missing.length === 1 ? '' : 's'} without one first</label>}
+  </div>;
 }
