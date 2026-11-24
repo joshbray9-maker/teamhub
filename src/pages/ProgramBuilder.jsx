@@ -383,13 +383,17 @@ function Day({ d, di, nd, typed, act, pdf, del, days }) {
       {d.sections.map((s, si) => [
         <tr key={'s' + si} className="s-row"><td colSpan={nw + 1}><div className="s-in"><In cls="stl" v={s.title} ph="Section name" set={ed((v) => { s.title = v; })} />
           <span className="rl">Rest:</span><In cls="srest" v={s.rest} ph="per exercise" set={ed((v) => { s.rest = v; })} />
-          <div className="acts">{ab('+ Exercise', 'Add exercise', () => act(() => { s.rows.push(blankRow(nw)); }))}
+          <div className="acts">{ab('+ Exercise', 'Add an exercise at the end of this section', () => act(() => { s.rows.push(blankRow(nw)); }))}
+            <select className="pb-ab pb-n" value="" title="Add several exercises at the end of this section" aria-label="Add several exercises"
+              onChange={(e) => { const n = +e.target.value; if (n) act(() => { for (let i = 0; i < n; i++) s.rows.push(blankRow(nw)); }); }}>
+              <option value="">+ more…</option>{[2, 3, 4, 5, 6, 8, 10].map((n) => <option key={n} value={n}>+ {n} exercises</option>)}</select>
             {ab('↑', 'Move section up', () => act(() => { move(d.sections, si, -1); }), si === 0)}{ab('↓', 'Move section down', () => act(() => { move(d.sections, si, 1); }), si === d.sections.length - 1)}
             {ab('✕', 'Delete section', () => act(() => { d.sections.splice(si, 1); }))}</div></div></td></tr>,
         ...s.rows.map((r, ri) => <tr key={si + '-' + ri} className={`e-row ${ri % 2 ? 'alt' : ''}`}>
           <td className="nmc"><div className="nm"><In cls="nmi" v={r.name} ph="Exercise name" set={ed((v) => { r.name = v; })} />
             <div className="meta"><In v={r.tempo} ph="tempo" set={ed((v) => { r.tempo = v; })} /><span>·</span><In v={r.rest} ph="rest" set={ed((v) => { r.rest = v; })} /></div></div>
             <div className="acts ra">{ab('↑', 'Move up', () => act(() => { move(s.rows, ri, -1); }), ri === 0)}{ab('↓', 'Move down', () => act(() => { move(s.rows, ri, 1); }), ri === s.rows.length - 1)}
+              {ab('+', 'Insert a blank exercise below', () => act(() => { s.rows.splice(ri + 1, 0, blankRow(nw)); }))}
               {ab('⧉', 'Duplicate row', () => act(() => { s.rows.splice(ri + 1, 0, clone(r)); }))}{ab('✕', 'Delete row', () => act(() => { s.rows.splice(ri, 1); }))}</div></td>
           {d.weeks.map((_, w) => <td key={w} className="wk"><Week c={r.cells[w] || (r.cells[w] = { rx: '', load: '' })} wide={nw <= 4} typed={typed} /></td>)}
         </tr>),
