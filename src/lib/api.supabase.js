@@ -225,6 +225,18 @@ export const api = {
   /** Public (no sign-in): what a player's link shows, or null. */
   async assessView(token) { return ok(await supabase.rpc('assess_view', { p_token: token })); },
   async assessSubmit(token, gameId, answers) { return ok(await supabase.rpc('assess_submit', { p_token: token, p_game: gameId, p_answers: answers })); },
+  /** Staff: the team's daily check-ins (RPE after practice and gym), newest first. Read in pages
+   *  of 1000 (a season of a full roster is several thousand rows). */
+  async listCheckins(teamId) {
+    const out = [];
+    for (let i = 0; ; i += 1000) {
+      const rows = ok(await supabase.from('checkins').select('player_id, date, practice_rpe, gym_rpe, note, submitted_at, updated_at, players!inner(team_id)')
+        .eq('players.team_id', teamId).order('date', { ascending: false }).order('player_id').range(i, i + 999));
+      out.push(...rows.map(({ players, ...r }) => r)); if (rows.length < 1000) return out;
+    }
+  },
+  async deleteCheckin(playerId, date) { ok(await supabase.from('checkins').delete().eq('player_id', playerId).eq('date', date)); },
+  async checkinSubmit(token, date, practice, gym, note) { return ok(await supabase.rpc('checkin_submit', { p_token: token, p_date: date, p_practice: practice ?? null, p_gym: gym ?? null, p_note: note || '' })); },
   /** A signed-in athlete's own link token for this team, or null. */
   async myAssessToken(teamId) { return ok(await supabase.rpc('my_assess_token', { p_team: teamId })); },
   /** Reads a public roster page through the roster-import function: { tables } or throws. */

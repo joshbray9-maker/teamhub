@@ -4,7 +4,8 @@
 // date. Print / PDF gives a one-athlete report to send out. Individual testing days count for the
 // athlete; the team median only uses team testing (lib/testing.js athleteHistory). Edit testing
 // opens the athlete's whole history as one grid to fix or add to in bulk (AthleteTesting.jsx).
-// Below the testing, the athlete's game-by-game self-assessments (SelfAssess.jsx).
+// Below the testing, the athlete's self-assessments: check-in RPE and game-question averages with
+// completion % (AssessSummary), then their game-by-game answers (SelfAssess.jsx).
 import { useEffect, useMemo, useState } from 'react';
 import { useHub, useMetrics } from '../lib/hub.jsx';
 import { fmtDate, todayISO } from '../lib/util.js';
@@ -16,16 +17,18 @@ import Logo from '../components/Logo.jsx';
 import Icon from '../components/Icon.jsx';
 import AthleteTesting from './AthleteTesting.jsx';
 import { PlayerFile } from './SelfAssess.jsx';
+import AssessSummary, { useAssessData } from '../components/AssessSummary.jsx';
+import { addDays } from '../lib/sc.js';
 
 const PRESETS = [['season', 'This season'], ['3m', 'Last 3 months'], ['12m', 'Last 12 months'], ['all', 'All testing'], ['custom', 'Custom dates']];
 
 export default function AthleteReports() {
   const H = useHub(); const t = H.team;
   const { roster, photos } = useRoster();
-  const [tests, setTests] = useState(null), [pid, setPid] = useState(null), [q, setQ] = useState(''), [edit, setEdit] = useState(false), [assess, setAssess] = useState([]);
-  const loadAssess = () => H.api.listSelfAssessments(t.id).then(setAssess).catch(() => setAssess([]));
+  const [tests, setTests] = useState(null), [pid, setPid] = useState(null), [q, setQ] = useState(''), [edit, setEdit] = useState(false);
+  const [assess, loadAssess] = useAssessData();
   const load = () => H.api.listTests(t.id).then(setTests).catch((e) => { setTests((x) => x || { sessions: [], results: [] }); H.toast('Could not load testing: ' + e.message); });
-  useEffect(() => { if (H.seesMed) load(); if (H.isCoach) loadAssess(); }, [t.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (H.seesMed) load(); }, [t.id]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!H.seesMed) return <><PageHead title="Athlete reports" /><section className="card"><p className="muted" style={{ margin: 0 }}>Athlete reports are only visible to coaches, sports med and admins.</p></section></>;
   if (!roster || !tests) return <><PageHead title="Athlete reports" /><div className="loading">Loading…</div></>;
   const p = pid && roster.find((x) => x.id === pid);
@@ -92,8 +95,10 @@ function Report({ p, photo, tests, assess, reloadAssess, back, onEdit }) {
       <p className="muted small ar-foot">Team median: team testing days only. Individual testing days count for the athlete. Results are the athlete's own; nothing here is estimated.</p>
     </>}
     {H.isCoach && <section className="card ar-sec">
-      <div className="card-head"><h2>Self-assessments</h2><span className="muted small">{p.name}'s own answers after each game</span></div>
-      <PlayerFile p={p} list={assess} reload={reloadAssess} />
+      <div className="card-head"><h2>Self-assessments</h2><span className="muted small">Daily check-in RPE (1–10) after practice and gym, game question averages, and how many they completed</span></div>
+      <AssessSummary p={p} data={assess} frames={[['Last 7 days', addDays(today, -6), today], ['Last 28 days', addDays(today, -27), today], [(PRESETS.find(([k]) => k === preset) || [])[1] || 'Range', range.from || '', range.to || '']]} />
+      <h3 className="ar-subh">Game by game</h3>
+      {assess ? <PlayerFile p={p} list={assess.assess} qs={assess.qs} reload={reloadAssess} /> : null}
     </section>}
   </>;
 }

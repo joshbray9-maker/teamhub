@@ -4,12 +4,14 @@
 import { clone, uid, slugify } from './util.js';
 import { METRICS } from './testing.js';
 import { openGames, opponentOf, cleanAnswers } from './selfAssess.js';
+import { addDays } from './sc.js';
 
 const KEY = 'teamhub-demo-db';
 const files = import.meta.glob('../../seed/export/**/*.json');
 const ORG_FOR_UNSET = { t_rugby: "Bishop's University" };
 const USER = { id: 'demo-user', email: 'demo@teamhub.local' };
 let db = null, loading = null;
+const todayLocal = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 
 // one shared load, even when two callers ask at once (React StrictMode runs effects twice)
 function load() { return db ? Promise.resolve(db) : (loading = loading || build()); }
@@ -187,9 +189,29 @@ export const api = {
     const tid = Object.keys(db.data).find((k) => (db.data[k].players || []).some((p) => p.id === pid && p.active !== false)); if (!tid) return null;
     const p = D(tid).players.find((x) => x.id === pid), t = db.teams.find((x) => x.id === tid), o = db.orgs.find((x) => x.id === t.org_id);
     const open = openGames(D(tid).games), mine = (db.selfAssess || []).filter((a) => a.player_id === pid);
-    return clone({ player: { name: p.name, num: p.num || '', position: p.position || '' }, team: { name: t.name, sport: t.sport, color: t.color, logo_url: t.logo || o.logo_url }, org: { name: o.name, logo_url: o.logo_url },
+    const today = todayLocal(), win = (d) => d >= addDays(today, -9) && d <= addDays(today, 6), sc = (D(tid).sc || {}).days || {};
+    return clone({ player: { name: p.name, num: p.num || '', position: p.position || '' }, team: { id: t.id, name: t.name, school: t.school || '', sport: t.sport, color: t.color, logo_url: t.logo || o.logo_url }, org: { name: o.name, slug: o.slug, logo_url: o.logo_url },
+      today, questions: (D(tid).settings || {}).assess_questions || null,
       open: open.map((g) => { const a = mine.find((x) => x.game_id === g.id); return { id: g.id, date: g.date, time: g.time || '', home: g.home, away: g.away, opponent: opponentOf(g, t), answers: a ? a.answers : null, submitted_at: a ? a.submitted_at : null }; }),
-      past: mine.filter((a) => !open.some((g) => g.id === a.game_id)).sort((a, b) => b.game_date.localeCompare(a.game_date)) });
+      past: mine.filter((a) => !open.some((g) => g.id === a.game_id)).sort((a, b) => b.game_date.localeCompare(a.game_date)),
+      events: (D(tid).events || []).filter((e) => win(e.date)),
+      sc: Object.entries(sc).filter(([d]) => win(d)).map(([date, x]) => ({ date, ...x })),
+      checkins: (db.checkins || []).filter((c) => c.player_id === pid && c.date >= addDays(today, -30)).sort((a, b) => b.date.localeCompare(a.date)) });
+  },
+  async listCheckins(teamId) {
+    await load(); const ids = new Set((D(teamId).players || []).map((p) => p.id));
+    return clone((db.checkins || []).filter((c) => ids.has(c.player_id)).sort((a, b) => b.date.localeCompare(a.date)));
+  },
+  async deleteCheckin(playerId, date) { db.checkins = (db.checkins || []).filter((c) => !(c.player_id === playerId && c.date === date)); save(); },
+  async checkinSubmit(token, date, practice, gym, note) {
+    const v = await api.assessView(token); if (!v) throw new Error('This link is not valid');
+    if (!date || date > v.today || date < addDays(v.today, -2)) throw new Error('Check-ins are open for today and the 2 days before');
+    const ok1 = (x) => x == null || (Number.isInteger(x) && x >= 1 && x <= 10); if (!ok1(practice) || !ok1(gym)) throw new Error('RPE is a number from 1 to 10');
+    const pid = Object.keys(db.assessLinks).find((k) => db.assessLinks[k] === token), l = (db.checkins = db.checkins || []), n = String(note || '').trim().slice(0, 1000);
+    const i = l.findIndex((c) => c.player_id === pid && c.date === date), now = new Date().toISOString();
+    if (practice == null && gym == null && !n) { if (i >= 0) l.splice(i, 1); save(); return null; }
+    const row = { player_id: pid, date, practice_rpe: practice ?? null, gym_rpe: gym ?? null, note: n, submitted_at: i >= 0 ? l[i].submitted_at : now, updated_at: now };
+    if (i >= 0) l[i] = row; else l.push(row); save(); return row.submitted_at;
   },
   // demo: an athlete view (org role switched to 'athlete' by hand) answers as the team's first player
   async myAssessToken(teamId) {
@@ -200,7 +222,7 @@ export const api = {
   async assessSubmit(token, gameId, answers) {
     const v = await api.assessView(token); if (!v) throw new Error('This link is not valid');
     const g = v.open.find((x) => x.id === gameId); if (!g) throw new Error('This game is closed for answers');
-    const a = cleanAnswers(answers); if (!Object.keys(a).length) throw new Error('Answer at least one question');
+    const a = cleanAnswers(answers, v.questions); if (!Object.keys(a).length) throw new Error('Answer at least one question');
     const pid = Object.keys(db.assessLinks).find((k) => db.assessLinks[k] === token), list = (db.selfAssess = db.selfAssess || []);
     const now = new Date().toISOString(), ex = list.find((x) => x.player_id === pid && x.game_id === gameId);
     if (ex) Object.assign(ex, { answers: a, updated_at: now }); else list.push({ id: 'sa' + uid(), player_id: pid, game_id: gameId, game_date: g.date, opponent: g.opponent, answers: a, submitted_at: now, updated_at: now });
@@ -228,6 +250,7 @@ export const api = {
     if (d.ipps && d.ipps[dropId]) { d.ipps[keepId] = d.ipps[keepId] ? { ...d.ipps[keepId], data: { ...d.ipps[dropId].data, ...d.ipps[keepId].data } } : d.ipps[dropId]; delete d.ipps[dropId]; }
     db.selfAssess = (db.selfAssess || []).filter((a) => !(a.player_id === dropId && db.selfAssess.some((b) => b.player_id === keepId && b.game_id === a.game_id))).map((a) => (a.player_id === dropId ? { ...a, player_id: keepId } : a));
     (db.scats || []).forEach((r) => { if (r.player_id === dropId) r.player_id = keepId; });
+    db.checkins = (db.checkins || []).filter((c) => !(c.player_id === dropId && db.checkins.some((b) => b.player_id === keepId && b.date === c.date))).map((c) => (c.player_id === dropId ? { ...c, player_id: keepId } : c));
     Object.values(db.members || {}).forEach((l) => l.forEach((m) => { if (m.player_id === dropId) m.player_id = keepId; }));
     Object.values(d.lineups || {}).forEach((l) => Object.values(l.slots).forEach((v) => { if (v.pid === dropId) v.pid = keepId; }));
     if (d.gym && d.gym.overrides && dropId in d.gym.overrides) { if (!(keepId in d.gym.overrides)) d.gym.overrides[keepId] = d.gym.overrides[dropId]; delete d.gym.overrides[dropId]; }
@@ -235,7 +258,7 @@ export const api = {
     ['num', 'position', 'shoots', 'year', 'height', 'weight', 'hometown', 'photo'].forEach((f) => { if (!k[f] && x[f]) k[f] = x[f]; }); k.active = k.active !== false || x.active !== false;
     d.players = d.players.filter((p) => p.id !== dropId); save();
   },
-  async deletePlayer(id) { Object.values(db.data).forEach((d) => { d.players = (d.players || []).filter((p) => p.id !== id); if (d.ipps) delete d.ipps[id]; }); db.selfAssess = (db.selfAssess || []).filter((a) => a.player_id !== id); db.scats = (db.scats || []).filter((t) => t.player_id !== id); save(); },
+  async deletePlayer(id) { Object.values(db.data).forEach((d) => { d.players = (d.players || []).filter((p) => p.id !== id); if (d.ipps) delete d.ipps[id]; }); db.selfAssess = (db.selfAssess || []).filter((a) => a.player_id !== id); db.scats = (db.scats || []).filter((t) => t.player_id !== id); db.checkins = (db.checkins || []).filter((c) => c.player_id !== id); save(); },
   async listLineups(teamId) { await load(); return clone(D(teamId).lineups || {}); },
   async saveLineup(teamId, key, slots, opponent = '') { (D(teamId).lineups = D(teamId).lineups || {})[key] = { slots: clone(slots), opponent, updatedAt: Date.now() }; save(); },
   async deleteLineup(teamId, key) { delete (D(teamId).lineups || {})[key]; save(); },

@@ -102,6 +102,13 @@ function contrast(a, b) { const x = lum(a), y = lum(b); return (Math.max(x, y) +
 function mix(a, b, t) { return a.map((v, i) => v + (b[i] - v) * t); }
 /** Readable text colour (white or near-black) on a background colour. */
 export function onColor(color) { const c = rgb(color); return contrast(c, [255, 255, 255]) >= contrast(c, [17, 19, 23]) ? '#ffffff' : '#111317'; }
+/** Light or dark mode on this device ('light' unless the user picked dark). */
+export const getMode = () => (document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
+export function setMode(mode) {
+  document.documentElement.dataset.theme = mode;
+  const m = document.querySelector('meta[name=color-scheme]'); if (m) m.content = mode;
+  store.set('theme', mode);
+}
 export function applyTheme(color) {
   const c = rgb(color), white = [255, 255, 255], ink = [17, 19, 23];
   const onAccent = contrast(c, white) >= contrast(c, ink) ? '#ffffff' : '#111317';

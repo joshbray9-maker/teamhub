@@ -1,6 +1,7 @@
 // Individual player profile (admins + coaches), one printable page: roster details and photo,
 // current status with the body diagram, limitations and return timeline, testing (latest and
-// best per test, team median, rank on the team, trend), gym group, and injury history.
+// best per test, team median, rank on the team, trend), gym group, self-assessments (live RPE and
+// game-question averages with completion %, coaches only), and injury history.
 // Opened from the Roster and the Injury report; Print / PDF prints just this page.
 import { useEffect, useState } from 'react';
 import { useHub, useMetrics } from '../lib/hub.jsx';
@@ -13,6 +14,7 @@ import Logo from '../components/Logo.jsx';
 import Avatar from '../components/Avatar.jsx';
 import Anatomy from '../components/Anatomy.jsx';
 import { StatusPill, where } from './Injury.jsx';
+import AssessSummary, { useAssessData, recentFrames } from '../components/AssessSummary.jsx';
 
 export function openPlayerReport(H, p, photo) { H.openDialog((c) => <PlayerReport p={p} photo={photo} close={c} />); }
 
@@ -25,6 +27,7 @@ function PlayerReport({ p, photo, close }) {
       .then(([tests, gym, players]) => setD({ ...tests, gym, active: new Set(players.filter((x) => x.active !== false).map((x) => x.id)) }))
       .catch((e) => { setD({ sessions: [], results: [], gym: { targets: {}, overrides: {} }, active: new Set() }); H.toast('Could not load testing: ' + e.message); });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const [assess] = useAssessData();
   const inj = (H.tdata.injuries || []).filter((i) => i.player_id === p.id);
   const active = inj.filter(isActive), past = inj.filter((i) => !isActive(i));
   const cur = currentInjury(p.id, inj);
@@ -101,6 +104,8 @@ function PlayerReport({ p, photo, close }) {
             </tr>)}</tbody></table>}
         {group && <div className="muted small">{group.group ? `Gym group: ${group.reason}.` : `Gym group: ${group.reason}.`}</div>}
       </section>
+
+      {H.isCoach && <section className="pr-sec"><h3>Self-assessments</h3><AssessSummary p={p} data={assess} frames={recentFrames()} /></section>}
 
       {past.length > 0 && <section className="pr-sec"><h3>Injury history</h3>
         <ul className="pr-hist">{past.map((i) => <li key={i.id}><b>{i.injury || where(i)}</b><span className="muted">{[where(i) !== i.injury && where(i), i.injured_on && fmtDate(i.injured_on), i.cleared_on && `cleared ${fmtDate(i.cleared_on)}`].filter(Boolean).join(' · ')}</span></li>)}</ul></section>}

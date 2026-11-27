@@ -184,8 +184,9 @@ const RUGBY = {
 };
 BASKETBALL.legend = L('B70');
 const SKILLS = { basketball: BASKETBALL, hockey: HOCKEY, rugby: RUGBY };
-/** The sport skills section for a team's sport (the template's basketball one for any other sport). */
-export const skillsFor = (sport) => SKILLS[sport] || BASKETBALL;
+/** The sport skills section for a team's sport (the template's basketball one for any other
+ *  sport), with the team's own question changes (layout, see applyLayout) when given. */
+export const skillsFor = (sport, layout) => { const x = SKILLS[sport] || BASKETBALL; return layout ? { ...x, groups: applyLayout(x.groups, layout, 'skills', true) } : x; };
 /** The legends for a sport: the pillars' scale and the sport's skill scale. */
 export const legendsFor = (sport) => [LEGENDS[0], { title: skillsFor(sport).legend, scale: 'skill' }];
 
@@ -202,12 +203,70 @@ const fixNote = (sport, x) => {
 };
 /** The header boxes for a sport. */
 export const headerFor = (sport) => HEADER.map((h) => fixNote(sport, h));
-/** The four pillars for a sport. */
-export const pillarsFor = (sport) => PILLARS.map((p) => ({ ...p, groups: p.groups.map((g) => ({ ...g, ...(g.rows ? { rows: g.rows.map((r) => fixNote(sport, r)) } : {}) })) }));
+/** The four pillars for a sport, with the team's own question changes when given. */
+export const pillarsFor = (sport, layout) => PILLARS.map((p) => {
+  const groups = p.groups.map((g) => ({ ...g, ...(g.rows ? { rows: g.rows.map((r) => fixNote(sport, r)) } : {}) }));
+  return layout ? { ...p, groups: applyLayout(groups, layout, p.id, false) } : { ...p, groups };
+});
+
+/* ---------- each team's own IPP questions (Josh, 2026-11-27) ----------
+   Coaches can reword, add, remove and reorder the 1–5 rating questions of the pillars and the
+   sport skills, and add their own skill groups. The team's changes are the setting 'ipp_layout':
+     { groups: { [groupId]: { title, off, rows: [{ id, label, note, off }] } },
+       extra:  [{ section: 'skills' | pillar id, id, title, rows: [{ id, label, note, off }] }] }
+   A group not in `groups` stays as in the template. Template questions keep their id (so saved
+   ratings stay with them); added ones get ids starting with 'c.'. A removed question keeps its
+   saved ratings in each IPP, it just isn't shown. The header boxes, anthropometrics, comments
+   and monthly notes stay as in the template. */
+const custom = (r, skill) => ({ id: r.id, label: r.label || '', note: r.note || '', def: '', ...(skill ? { open: null, bal: null } : {}) });
+function layoutGroup(g, o, skill) {
+  if (!o || !g.rows) return g;
+  const by = Object.fromEntries(g.rows.map((r) => [r.id, r])), seen = new Set((o.rows || []).map((r) => r.id));
+  const rows = (o.rows || []).filter((r) => !r.off).map((r) => (by[r.id] ? { ...by[r.id], ...(r.label ? { label: r.label } : {}), ...(r.note != null ? { note: r.note } : {}) } : custom(r, skill)));
+  return { ...g, ...(o.title ? { title: o.title } : {}), rows: [...rows, ...g.rows.filter((r) => !seen.has(r.id))] };
+}
+/** A section's groups with the team's layout: template groups changed or removed, then added groups. */
+export function applyLayout(groups, layout, section, skill) {
+  const L2 = layout || {}, G = L2.groups || {};
+  const out = groups.filter((g) => !(G[g.id] && G[g.id].off)).map((g) => layoutGroup(g, G[g.id], skill));
+  (L2.extra || []).filter((x) => x.section === section && !x.off).forEach((x) => out.push({ id: x.id, title: x.title || 'New group', custom: true, scoring: false, rows: (x.rows || []).filter((r) => !r.off).map((r) => custom(r, skill)) }));
+  return out;
+}
+/** Sections the editor shows: each pillar and the skills, with every group that has questions. */
+export function layoutSections(sport) {
+  return [...pillarsFor(sport).map((p) => ({ id: p.id, title: p.title, skill: false, groups: p.groups.filter((g) => g.rows) })),
+    { id: 'skills', title: skillsFor(sport).title, skill: true, groups: skillsFor(sport).groups }];
+}
+/** The editor's working copy: every section and group (removed ones marked off) from a layout. */
+export function layoutDraft(sport, layout) {
+  const L2 = layout || {}, G = L2.groups || {};
+  return layoutSections(sport).map((s) => ({ ...s, groups: [
+    ...s.groups.map((g) => {
+      const o = G[g.id], by = Object.fromEntries(g.rows.map((r) => [r.id, r])), seen = new Set(((o && o.rows) || []).map((r) => r.id));
+      const row = (r) => { const t = by[r.id]; return { id: r.id, label: r.label || (t ? t.label : ''), note: r.note != null ? r.note : t ? t.note || '' : '', tpl: t ? t.label : '', ...(r.off ? { off: true } : {}) }; };
+      return { id: g.id, title: (o && o.title) || g.title, tpl: g.title, off: !!(o && o.off), rows: [...((o && o.rows) || []).map(row), ...g.rows.filter((r) => !seen.has(r.id)).map((r) => row({ id: r.id }))] };
+    }),
+    ...(L2.extra || []).filter((x) => x.section === s.id).map((x) => ({ id: x.id, title: x.title, custom: true, off: !!x.off, rows: (x.rows || []).map((r) => ({ ...r, note: r.note || '' })) })),
+  ] }));
+}
+/** The setting from the editor's working copy (only what differs from the template is kept). */
+export function layoutFrom(sport, draft) {
+  const tpl = Object.fromEntries(layoutSections(sport).flatMap((s) => s.groups.map((g) => [g.id, g])));
+  const groups = {}, extra = [];
+  draft.forEach((s) => s.groups.forEach((g) => {
+    const rows = g.rows.map((r) => { const t = (tpl[g.id] && tpl[g.id].rows.find((x) => x.id === r.id)) || null;
+      const o = { id: r.id }; const lab = (r.label || '').trim(), note = (r.note || '').trim();
+      if (!t || lab !== t.label) o.label = lab; if (t ? note !== (t.note || '') : note) o.note = note; if (r.off) o.off = true; return o; });
+    if (g.custom) { extra.push({ section: s.id, id: g.id, title: (g.title || '').trim() || 'New group', ...(g.off ? { off: true } : {}), rows: rows.map((r) => ({ ...r, label: r.label || '' })) }); return; }
+    const t = tpl[g.id], same = !g.off && (g.title || '').trim() === t.title && rows.length === t.rows.length && rows.every((r, i) => r.id === t.rows[i].id && Object.keys(r).length === 1);
+    if (!same) groups[g.id] = { ...((g.title || '').trim() !== t.title ? { title: (g.title || '').trim() } : {}), ...(g.off ? { off: true } : {}), rows };
+  }));
+  return Object.keys(groups).length || extra.length ? { groups, extra } : null;
+}
 /** The IPP title: the template's for BCS (Bishop's College School), the organization's own name otherwise. */
 export const ippTitle = (orgName) => (!orgName || /^bcs$|college school/i.test(orgName) ? TITLE : `${orgName} - IPP`);
 
-const ratingRows = (sport) => [...PILLARS.flatMap((p) => p.groups.flatMap((g) => g.rows || [])), ...skillsFor(sport).groups.flatMap((g) => g.rows)];
+const ratingRows = (sport, layout) => [...(layout ? pillarsFor(sport, layout) : PILLARS).flatMap((p) => p.groups.flatMap((g) => g.rows || [])), ...skillsFor(sport, layout).groups.flatMap((g) => g.rows)];
 
 /** The template's own values (coach, province, handedness, the daily training environment 4s). */
 export function templateDefaults(sport) {
@@ -236,8 +295,8 @@ export function startIpp(base, player, team) {
   return out;
 }
 
-/** How far along an IPP is: rating boxes filled out of all of them. */
-export function ippProgress(data, sport) {
-  const rows = ratingRows(sport);
+/** How far along an IPP is: rating boxes filled out of all of them (the team's questions when a layout is given). */
+export function ippProgress(data, sport, layout) {
+  const rows = ratingRows(sport, layout);
   return { done: rows.filter((r) => /^[1-5]$/.test(String((data || {})[r.id] || ''))).length, total: rows.length };
 }

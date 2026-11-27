@@ -2,11 +2,13 @@
 // BCS IPP template (lib/ipp.js). The team's BASE IPP holds the values every new IPP starts from
 // (coach, province, the template's defaults); each athlete's IPP starts from it, with their name,
 // position and team filled in. Every box that has a note in the template shows it on hover (or
-// keyboard focus), marked with the same corner triangle as a spreadsheet comment.
+// keyboard focus), marked with the same corner triangle as a spreadsheet comment. Each team's
+// coaches can change the rating questions (Edit questions: reword, add, remove, reorder, add
+// skill groups); the team's changes are the setting 'ipp_layout' (lib/ipp.js applyLayout).
 import { useEffect, useRef, useState } from 'react';
 import { useHub } from '../lib/hub.jsx';
 import { fmtDate } from '../lib/util.js';
-import { SCALES, PILLAR_HEAD, OPEN, BALANCED, COMMENTS, MONTHS, baseIpp, startIpp, ippProgress, skillsFor, legendsFor, headerFor, pillarsFor, ippTitle } from '../lib/ipp.js';
+import { SCALES, PILLAR_HEAD, OPEN, BALANCED, COMMENTS, MONTHS, baseIpp, startIpp, ippProgress, skillsFor, legendsFor, headerFor, pillarsFor, ippTitle, layoutDraft, layoutFrom } from '../lib/ipp.js';
 import { useRoster } from './Injury.jsx';
 import PageHead from '../components/PageHead.jsx';
 import Avatar from '../components/Avatar.jsx';
@@ -18,32 +20,34 @@ const PERSONAL = new Set(['athlete', 'position', 'team', 'age', 'evalDate']);
 export default function Ipp() {
   const H = useHub(); const t = H.team;
   const { roster, photos } = useRoster();
-  const [ipps, setIpps] = useState(null), [sel, setSel] = useState(null), [q, setQ] = useState('');
+  const [ipps, setIpps] = useState(null), [sel, setSel] = useState(null), [q, setQ] = useState(''), [layout, setLayout] = useState(undefined);
   const load = () => H.api.listIpps(t.id).then(setIpps).catch((e) => { setIpps({ base: null, players: {} }); H.toast('Could not load IPPs: ' + e.message); });
-  useEffect(() => { if (H.isCoach) load(); }, [t.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const loadLayout = () => H.api.getSetting(t.id, 'ipp_layout').then((x) => setLayout(x || null)).catch(() => setLayout(null));
+  useEffect(() => { if (H.isCoach) { load(); loadLayout(); } }, [t.id]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!H.isCoach) return <><PageHead title="IPP" /><section className="card"><p className="muted" style={{ margin: 0 }}>IPPs are only visible to coaches and admins.</p></section></>;
-  if (!roster || !ipps) return <><PageHead title="IPP" /><div className="loading">Loading…</div></>;
+  if (!roster || !ipps || layout === undefined) return <><PageHead title="IPP" /><div className="loading">Loading…</div></>;
 
   const save = async (pid, data) => { try { await H.api.saveIpp(t.id, pid, data); H.toast('IPP saved'); await load(); return true; } catch (e) { H.toast(/permission|row-level|policy/i.test(e.message || '') ? 'Only coaches and admins can save IPPs.' : 'Could not save. ' + e.message); return false; } };
-  if (sel === 'base') return <IppEditor key="base" mode="base" initial={baseIpp(ipps.base, t.sport)} name="Base IPP" save={(d) => save(null, d)} back={() => setSel(null)} />;
+  if (sel === 'questions') return <IppQuestions layout={layout} back={() => setSel(null)} onSaved={loadLayout} />;
+  if (sel === 'base') return <IppEditor key="base" layout={layout} mode="base" initial={baseIpp(ipps.base, t.sport)} name="Base IPP" save={(d) => save(null, d)} back={() => setSel(null)} />;
   const p = sel && roster.find((x) => x.id === sel);
   if (p) {
     const mine = ipps.players[p.id];
-    return <IppEditor key={p.id} mode="athlete" player={p} photo={photos[p.photo]} initial={mine ? mine.data : startIpp(ipps.base, p, t)} isNew={!mine} name={p.name}
+    return <IppEditor key={p.id} layout={layout} mode="athlete" player={p} photo={photos[p.photo]} initial={mine ? mine.data : startIpp(ipps.base, p, t)} isNew={!mine} name={p.name}
       save={(d) => save(p.id, d)} reset={() => startIpp(ipps.base, p, t)} back={() => setSel(null)} />;
   }
   const list = roster.filter((x) => !q.trim() || `${x.num} ${x.name} ${x.position}`.toLowerCase().includes(q.trim().toLowerCase()));
   return <>
     <PageHead title="IPP" />
     <section className="card ipp-basecard">
-      <div><h2>Base IPP</h2><p className="muted small" style={{ margin: 0 }}>Built from the BCS IPP template. Every athlete's IPP starts from it: set the coach, province and any starting values once here.{ipps.baseAt ? ` Last changed ${fmtDate(ipps.baseAt.slice(0, 10))}.` : ' Not changed yet: it matches the template.'}</p></div>
-      <button className="btn primary" onClick={() => setSel('base')}><Icon n="edit" /> Open base IPP</button>
+      <div><h2>Base IPP</h2><p className="muted small" style={{ margin: 0 }}>Built from the BCS IPP template. Every athlete's IPP starts from it: set the coach, province and any starting values once here. Edit questions changes the rating questions for {t.name} only{layout ? ' (changed from the template)' : ''}.{ipps.baseAt ? ` Last changed ${fmtDate(ipps.baseAt.slice(0, 10))}.` : ' Not changed yet: it matches the template.'}</p></div>
+      <div className="row-gap"><button className="btn" onClick={() => setSel('questions')}><Icon n="gear" /> Edit questions</button><button className="btn primary" onClick={() => setSel('base')}><Icon n="edit" /> Open base IPP</button></div>
     </section>
     <section className="card">
       <div className="card-head"><div><h2>Athletes</h2><span className="muted small">Each athlete has their own IPP. Open one to fill it in; a new one starts from the base IPP.</span></div>
         <input className="input ar-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, # or position" aria-label="Search athletes" /></div>
       {!roster.length ? <p className="muted small" style={{ margin: 0 }}>Add players in the Roster tab first.</p>
-        : <ul className="ar-list">{list.map((x) => { const m = ipps.players[x.id], pr = m ? ippProgress(m.data, t.sport) : null; return <li key={x.id}><button className="ar-item" onClick={() => setSel(x.id)}>
+        : <ul className="ar-list">{list.map((x) => { const m = ipps.players[x.id], pr = m ? ippProgress(m.data, t.sport, layout) : null; return <li key={x.id}><button className="ar-item" onClick={() => setSel(x.id)}>
           <Avatar p={x} url={photos[x.photo]} size={40} />
           <span className="ar-who"><b>{x.num ? `#${x.num} ` : ''}{x.name}</b><span className="muted small">{m ? `${pr.done} of ${pr.total} rated · updated ${fmtDate(m.updated_at.slice(0, 10))}${m.data.evalDate ? ' · evaluated ' + fmtDate(m.data.evalDate) : ''}` : 'Not started · starts from the base IPP'}</span></span>
           {m && <span className="ipp-bar" aria-hidden="true"><i style={{ width: `${Math.round((pr.done / pr.total) * 100)}%` }} /></span>}
@@ -53,9 +57,9 @@ export default function Ipp() {
 }
 
 /* ---------- one IPP, laid out like the template ---------- */
-function IppEditor({ mode, player, photo, initial, isNew, name, save, reset, back }) {
+function IppEditor({ layout, mode, player, photo, initial, isNew, name, save, reset, back }) {
   const H = useHub(); const t = H.team, base = mode === 'base';
-  const SKILLS = skillsFor(t.sport), HEADER = headerFor(t.sport), PILLARS = pillarsFor(t.sport), LEGENDS = legendsFor(t.sport);
+  const SKILLS = skillsFor(t.sport, layout), HEADER = headerFor(t.sport), PILLARS = pillarsFor(t.sport, layout), LEGENDS = legendsFor(t.sport);
   const org = H.orgOf ? H.orgOf(t) : null;
   // fresh = a new IPP not saved yet: Save stays on, but leaving it untouched needs no warning
   const [data, setData] = useState(initial), [saved, setSaved] = useState(initial), [fresh, setFresh] = useState(!!isNew), [busy, setBusy] = useState(false);
@@ -127,6 +131,47 @@ function IppEditor({ mode, player, photo, initial, isNew, name, save, reset, bac
       <section className="ipp-months">{MONTHS.map((m) => <label key={m.id} className="ipp-month"><span>{m.label}</span><textarea className="input" rows="4" value={v(m.id)} onChange={set(m.id)} /></label>)}</section>
     </article>
     {tip && <Tip {...tip} />}
+  </>;
+}
+
+/* ---------- the team's own rating questions ---------- */
+function IppQuestions({ layout, back, onSaved }) {
+  const H = useHub(); const t = H.team;
+  const [d, setD] = useState(() => layoutDraft(t.sport, layout)), [busy, setBusy] = useState(false);
+  const start = useRef(JSON.stringify(layoutFrom(t.sport, layoutDraft(t.sport, layout))));
+  const dirty = JSON.stringify(layoutFrom(t.sport, d)) !== start.current;
+  const edit = (si, gi, fn) => setD((x) => x.map((s, i) => (i !== si ? s : { ...s, groups: s.groups.map((g, j) => (j !== gi ? g : fn({ ...g, rows: g.rows.map((r) => ({ ...r })) }))) })));
+  const uid = () => Math.random().toString(36).slice(2, 8);
+  const addGroup = (si) => setD((x) => x.map((s, i) => (i !== si ? s : { ...s, groups: [...s.groups, { id: 'c.' + uid(), title: '', custom: true, rows: [{ id: 'c.' + uid(), label: '', note: '' }] }] })));
+  const save = async () => {
+    if (d.some((s) => s.groups.some((g) => !g.off && g.rows.some((r) => !r.off && !(r.label || '').trim())))) { H.toast('Every question needs its wording (or remove it).'); return; }
+    setBusy(true);
+    try { const L = layoutFrom(t.sport, d); await H.api.saveSetting(t.id, 'ipp_layout', L); start.current = JSON.stringify(L); await onSaved(); H.toast('IPP questions saved'); } catch (e) { H.toast('Could not save. ' + e.message); } finally { setBusy(false); }
+  };
+  const leave = async () => { if (dirty && !(await H.confirm('Leave without saving?', "Your changes to the IPP questions haven't been saved.", 'Leave'))) return; back(); };
+  const reset = async () => { if (await H.confirm('Go back to the template?', `${t.name}'s IPP questions go back to the template. Ratings already saved are kept. Nothing changes until you press Save.`, 'Use template')) setD(layoutDraft(t.sport, null)); };
+  return <>
+    <PageHead title="IPP questions" actions={<><button className="btn" onClick={leave}>← IPP</button><button className="btn ghost" onClick={reset}>Use template</button>
+      <button className="btn primary" disabled={busy || !dirty} onClick={save}>{busy ? 'Saving…' : dirty ? 'Save' : 'Saved'}</button></>} />
+    <div className="hint">The 1–5 rating questions in {t.name}'s IPPs. Reword, reorder, remove or add questions, and add your own skill groups. Only this team changes. A removed question keeps any ratings already saved (restore it to see them again). The header, anthropometrics, comments and monthly notes stay as in the template.</div>
+    {d.map((s, si) => <section key={s.id} className="card iq-sec">
+      <div className="card-head"><h2>{s.title}</h2>{s.id === 'skills' && <button className="btn sm" onClick={() => addGroup(si)}><Icon n="plus" /> Add a group</button>}</div>
+      {s.groups.map((g, gi) => g.off ? <p key={g.id} className="muted small iq-off">Removed group: <b>{g.title || g.tpl}</b> · <button className="linkish" onClick={() => edit(si, gi, (x) => ({ ...x, off: false }))}>restore</button></p>
+        : <div key={g.id} className="iq-group">
+        <div className="iq-gh"><input className="input iq-gtitle" value={g.title} placeholder="Group name" onChange={(e) => edit(si, gi, (x) => ({ ...x, title: e.target.value }))} aria-label="Group name" />
+          <button className="btn sm ghost" onClick={async () => { if (await H.confirm(`Remove "${g.title || 'this group'}"?`, 'Its questions leave this team\'s IPP. Ratings already saved are kept.', 'Remove')) edit(si, gi, (x) => ({ ...x, off: true })); }}>Remove group</button></div>
+        <ol className="iq-rows">{g.rows.map((r, ri) => r.off ? <li key={r.id} className="iq-off muted small">Removed: {r.label} · <button className="linkish" onClick={() => edit(si, gi, (x) => { x.rows[ri].off = false; return x; })}>restore</button></li>
+          : <li key={r.id} className="iq-row">
+          <div className="iq-top"><input className="input" value={r.label} placeholder="Question" onChange={(e) => edit(si, gi, (x) => { x.rows[ri].label = e.target.value; return x; })} aria-label="Question" />
+            <span className="sq-acts"><button className="icon-btn" disabled={ri === 0} aria-label="Move up" onClick={() => edit(si, gi, (x) => { [x.rows[ri - 1], x.rows[ri]] = [x.rows[ri], x.rows[ri - 1]]; return x; })}>↑</button>
+              <button className="icon-btn" disabled={ri === g.rows.length - 1} aria-label="Move down" onClick={() => edit(si, gi, (x) => { [x.rows[ri + 1], x.rows[ri]] = [x.rows[ri], x.rows[ri + 1]]; return x; })}>↓</button>
+              <button className="icon-btn" aria-label="Remove question" onClick={() => edit(si, gi, (x) => { if (x.rows[ri].id.startsWith('c.') && !x.rows[ri].tpl && !(layout && JSON.stringify(layout).includes(`"${x.rows[ri].id}"`))) x.rows.splice(ri, 1); else x.rows[ri].off = true; return x; })}><Icon n="x" /></button></span></div>
+          <textarea className="input iq-note" rows="1" value={r.note} placeholder="Note for the coach filling it in (optional, shows on hover)" onChange={(e) => edit(si, gi, (x) => { x.rows[ri].note = e.target.value; return x; })} aria-label="Note" />
+          {r.tpl && r.label.trim() !== r.tpl && <span className="muted small">Template: {r.tpl}</span>}
+        </li>)}</ol>
+        <button className="btn sm" onClick={() => edit(si, gi, (x) => ({ ...x, rows: [...x.rows, { id: 'c.' + uid(), label: '', note: '' }] }))}><Icon n="plus" /> Add a question</button>
+      </div>)}
+    </section>)}
   </>;
 }
 

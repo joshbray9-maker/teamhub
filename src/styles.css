@@ -88,6 +88,13 @@ a{color:var(--accent-text)}
 .menu li.dragging .grip{opacity:1;cursor:grabbing}
 .side-label{font:600 11px var(--f-body);letter-spacing:.09em;text-transform:uppercase;color:var(--muted);padding:0 10px}
 .side-foot{margin-top:auto;display:flex;flex-direction:column;gap:6px;padding:10px 10px 0;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+.mode-tog{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 4px;border-radius:8px;color:var(--fg);font-weight:600;font-size:13px}
+.mode-tog:hover{background:var(--surface-2)}
+.mode-tog:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mode-sw{margin-left:auto;width:32px;height:18px;border-radius:9px;background:var(--line);position:relative;transition:background .15s}
+.mode-sw::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgb(0 0 0 / .3);transition:transform .15s}
+.mode-sw.on{background:var(--accent)}
+.mode-sw.on::after{transform:translateX(14px)}
 .sync{display:flex;align-items:center;gap:7px}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--good);flex:none}
 .dot.warn{background:var(--warn)}
@@ -1091,6 +1098,45 @@ span.gd-row{cursor:default}
 @media (max-width:520px){.sa-who{grid-template-columns:1fr 1fr}}
 .sa-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
 .sa-url{max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* daily check-in (player page) */
+.ci-card{display:flex;flex-direction:column;gap:14px}
+.ci-day{display:flex;flex-direction:column;gap:14px;border-top:1px solid var(--line);padding-top:14px}
+.ci-day:first-of-type{border-top:0;padding-top:0}
+.ci-day h3{margin:0;font:700 18px var(--f-display);text-transform:uppercase;letter-spacing:.03em}
+.ci-rpe button{min-width:40px;flex-basis:40px}
+@media (max-width:520px){.ci-rpe{display:grid;grid-template-columns:repeat(5,1fr)}.ci-rpe button{min-width:0}}
+/* self-assessment summary (profile, athlete reports) */
+.as-sum td:first-child{min-width:150px}
+.as-sum tr.as-sub td{color:var(--muted);font-size:13px;border-top:0;padding-top:0}
+.as-notes h4{margin:10px 0 4px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.as-notes ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.ar-subh{margin:14px 0 6px;font:700 16px var(--f-display);text-transform:uppercase;letter-spacing:.04em}
+/* game question editor */
+.sq{display:flex;flex-direction:column;gap:12px}
+.sq .row-gap{display:flex;gap:8px;flex-wrap:wrap}
+.sq-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.sq-item{border:1px solid var(--line);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;background:var(--surface-2)}
+.sq-top{display:flex;gap:8px;align-items:center}
+.sq-top .input{flex:1;min-width:0}
+.sq-top .select{width:auto}
+.sq-n{font-weight:700;width:22px;text-align:center;color:var(--muted)}
+.sq-acts{display:flex;gap:2px}
+.sq-more{display:flex;gap:8px;flex-wrap:wrap;padding-left:30px}
+.sq-more label{display:flex;flex-direction:column;gap:2px;flex:1 1 160px}
+.sq-more .sq-wide{flex:2 1 280px}
+@media (max-width:620px){.sq-top{flex-wrap:wrap}.sq-top .input{flex-basis:100%;order:3}.sq-more{padding-left:0}}
+.row-gap{display:flex;gap:8px;flex-wrap:wrap}
+/* IPP question editor */
+.iq-sec{display:flex;flex-direction:column;gap:14px}
+.iq-group{border:1px solid var(--line);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:8px;background:var(--surface-2)}
+.iq-gh{display:flex;gap:8px;align-items:center}
+.iq-gtitle{font-weight:700;flex:1;min-width:0}
+.iq-rows{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:8px}
+.iq-row{display:flex;flex-direction:column;gap:4px}
+.iq-top{display:flex;gap:6px;align-items:center}
+.iq-top .input{flex:1;min-width:0}
+.iq-note{resize:vertical;min-height:34px;font-size:13px}
+.iq-off{margin:0}
 /* league stats import table: CSSHL's 22 columns, scrolls sideways */
 .ls-drop{flex:1;min-width:220px;resize:none;min-height:40px}
 .ls-grid{max-height:min(420px,calc(100dvh - 380px))}

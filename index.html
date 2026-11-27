@@ -5,6 +5,11 @@
     <meta name="color-scheme" content="light" />
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <title>TeamHub</title>
+    <script>
+      // light or dark, chosen on this device (sidebar toggle; light unless changed). Set before
+      // the page draws so a dark-mode user doesn't see a white flash.
+      try { if (localStorage.getItem('teamhub:theme') === 'dark') { document.documentElement.dataset.theme = 'dark'; document.querySelector('meta[name=color-scheme]').content = 'dark'; } } catch (e) {}
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap" />

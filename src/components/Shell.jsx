@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { sheetOrder } from '../lib/master.js';
 import { useHub } from '../lib/hub.jsx';
-import { MENUS, SPORTS, LEVELS, ORG_PAL } from '../lib/util.js';
+import { MENUS, SPORTS, LEVELS, ORG_PAL, getMode, setMode } from '../lib/util.js';
 import Icon from './Icon.jsx';
 import Logo from './Logo.jsx';
 import TeamForm from './TeamForm.jsx';
@@ -102,10 +102,19 @@ function Side({ onNavigate }) {
       {t && <MenuList items={visible} onNavigate={onNavigate} />}
     </>}
     <div className="side-foot">
+      <ModeToggle />
       <div className="sync">{H.pending ? <><span className="dot warn" />Saving…</> : H.api.demo ? <><span className="dot warn" />Demo data on this device</> : <><span className="dot" />Synced</>}</div>
       <div>{H.role === 'admin' ? 'Admin view' : H.isCoach ? 'Coach view' : H.isMed ? 'Sports med view' : H.isAthlete ? 'Athlete view' : 'Viewer'}{H.user && H.user.email ? ` · ${H.user.email}` : ''}</div>
     </div>
   </>);
+}
+
+/** Light / dark mode for this device. */
+export function ModeToggle() {
+  const [mode, set] = useState(getMode);
+  const dark = mode === 'dark';
+  return <button className="mode-tog" role="switch" aria-checked={dark} onClick={() => { const m = dark ? 'light' : 'dark'; setMode(m); set(m); }}>
+    <Icon n={dark ? 'moon' : 'sun'} /><span>{dark ? 'Dark mode' : 'Light mode'}</span><i className={`mode-sw ${dark ? 'on' : ''}`} aria-hidden="true" /></button>;
 }
 
 /* sidebar drag-to-reorder */
